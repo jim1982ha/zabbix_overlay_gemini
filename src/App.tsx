@@ -1092,24 +1092,28 @@ export default function App() {
         {/* Telemetry Controls & Designer Bar */}
         {['dashboard', 'network', 'infra', 'events'].includes(view) && (
           <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center bg-white px-3 py-2 rounded-2xl border border-slate-100 shadow-sm shrink-0 lg:h-[60px] gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm shrink-0 lg:h-[40px] gap-2 sm:gap-4">
               {filters.mode === 'live' ? (
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
-                  <div className="flex flex-col min-w-full sm:min-w-[140px] relative">
-                    <span className="text-xs font-medium text-slate-500 mb-1 ml-1">Rolling Window</span>
+                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 w-full h-full">
+                  <div className="flex items-center min-w-full sm:min-w-[140px] relative h-full">
                     <button 
                       onClick={() => setShowRangeMenu(!showRangeMenu)}
-                      className="bg-white border border-slate-200 rounded-lg py-1.5 px-3 text-sm font-semibold text-blue-600 focus:border-blue-500 outline-none transition-all w-full text-left flex items-center justify-between gap-4 shadow-sm"
+                      className="bg-transparent hover:bg-slate-50 rounded-md py-1 px-2 text-sm font-medium text-slate-700 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
                     >
-                      {filters.range === '1h' ? 'Last Hour' : 
-                       filters.range === '6h' ? 'Last 6 Hours' : 
-                       filters.range === '24h' ? 'Last 24 Hours' : 'Last 7 Days'}
+                      <span className="flex items-center gap-2">
+                        <span className="text-slate-500 font-normal">Rolling Window:</span>
+                        <span className="font-semibold text-blue-600">
+                          {filters.range === '1h' ? 'Last Hour' : 
+                          filters.range === '6h' ? 'Last 6 Hours' : 
+                          filters.range === '24h' ? 'Last 24 Hours' : 'Last 7 Days'}
+                        </span>
+                      </span>
                       <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
                     </button>
                     {showRangeMenu && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowRangeMenu(false)} />
-                        <div className="absolute z-50 top-full mt-2 left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-md shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                           {['1h', '6h', '24h', '7d'].map((r) => (
                             <button 
                               key={r}
@@ -1131,22 +1135,26 @@ export default function App() {
                       </>
                     )}
                   </div>
-                  <div className="hidden sm:block w-[1px] h-8 bg-slate-200" />
-                  <div className="flex flex-col min-w-full sm:min-w-[100px] relative">
-                    <span className="text-xs font-medium text-slate-500 mb-1 ml-1">Granularity</span>
+                  <div className="hidden sm:block w-[1px] h-4 bg-slate-200" />
+                  <div className="flex items-center min-w-full sm:min-w-[100px] relative h-full">
                     <button 
                       onClick={() => setShowGranMenu(!showGranMenu)}
-                      className="bg-white border border-slate-200 rounded-lg py-1.5 px-3 text-sm font-semibold text-emerald-600 focus:border-emerald-500 outline-none transition-all w-full text-left flex items-center justify-between gap-4 shadow-sm"
+                      className="bg-transparent hover:bg-slate-50 rounded-md py-1 px-2 text-sm font-medium text-slate-700 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
                     >
-                      {filters.granularity === '1m' ? '1 Minute' :
-                       filters.granularity === '5m' ? '5 Minutes' :
-                       filters.granularity === '15m' ? '15 Min' : '1 Hour'}
+                      <span className="flex items-center gap-2">
+                        <span className="text-slate-500 font-normal">Granularity:</span>
+                        <span className="font-semibold text-emerald-600">
+                          {filters.granularity === '1m' ? '1 Minute' :
+                          filters.granularity === '5m' ? '5 Minutes' :
+                          filters.granularity === '15m' ? '15 Min' : '1 Hour'}
+                        </span>
+                      </span>
                       <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
                     </button>
                     {showGranMenu && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowGranMenu(false)} />
-                        <div className="absolute z-50 top-full mt-2 left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-md shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                           {['1m', '5m', '15m', '1h'].map((g) => (
                             <button 
                               key={g}
@@ -1168,27 +1176,31 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 w-full h-full">
                   <RangePicker 
                     range={{ start: filters.start, end: filters.end }}
                     onChange={(newVal) => setFilters({...filters, ...newVal})}
                   />
-                  <div className="hidden sm:block w-[1px] h-8 bg-slate-200" />
-                  <div className="flex flex-col min-w-full sm:min-w-[100px] relative">
-                    <span className="text-xs font-medium text-slate-500 mb-1 ml-1">Resolution</span>
+                  <div className="hidden sm:block w-[1px] h-4 bg-slate-200" />
+                  <div className="flex items-center min-w-full sm:min-w-[100px] relative h-full">
                     <button 
                       onClick={() => setShowGranMenu(!showGranMenu)}
-                      className="bg-white border border-slate-200 rounded-lg py-1.5 px-3 text-sm font-semibold text-emerald-600 focus:border-emerald-500 outline-none transition-all w-full text-left flex items-center justify-between gap-4 shadow-sm"
+                      className="bg-transparent hover:bg-slate-50 rounded-md py-1 px-2 text-sm font-medium text-slate-700 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
                     >
-                      {filters.granularity === '5m' ? '5 Minutes' :
-                       filters.granularity === '30m' ? '30 Minutes' :
-                       filters.granularity === '1d' ? '1 Day' : '1 Hour'}
+                      <span className="flex items-center gap-2">
+                        <span className="text-slate-500 font-normal">Resolution:</span>
+                        <span className="font-semibold text-emerald-600">
+                          {filters.granularity === '5m' ? '5 Minutes' :
+                          filters.granularity === '30m' ? '30 Minutes' :
+                          filters.granularity === '1d' ? '1 Day' : '1 Hour'}
+                        </span>
+                      </span>
                       <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
                     </button>
                     {showGranMenu && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowGranMenu(false)} />
-                        <div className="absolute z-50 top-full mt-2 left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-md shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                           {['5m', '30m', '1h', '1d'].map((g) => (
                             <button 
                               key={g}

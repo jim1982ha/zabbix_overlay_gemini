@@ -131,15 +131,17 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
     : "Select Period";
 
   return (
-    <div className="relative flex-1 min-w-full sm:min-w-0" ref={containerRef}>
-       <span className="text-xs font-semibold text-slate-500 mb-1.5 ml-1 block">Analysis Period</span>
+    <div className="relative flex-1 min-w-full sm:min-w-[200px] h-full" ref={containerRef}>
        <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-white border border-slate-200 rounded-lg py-2 pl-3 pr-10 text-sm font-medium text-slate-700 hover:text-slate-900 hover:border-slate-300 focus:border-blue-500/50 outline-none transition-all shadow-sm w-full text-left flex items-center gap-2 relative h-10"
+        className="bg-transparent hover:bg-slate-50 rounded-md py-1 px-2 text-sm font-medium text-slate-700 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
        >
-         <CalendarIcon className="w-4 h-4 text-slate-400" />
-         <span className="truncate">{displayText}</span>
-         <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-transform duration-300" style={{ transform: isOpen ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)' }} />
+         <span className="flex items-center gap-2 truncate">
+           <span className="text-slate-500 font-normal">Analysis Period:</span>
+           <CalendarIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+           <span className="truncate font-semibold text-slate-800">{displayText}</span>
+         </span>
+         <ChevronDown className={cn("w-4 h-4 text-slate-400 shrink-0 transition-transform duration-300", isOpen && "-rotate-180")} />
        </button>
 
        {isOpen && createPortal(
