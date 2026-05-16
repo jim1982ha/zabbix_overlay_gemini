@@ -67,7 +67,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue" }: 
       {/* Footer Area - Change indicator or Contextual Data */}
       <div className="relative z-10 pt-1 empty:hidden shrink-0">
         {change !== undefined ? (
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-2" title="Compared to previous period of same duration">
             <div className={cn(
               "flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded border shrink-0",
               isPositive ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100"
@@ -75,7 +75,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue" }: 
               {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
               {Math.abs(change)}%
             </div>
-            <span className="hidden @[240px]:inline text-xs text-slate-400">vs previous hour</span>
+            <span className="hidden @[240px]:inline text-xs text-slate-400">vs previous period</span>
           </div>
         ) : (
           <div className="flex flex-col gap-1 px-1">

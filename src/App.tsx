@@ -43,7 +43,8 @@ import {
   Search,
   X,
   Calendar,
-  Zap
+  Zap,
+  ZoomOut
 } from "lucide-react";
 import axios from "axios";
 import { cn } from "./lib/utils";
@@ -89,6 +90,21 @@ export default function App() {
   const [dashboardName, setDashboardName] = useState<string>('Executive Overview');
   const [lastSync, setLastSync] = useState<Date>(new Date());
   const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
+  const [widgetZoomDomains, setWidgetZoomDomains] = useState<Record<string, [number, number] | null>>({});
+
+  const handleUpdateWidgetZoom = (id: string, domain: [number, number] | null) => {
+    setWidgetZoomDomains(prev => ({
+      ...prev,
+      [id]: domain
+    }));
+  };
+
+  const handleZoomOut = (id: string) => {
+    setWidgetZoomDomains(prev => ({
+      ...prev,
+      [id]: null
+    }));
+  };
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [tempDashboardName, setTempDashboardName] = useState('');
@@ -758,11 +774,21 @@ export default function App() {
               {/* Widget Actions */}
               <div className="absolute inset-0 z-20 pointer-events-none opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <div className="absolute top-3 right-3 flex gap-1.5 items-center pointer-events-auto">
-                    <div className="flex bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-lg overflow-hidden shadow-sm">
+                    {widgetZoomDomains[w.id] && (
+                      <button 
+                        onClick={() => handleZoomOut(w.id)}
+                        className="flex items-center gap-1.5 px-2 py-1.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 hover:text-sky-700 hover:border-sky-300 rounded-lg shadow-sm transition-all backdrop-blur-md text-[10px] font-bold uppercase tracking-wider h-[26px]"
+                        title="Zoom Out"
+                      >
+                        <ZoomOut className="w-3 h-3" />
+                        Reset Zoom
+                      </button>
+                    )}
+                    <div className="flex bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-lg overflow-hidden shadow-sm h-[26px]">
                       <button 
                         onClick={() => handleMoveWidget(w.id, 'left')} 
                         className={cn(
-                          "p-1.5 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors border-r border-slate-200/50",
+                          "px-1.5 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors border-r border-slate-200/50 h-full flex items-center justify-center",
                           index === 0 && "opacity-20 pointer-events-none"
                         )} 
                         title="Move Backwards"
@@ -772,7 +798,7 @@ export default function App() {
                       <button 
                         onClick={() => handleMoveWidget(w.id, 'right')} 
                         className={cn(
-                          "p-1.5 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors",
+                          "px-1.5 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors h-full flex items-center justify-center",
                           index === widgets.length - 1 && "opacity-20 pointer-events-none"
                         )} 
                         title="Move Forwards"
@@ -783,7 +809,7 @@ export default function App() {
                     <button 
                       onClick={() => setEditingWidgetId(editingWidgetId === w.id ? null : w.id)}
                       className={cn(
-                        "p-1.5 rounded-lg border transition-all shadow-sm backdrop-blur-md",
+                        "p-1.5 rounded-lg border transition-all shadow-sm backdrop-blur-md h-[26px] flex items-center justify-center",
                         editingWidgetId === w.id ? "bg-blue-600 border-blue-500 text-white" : "bg-white/90 border-slate-200/50 text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                       )}
                     >
@@ -791,7 +817,7 @@ export default function App() {
                     </button>
                     <button 
                       onClick={() => handleRemoveWidget(w.id)}
-                      className="p-1.5 bg-white/90 border border-rose-100/50 text-rose-500 rounded-lg hover:bg-rose-50 hover:text-rose-600 shadow-sm transition-all backdrop-blur-md"
+                      className="p-1.5 bg-white/90 border border-rose-100/50 text-rose-500 rounded-lg hover:bg-rose-50 hover:text-rose-600 shadow-sm transition-all backdrop-blur-md h-[26px] flex items-center justify-center"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -1027,10 +1053,59 @@ export default function App() {
                         return Math.round(sum).toLocaleString();
                       }
                       return values[0].toFixed(1);
-                    })()} 
+                    })()}
                     unit={metricUnitsMap[w.metrics[0]] ? (metricUnitsMap[w.metrics[0]] === '%' ? '%' : ` ${metricUnitsMap[w.metrics[0]]}`) : ''} 
-                    change={5.2} 
-                    trend="up" 
+                    change={(() => {
+                      if (data.length < 2) return 0;
+                      
+                      const getVal = (point: any) => {
+                        let values: number[] = [];
+                        w.metrics.forEach(m => {
+                          w.hosts.forEach(h => {
+                            const key = `${m}_${h}`;
+                            if (!hiddenSeries.has(key) && point[key] !== undefined) {
+                              values.push(Number(point[key]));
+                            }
+                          });
+                        });
+                        if (values.length === 0) return 0;
+                        const sum = values.reduce((a, b) => a + b, 0);
+                        if (w.aggregation === 'avg') return sum / values.length;
+                        if (w.aggregation === 'sum') return sum;
+                        return values[0];
+                      };
+
+                      // Compare first half vs second half or just first point vs last point
+                      // A simple evolution calculation for the current window: First point vs Last point
+                      const firstVal = getVal(data[0]);
+                      const lastVal = getVal(data[data.length - 1]);
+                      if (firstVal === 0) return lastVal > 0 ? 100 : 0;
+                      return Number((((lastVal - firstVal) / firstVal) * 100).toFixed(1));
+                    })()}
+                    trend={(() => {
+                      if (data.length < 2) return "up";
+                      
+                      const getVal = (point: any) => {
+                        let values: number[] = [];
+                        w.metrics.forEach(m => {
+                          w.hosts.forEach(h => {
+                            const key = `${m}_${h}`;
+                            if (!hiddenSeries.has(key) && point[key] !== undefined) {
+                              values.push(Number(point[key]));
+                            }
+                          });
+                        });
+                        if (values.length === 0) return 0;
+                        const sum = values.reduce((a, b) => a + b, 0);
+                        if (w.aggregation === 'avg') return sum / values.length;
+                        if (w.aggregation === 'sum') return sum;
+                        return values[0];
+                      };
+
+                      const firstVal = getVal(data[0]);
+                      const lastVal = getVal(data[data.length - 1]);
+                      return lastVal >= firstVal ? "up" : "down";
+                    })()}
                     color={w.aggregation !== 'none' ? globalColorMap['agg_val'] : (w.metrics[0] && w.hosts[0] ? globalColorMap[`${w.metrics[0]}_${w.hosts[0]}`] : '#0EA5E9')}
                   />
                 ) : (
@@ -1099,6 +1174,8 @@ export default function App() {
                           });
                           toggleSeriesVisibility(keysForHost);
                         }}
+                        zoomDomain={widgetZoomDomains[w.id]}
+                        onZoomDomainChange={(domain) => handleUpdateWidgetZoom(w.id, domain)}
                       />
                     );
                   })()
@@ -1206,24 +1283,24 @@ export default function App() {
                     )}
                   </>
                 )}
-                <div className="hidden sm:block w-[1px] h-8 bg-slate-200 mx-2" />
-                {view !== 'config' && (
-                  <div className="relative group w-full sm:w-80">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                    <input 
-                      type="text" 
-                      value={globalSearch}
-                      onChange={(e) => setGlobalSearch(e.target.value)}
-                      placeholder="Search metrics, hosts, or entities..." 
-                      className="w-full bg-white border border-slate-200 focus:border-blue-500/50 rounded-lg py-2 pl-9 pr-3 text-sm font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400 shadow-sm" 
-                    />
-                  </div>
-                )}
+                <div className="hidden sm:block w-[1px] h-8 bg-slate-200 mx-2 opacity-0" />
               </div>
             </div>
           </div>
           
           <div className="flex items-center gap-3 self-end sm:self-auto">
+            {view !== 'config' && (
+              <div className="relative group w-full sm:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                <input 
+                  type="text" 
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  placeholder="Search metrics, hosts, or entities..." 
+                  className="w-full bg-white border border-slate-200 focus:border-blue-500/50 rounded-lg py-2 pl-9 pr-3 text-sm font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400 shadow-sm" 
+                />
+              </div>
+            )}
             {['dashboard', 'network', 'infra', 'events'].includes(view) && (
               <div className="flex bg-white border border-slate-200 p-1 rounded-lg shadow-sm shrink-0 h-[36px] items-center">
                   <button 
@@ -1242,20 +1319,10 @@ export default function App() {
                       filters.mode === 'historical' ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                     )}
                   >
-                    Archive
+                    Historical
                   </button>
               </div>
             )}
-            <div className="w-[1px] h-6 bg-slate-200 mx-1 sm:mx-2" />
-            <button 
-              onClick={handleSync}
-              className={cn(
-                "h-[36px] w-[36px] bg-white border border-slate-200 text-slate-400 hover:text-blue-600 rounded-lg shadow-sm flex items-center justify-center transition-all active:scale-95",
-                loading && "opacity-50"
-              )}
-            >
-              <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-            </button>
           </div>
         </div>
 

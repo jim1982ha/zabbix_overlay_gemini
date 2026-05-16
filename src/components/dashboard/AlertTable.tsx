@@ -148,23 +148,30 @@ export function AlertTable({ mode = 'live', globalSearch = "", zabbixConfig }: {
               )}
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-slate-800 tracking-tight">
+              <h3 className="text-lg sm:text-xl font-semibold text-slate-800 tracking-tight flex items-center gap-3">
                 {mode === 'live' ? "Live System Events" : "Historical Event Archive"}
+                {isSimulated && (
+                  <span className="text-[10px] sm:text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                    Simulation Mode
+                  </span>
+                )}
               </h3>
               <p className="text-xs text-slate-500 font-medium mt-1">
-                {isSimulated ? (
-                    <span className="text-amber-600/80">[ SIMULATION MODE ]</span>
-                ) : (
-                    mode === 'live' ? (
-                        <span className="flex items-center gap-2">
-                          <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                          Real-time Trigger Stream Active
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          Archive view for post-mortem analysis
-                        </span>
-                      )
+                {!isSimulated && mode === 'live' && (
+                    <span className="flex items-center gap-2">
+                        <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Real-time Trigger Stream Active
+                    </span>
+                )}
+                {!isSimulated && mode === 'historical' && (
+                    <span className="flex items-center gap-2">
+                        Archive view for post-mortem analysis
+                    </span>
+                )}
+                {isSimulated && (
+                    <span className="flex items-center gap-2 opacity-70">
+                        Using placeholder data for preview
+                    </span>
                 )}
               </p>
             </div>
