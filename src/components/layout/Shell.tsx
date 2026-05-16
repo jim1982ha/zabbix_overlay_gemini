@@ -90,10 +90,10 @@ export function Shell({
       <aside className={cn(
         "fixed lg:relative inset-y-0 left-0 bg-white border-r border-slate-200 flex flex-col z-[60] transform transition-all duration-300 shadow-[2px_0_10px_rgba(0,0,0,0.02)]",
         isMobileMenuOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0",
-        isCollapsed ? "lg:w-14" : "lg:w-56"
+        isCollapsed ? "lg:w-[60px]" : "lg:w-56"
       )}>
         <div className={cn(
-          "h-14 hidden lg:flex items-center bg-white text-slate-900 border-b border-slate-200 shadow-sm shrink-0 transition-all",
+          "h-[60px] hidden lg:flex items-center bg-white text-slate-900 border-b border-slate-200 shadow-sm shrink-0 transition-all",
           isCollapsed ? "px-0 justify-center" : "px-4 justify-between"
         )}>
           {!isCollapsed ? (
@@ -104,9 +104,9 @@ export function Shell({
               <span className="font-bold text-base tracking-tight truncate">HA Reporting</span>
             </div>
           ) : null}
-          <button onClick={toggleCollapse} className="hidden lg:flex p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-md transition-colors" title={isCollapsed ? "Expand Menu" : "Collapse Menu"}>
+          <button onClick={toggleCollapse} className={cn("hidden lg:flex transition-colors", isCollapsed ? "w-[60px] h-[60px] items-center justify-center hover:bg-slate-50" : "p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-md")} title={isCollapsed ? "Expand Menu" : "Collapse Menu"}>
             {isCollapsed ? (
-              <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center shadow-sm shrink-0 text-white cursor-pointer hover:bg-blue-700 transition-colors">
+              <div className="w-[42px] h-[42px] bg-blue-600 rounded-[14px] flex items-center justify-center shadow-sm shrink-0 text-white cursor-pointer hover:bg-blue-700 transition-colors">
                 <Activity className="w-5 h-5" />
               </div>
             ) : <ChevronLeft className="w-4 h-4" />}
@@ -210,7 +210,7 @@ export function Shell({
 
           {/* Active Filters Context Box */}
           {hiddenSeries && hiddenSeries.size > 0 && (
-            <div className={cn("px-4 py-2 mt-4 transition-all duration-300", isCollapsed && "px-2 items-center flex flex-col")}>
+            <div className={cn("px-4 py-2 mt-auto transition-all duration-300", isCollapsed && "px-2 items-center flex flex-col")}>
               {!isCollapsed ? (
                 <div className="bg-amber-50/80 border border-amber-200/60 rounded-xl p-3 relative overflow-hidden shadow-sm animate-in fade-in zoom-in-95">
                   <div className="flex items-center justify-between mb-2">
@@ -246,21 +246,20 @@ export function Shell({
                 </div>
               ) : (
                  <div 
-                   className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 relative cursor-pointer hover:bg-amber-200 transition-colors" 
+                   className="w-[42px] h-[42px] rounded-[14px] bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 relative cursor-pointer hover:bg-amber-200 transition-colors" 
                    title={`${hiddenSeries.size} series hidden. Click to clear filters.`}
                    onClick={() => toggleSeriesVisibility?.(Array.from(hiddenSeries))}
                  >
                    <Activity className="w-5 h-5 flex-shrink-0" />
-                   <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white shadow-sm">
+                   <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-bold min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full border border-white shadow-sm">
                      {hiddenSeries.size}
                    </span>
                  </div>
               )}
             </div>
           )}
-
-          <div className="mt-auto pt-4" />
-          <NavItem icon={<Settings className="w-4 h-4" />} label="Zabbix API Settings" active={currentView === 'config'} isCollapsed={isCollapsed} onClick={() => { onNavigate('config'); closeMobileMenu(); }} className={cn(hiddenSeries && hiddenSeries.size > 0 ? "" : "mt-auto")} />
+          <div className={cn(hiddenSeries && hiddenSeries.size > 0 ? "pt-2" : "mt-auto pt-4")} />
+          <NavItem icon={<Settings className="w-4 h-4" />} label="Zabbix API Settings" active={currentView === 'config'} isCollapsed={isCollapsed} onClick={() => { onNavigate('config'); closeMobileMenu(); }} />
           <NavItem 
             icon={
               <span className="relative flex h-2 w-2 m-1">
@@ -305,10 +304,10 @@ function NavItem({ icon, label, active = false, isCollapsed = false, onClick, cl
   return (
     <div 
       onClick={onClick}
-      title={isCollapsed ? label : undefined}
+      title={isCollapsed && typeof label === 'string' ? label : undefined}
       className={cn(
         "flex items-center transition-all group cursor-pointer",
-        isCollapsed ? "justify-center mx-auto w-[40px] h-[40px] rounded-[14px]" : "gap-3 px-4 py-2 border-l-[3px]",
+        isCollapsed ? "justify-center mx-auto w-[42px] h-[42px] rounded-[14px]" : "gap-3 px-4 py-2 border-l-[3px]",
         active ? 
           (isCollapsed ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-100/50' : 'bg-blue-50/50 text-blue-700 border-blue-600') : 
           (isCollapsed ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 border border-transparent' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-transparent'),

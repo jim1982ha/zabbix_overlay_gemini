@@ -75,7 +75,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue" }: 
               {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
               {Math.abs(change)}%
             </div>
-            <span className="hidden @[240px]:inline text-xs text-slate-400">vs previous period</span>
+            <span className="hidden @[240px]:inline text-xs text-slate-400 cursor-help border-b border-dashed border-slate-300">vs previous period</span>
           </div>
         ) : (
           <div className="flex flex-col gap-1 px-1">
