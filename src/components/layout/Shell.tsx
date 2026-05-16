@@ -32,6 +32,8 @@ interface ShellProps {
   lastSync: Date;
   isDesignerMode?: boolean;
   isSimulated?: boolean;
+  hiddenSeries?: Set<string>;
+  toggleSeriesVisibility?: (key: string | string[]) => void;
 }
 
 export function Shell({ 
@@ -46,7 +48,9 @@ export function Shell({
   currentView, 
   lastSync,
   isDesignerMode = false,
-  isSimulated = true
+  isSimulated = true,
+  hiddenSeries,
+  toggleSeriesVisibility
 }: ShellProps) {
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -116,7 +120,7 @@ export function Shell({
           </button>
         </div>
 
-        <nav className="flex-1 py-4 space-y-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <nav className="flex-1 flex flex-col py-4 space-y-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
           {!isCollapsed && (
             <div className="pb-2 px-4 flex items-center justify-between group/title">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Dashboards</span>
@@ -210,6 +214,57 @@ export function Shell({
           )}
           <NavItem icon={<Bell className="w-4 h-4" />} label="Alert Rules" active={currentView === 'notifications'} isCollapsed={isCollapsed} onClick={() => { onNavigate('notifications'); closeMobileMenu(); }} />
           <NavItem icon={<Settings className="w-4 h-4" />} label="Zabbix API Settings" active={currentView === 'config'} isCollapsed={isCollapsed} onClick={() => { onNavigate('config'); closeMobileMenu(); }} />
+
+          {/* Active Filters Context Box */}
+          {hiddenSeries && hiddenSeries.size > 0 && (
+            <div className={cn("px-4 py-2 mt-auto mb-2 transition-all duration-300", isCollapsed && "px-2 items-center flex flex-col")}>
+              {!isCollapsed ? (
+                <div className="bg-amber-50/80 border border-amber-200/60 rounded-xl p-3 relative overflow-hidden shadow-sm animate-in fade-in zoom-in-95">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 text-amber-700 font-semibold text-[10px] uppercase tracking-wider">
+                      <Activity className="w-3 h-3" /> 
+                      Filtered Series
+                    </div>
+                    <button 
+                      onClick={() => toggleSeriesVisibility?.(Array.from(hiddenSeries))}
+                      className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100/50 hover:bg-amber-200 text-amber-700 transition-colors"
+                    >
+                      CLEAR ALL
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.from(hiddenSeries).map(key => {
+                      const m = key.split('_')[0];
+                      const h = key.substring(m.length + 1);
+                      const displayKey = `${m.toUpperCase()} [${h === 'all' ? 'All' : h}]`;
+                      return (
+                        <div key={key} className="flex items-center gap-1 bg-white border border-amber-200 text-slate-600 text-[10px] pl-1.5 pr-0.5 py-0.5 rounded shadow-sm group">
+                          <span className="truncate max-w-[120px] font-medium">{displayKey}</span>
+                          <button 
+                            onClick={() => toggleSeriesVisibility?.(key)}
+                            className="hover:bg-rose-100 hover:text-rose-600 text-slate-400 rounded-sm p-0.5 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                 <div 
+                   className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 relative cursor-pointer hover:bg-amber-200 transition-colors" 
+                   title={`${hiddenSeries.size} series hidden. Click to clear all filters.`}
+                   onClick={() => toggleSeriesVisibility?.(Array.from(hiddenSeries))}
+                 >
+                   <Activity className="w-5 h-5 flex-shrink-0" />
+                   <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white shadow-sm">
+                     {hiddenSeries.size}
+                   </span>
+                 </div>
+              )}
+            </div>
+          )}
         </nav>
 
         <div className="p-3 border-t border-slate-200 bg-slate-50 shrink-0">

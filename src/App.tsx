@@ -737,11 +737,15 @@ export default function App() {
             w.title.toLowerCase().includes(globalSearch.toLowerCase()) ||
             w.metrics.some(m => m.toLowerCase().includes(globalSearch.toLowerCase())) ||
             w.hosts.some(h => h.toLowerCase().includes(globalSearch.toLowerCase()))
-          ).map((w, index) => (
+          ).map((w, index) => {
+            const hasFilter = w.metrics.some(m => w.hosts.some(h => hiddenSeries.has(`${m}_${h}`)));
+            
+            return (
             <div key={w.id} 
               className={cn(
-                "relative transition-all duration-300 group hover:z-50",
-                "max-lg:!col-[span_24/_span_24]" // Full width on small screens
+                "relative transition-all duration-300 group hover:z-50 rounded-xl",
+                "max-sm:!col-[span_24/_span_24]", // Full width on mobile screens
+                hasFilter && "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-50"
               )}
               style={Object.assign(
                 {}, 
@@ -800,7 +804,7 @@ export default function App() {
                     e.preventDefault();
                     e.stopPropagation();
                     const startY = e.clientY;
-                    const startRows = w.rows;
+                    const startRows = w.rows || 10;
                     
                     const handleMouseMove = (moveEvent: MouseEvent) => {
                       const deltaY = startY - moveEvent.clientY; 
@@ -832,11 +836,13 @@ export default function App() {
                     e.preventDefault();
                     e.stopPropagation();
                     const startX = e.clientX;
-                    const startCols = w.cols;
+                    const startCols = w.cols || 24;
+                    const gridContainer = (e.currentTarget as HTMLElement).closest('.grid');
+                    const availableWidth = gridContainer ? gridContainer.clientWidth : window.innerWidth;
+                    const colThreshold = availableWidth / 24; // Dynamic exact grid column width
                     
                     const handleMouseMove = (moveEvent: MouseEvent) => {
                       const deltaX = moveEvent.clientX - startX;
-                      const colThreshold = Math.round(window.innerWidth / 26); // Dynamic threshold based on screen width
                       const deltaCols = Math.round(deltaX / colThreshold);
                       const nextCols = Math.min(24, Math.max(1, startCols + deltaCols));
                       if (nextCols !== w.cols) {
@@ -932,8 +938,9 @@ export default function App() {
                           </div>
 
                           {w.type === 'chart' && (
-                            <div className="bg-slate-900/30 px-4 sm:px-6 py-4 sm:py-5 rounded-xl border border-slate-800">
-                              <label className="flex items-center gap-3 sm:gap-4 text-sm text-slate-300 font-medium cursor-pointer select-none">
+                            <div>
+                              <label className="text-sm font-semibold text-slate-400 block mb-2">Display Mode</label>
+                              <label className="flex items-center gap-3 sm:gap-4 w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-700 hover:border-slate-600 focus-within:border-sky-500 outline-none transition-all text-white cursor-pointer select-none">
                                 <input 
                                   type="checkbox" 
                                   checked={w.stacked} 
@@ -1098,11 +1105,24 @@ export default function App() {
                 )
               )}
             </div>
-          ))}
+          )})}
         </div>
       </>
     );
   };
+
+  const relevantHiddenSeries = useMemo(() => {
+    if (view !== 'dashboard') return new Set<string>();
+    const activeWidgetKeys = new Set<string>();
+    widgets.forEach(w => {
+      w.metrics.forEach(m => {
+        w.hosts.forEach(h => {
+          activeWidgetKeys.add(`${m}_${h}`);
+        });
+      });
+    });
+    return new Set(Array.from(hiddenSeries).filter(key => activeWidgetKeys.has(key)));
+  }, [hiddenSeries, widgets, view]);
 
   return (
     <Shell 
@@ -1116,6 +1136,8 @@ export default function App() {
       currentView={view}
       lastSync={lastSync}
       isSimulated={isSimulated}
+      hiddenSeries={relevantHiddenSeries}
+      toggleSeriesVisibility={toggleSeriesVisibility}
     >
       <div className="max-w-[1400px] mx-auto space-y-4">
         {/* Page Title Section */}
