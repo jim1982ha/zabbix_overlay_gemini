@@ -37,20 +37,36 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Optional PORT variable if your internal container port differs (default is 3000)
-      - PORT=3000
+      # Optional APP_PORT variable if you want the internal app to run on a different port.
+      # Useful for macvlan network setups where you want the app to listen directly on port 80.
+      - APP_PORT=3000
       - VITE_ZABBIX_URL=http://your-zabbix-host/zabbix/api_jsonrpc.php
       - VITE_ZABBIX_TOKEN=your_zabbix_api_token
     restart: unless-stopped
 ```
 
-If you are using MacVlan or a specific network interface to expose port 80 directly to your local network, adapt your docker-compose file as needed.
+If you are using MacVlan or a specific network interface to expose port 80 directly to your local network, adapt your docker-compose file as needed. For example, to have the container listen directly on port 80:
+
+```yaml
+  ha-reporting:
+    container_name: ha-reporting
+    image: ha-reporting:latest
+    environment:
+      - NODE_ENV=production
+      - APP_PORT=80
+      - VITE_ZABBIX_URL=http://your-zabbix-host/zabbix/api_jsonrpc.php
+      - VITE_ZABBIX_TOKEN=your_zabbix_api_token
+    networks:
+      jw_admin:
+        ipv4_address: 192.168.20.38
+    restart: unless-stopped
+```
 
 2. Run the deployment:
 ```bash
 docker compose up -d
 ```
-3. Access the dashboard at `http://your-server-ip:3000` (or whichever port you exposed).
+3. Access the dashboard at `http://your-server-ip:3000` (or `http://192.168.20.38` if using port 80 on a routed network).
 
 #### Option B: Docker CLI
 If you prefer running the container directly via the command line, simply execute:
@@ -59,7 +75,7 @@ If you prefer running the container directly via the command line, simply execut
 docker run -d \
   --name ha-reporting \
   -p 3000:3000 \
-  -e PORT=3000 \
+  -e APP_PORT=3000 \
   -e VITE_ZABBIX_URL="http://your-zabbix-host/zabbix/api_jsonrpc.php" \
   -e VITE_ZABBIX_TOKEN="your_zabbix_api_token" \
   --restart unless-stopped \
