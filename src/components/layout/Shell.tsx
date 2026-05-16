@@ -92,16 +92,20 @@ export function Shell({
           "h-14 hidden lg:flex items-center bg-white text-slate-900 border-b border-slate-200 shadow-sm shrink-0 transition-all",
           isCollapsed ? "px-0 justify-center" : "px-4 justify-between"
         )}>
-          {!isCollapsed && (
-            <div className="flex items-center gap-2 font-bold cursor-pointer transition-all" onClick={() => onNavigate('dashboard')}>
+          {!isCollapsed ? (
+            <div className="flex items-center gap-2 font-bold cursor-pointer transition-all shrink-0" onClick={() => onNavigate('dashboard')}>
               <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center shadow-sm shrink-0 text-white">
                 <Activity className="w-5 h-5" />
               </div>
               <span className="font-bold text-base tracking-tight truncate">HA Reporting</span>
             </div>
-          )}
+          ) : null}
           <button onClick={toggleCollapse} className="hidden lg:flex p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-md transition-colors" title={isCollapsed ? "Expand Menu" : "Collapse Menu"}>
-            {isCollapsed ? <Menu className="w-5 h-5" /> : <ChevronLeft className="w-4 h-4" />}
+            {isCollapsed ? (
+              <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center shadow-sm shrink-0 text-white cursor-pointer hover:bg-blue-700 transition-colors">
+                <Activity className="w-5 h-5" />
+              </div>
+            ) : <ChevronLeft className="w-4 h-4" />}
           </button>
         </div>
 

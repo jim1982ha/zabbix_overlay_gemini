@@ -25,6 +25,7 @@ interface DataPoint {
 interface LegendItem {
   key: string;
   name: string;
+  color?: string;
 }
 
 interface TrendChartProps {
@@ -39,16 +40,29 @@ interface TrendChartProps {
   granularity?: string;
   aggregation?: 'none' | 'sum' | 'avg';
   color?: string;
+  hiddenSeries?: Set<string>;
+  onLegendClick?: (key: string) => void;
+  onHostClick?: (host: string) => void;
 }
 
-export function TrendChart({ title, data, series, hosts, chartType = 'area', stacked = false, unit, mode = 'live', granularity, aggregation, color }: TrendChartProps) {
-  const defaultColors = ['#0284c7', '#4f46e5', '#7c3aed', '#db2777', '#d97706', '#059669'];
+export function TrendChart({ title, data, series, hosts, chartType = 'area', stacked = false, unit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onHostClick }: TrendChartProps) {
+  const defaultColors = ['#0284c7', '#4f46e5', '#7c3aed', '#db2777', '#d97706', '#059669', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#06b6d4'];
   const chartColors = color ? [color, ...defaultColors.filter(c => c !== color)] : defaultColors;
+
+  const getSeriesColor = (s: LegendItem, i: number) => {
+    return s.color || chartColors[i % chartColors.length];
+  };
 
   // For Pie charts, we aggregate the latest values for each series
   const pieData = chartType === 'pie' ? series.map((s, i) => {
     const latest = data[data.length - 1]?.[s.key] || 0;
-    return { name: s.name, value: typeof latest === 'number' ? latest : 0, color: chartColors[i % chartColors.length] };
+    const isHidden = hiddenSeries?.has(s.key);
+    return { 
+      name: s.name, 
+      value: isHidden ? 0 : (typeof latest === 'number' ? latest : 0), 
+      color: isHidden ? '#e2e8f0' : getSeriesColor(s, i),
+      dataKey: s.key // pass dataKey so we know which one was clicked
+    };
   }) : [];
 
   const formatXAxis = (tickItem: string) => {
@@ -129,7 +143,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               align="right" 
               verticalAlign="middle" 
               iconType="circle"
-              wrapperStyle={{ paddingLeft: '20px', fontSize: '9px', fontWeight: 600, color: '#64748b' }} 
+              wrapperStyle={{ paddingLeft: '20px', fontSize: '9px', fontWeight: 600, color: '#64748b', cursor: 'pointer' }} 
+              onClick={(e: any) => onLegendClick?.(e.payload?.dataKey || e.payload?.payload?.dataKey || e.dataKey)}
             />
           </PieChart>
         );
@@ -147,9 +162,9 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
-            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600 }} />
+            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }} onClick={(e: any) => onLegendClick?.(e.dataKey)} />
             {series.map((s, i) => (
-              <Line key={s.key} name={s.name} type="monotone" dataKey={s.key} stroke={chartColors[i % chartColors.length]} strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} unit={unit} />
+              <Line key={s.key} hide={hiddenSeries?.has(s.key)} name={s.name} type="monotone" dataKey={s.key} stroke={getSeriesColor(s, i)} strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} unit={unit} />
             ))}
           </LineChart>
         );
@@ -167,9 +182,9 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
-            <Legend verticalAlign="bottom" height={36} iconType="rect" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600 }} />
+            <Legend verticalAlign="bottom" height={36} iconType="rect" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }} onClick={(e: any) => onLegendClick?.(e.dataKey)} />
             {series.map((s, i) => (
-              <Bar key={s.key} name={s.name} dataKey={s.key} fill={chartColors[i % chartColors.length]} stackId={stacked ? "a" : undefined} unit={unit} radius={[4, 4, 0, 0]} />
+              <Bar key={s.key} hide={hiddenSeries?.has(s.key)} name={s.name} dataKey={s.key} fill={getSeriesColor(s, i)} stackId={stacked ? "a" : undefined} unit={unit} radius={[4, 4, 0, 0]} />
             ))}
           </BarChart>
         );
@@ -179,8 +194,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             <defs>
               {series.map((s, i) => (
                 <linearGradient key={s.key} id={`gradient-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={chartColors[i % chartColors.length]} stopOpacity={0.15}/>
-                  <stop offset="95%" stopColor={chartColors[i % chartColors.length]} stopOpacity={0}/>
+                  <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={0.15}/>
+                  <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0}/>
                 </linearGradient>
               ))}
             </defs>
@@ -195,9 +210,9 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
-            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600 }} />
+            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }} onClick={(e: any) => onLegendClick?.(e.dataKey)} />
             {series.map((s, i) => (
-              <Area key={s.key} name={s.name} type="monotone" dataKey={s.key} stroke={chartColors[i % chartColors.length]} stackId={stacked ? "1" : undefined} strokeWidth={2.5} fillOpacity={1} fill={`url(#gradient-${s.key})`} unit={unit} animationDuration={1000} />
+              <Area key={s.key} hide={hiddenSeries?.has(s.key)} name={s.name} type="monotone" dataKey={s.key} stroke={getSeriesColor(s, i)} stackId={stacked ? "1" : undefined} strokeWidth={2.5} fillOpacity={1} fill={`url(#gradient-${s.key})`} unit={unit} animationDuration={1000} />
             ))}
           </AreaChart>
         );
@@ -218,7 +233,13 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
           </div>
           <div className="flex flex-wrap gap-1.5 items-center pl-3.5">
             {hosts.map(h => (
-              <span key={h} className="text-xs px-2 py-0.5 bg-slate-50 text-slate-600 rounded font-medium border border-slate-200">{h}</span>
+              <button 
+                key={h} 
+                onClick={() => onHostClick?.(h)}
+                className="text-xs px-2 py-0.5 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded font-medium border border-slate-200 transition-colors cursor-pointer"
+              >
+                {h}
+              </button>
             ))}
             {stacked && (
               <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded font-medium border border-blue-200">Stacked</span>

@@ -57,9 +57,8 @@ interface Widget {
   hosts: string[];
   aggregation: 'none' | 'sum' | 'avg';
   stacked: boolean;
-  cols: 1 | 2 | 3 | 4;
+  cols: number;
   rows: number;
-  color: string;
 }
 
 interface Dashboard {
@@ -93,6 +92,28 @@ export default function App() {
 
   const [isRenaming, setIsRenaming] = useState(false);
   const [tempDashboardName, setTempDashboardName] = useState('');
+  const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+
+  const toggleSeriesVisibility = useCallback((key: string | string[]) => {
+    setHiddenSeries(prev => {
+      const next = new Set(prev);
+      const keys = Array.isArray(key) ? key : [key];
+      let allHidden = true;
+      for (const k of keys) {
+        if (!next.has(k)) {
+          allHidden = false;
+          break;
+        }
+      }
+      
+      if (allHidden) {
+        keys.forEach(k => next.delete(k));
+      } else {
+        keys.forEach(k => next.add(k));
+      }
+      return next;
+    });
+  }, []);
 
   // Detect unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -101,6 +122,59 @@ export default function App() {
     if (!currentBoard) return true;
     return JSON.stringify(currentBoard.widgets) !== JSON.stringify(widgets) || currentBoard.name !== dashboardName;
   }, [widgets, dashboardName, activeDashboardId, savedDashboards]);
+
+  const globalColorMap = useMemo(() => {
+    const palette = [
+      '#0284c7', '#4f46e5', '#7c3aed', '#db2777', '#d97706', '#059669', 
+      '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', 
+      '#06b6d4', '#ef4444', '#84cc16', '#64748b', '#14b8a6', '#f97316'
+    ];
+    const colorMap: Record<string, string> = {};
+    
+    // Stable hash function for strings
+    const hashString = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    };
+    
+    const allSeriesKeys = new Set<string>();
+    widgets.forEach(w => {
+      if (w.aggregation !== 'none') {
+        allSeriesKeys.add('agg_val');
+      } else {
+        w.metrics.forEach(m => {
+          w.hosts.forEach(h => {
+            allSeriesKeys.add(`${m}_${h}`);
+          });
+        });
+      }
+    });
+    
+    const usedColors = new Set<string>();
+    
+    // Sort keys to ensure deterministic collision resolution
+    Array.from(allSeriesKeys).sort().forEach(key => {
+      let colorIndex = hashString(key) % palette.length;
+      let selectedColor = palette[colorIndex];
+      
+      // Collision resolution (linear probing)
+      let attempt = 0;
+      while (usedColors.has(selectedColor) && attempt < palette.length) {
+        colorIndex = (colorIndex + 1) % palette.length;
+        selectedColor = palette[colorIndex];
+        attempt++;
+      }
+      
+      colorMap[key] = selectedColor;
+      usedColors.add(selectedColor);
+    });
+    
+    return colorMap;
+  }, [widgets]);
 
   const handleSaveAll = () => {
     if (activeDashboardId) {
@@ -176,9 +250,9 @@ export default function App() {
   });
 
   const defaultWidgets: Widget[] = [
-    { id: 'kpi-1', title: 'Average Cluster CPU', type: 'kpi', chartType: 'area', metrics: ['cpu'], hosts: ['all'], aggregation: 'avg', stacked: false, cols: 2, rows: 1, color: '#0EA5E9' },
-    { id: 'kpi-2', title: 'Total Network Flow', type: 'kpi', chartType: 'area', metrics: ['traffic'], hosts: ['all'], aggregation: 'sum', stacked: false, cols: 2, rows: 1, color: '#6366F1' },
-    { id: 'chart-1', title: 'Production Core Trends', type: 'chart', chartType: 'area', metrics: ['cpu', 'memory'], hosts: ['srv-prod-01'], aggregation: 'none', stacked: true, cols: 4, rows: 2, color: '#0EA5E9' },
+    { id: 'kpi-1', title: 'Average Cluster CPU', type: 'kpi', chartType: 'area', metrics: ['cpu'], hosts: ['all'], aggregation: 'avg', stacked: false, cols: 6, rows: 4 },
+    { id: 'kpi-2', title: 'Total Network Flow', type: 'kpi', chartType: 'area', metrics: ['traffic'], hosts: ['all'], aggregation: 'sum', stacked: false, cols: 6, rows: 4 },
+    { id: 'chart-1', title: 'Production Core Trends', type: 'chart', chartType: 'area', metrics: ['cpu', 'memory'], hosts: ['srv-prod-01'], aggregation: 'none', stacked: true, cols: 12, rows: 10 },
   ];
 
   const handleUpdateDashboardName = (newName: string) => {
@@ -199,7 +273,16 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setSavedDashboards(parsed);
+        // Migrate old scale to 24-col scale if they are using the old small numbers
+        const migrated = parsed.map((db: Dashboard) => ({
+          ...db,
+          widgets: db.widgets.map((w: Widget) => ({
+            ...w,
+            cols: w.cols <= 4 ? w.cols * 6 : w.cols,
+            rows: w.rows <= 3 ? w.rows * 4 : w.rows
+          }))
+        }));
+        setSavedDashboards(migrated);
       } catch (e) {
         console.error("Failed to parse saved dashboards", e);
       }
@@ -217,12 +300,24 @@ export default function App() {
     
     // Set initial widgets
     if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.length > 0) {
-        setWidgets(parsed[0].widgets);
-        setDashboardName(parsed[0].name);
-        setActiveDashboardId(parsed[0].id);
-      } else {
+      try {
+        const parsed = JSON.parse(saved);
+        const migrated = parsed.map((db: Dashboard) => ({
+          ...db,
+          widgets: db.widgets.map((w: Widget) => ({
+            ...w,
+            cols: w.cols <= 4 ? w.cols * 6 : w.cols,
+            rows: w.rows <= 3 ? w.rows * 4 : w.rows
+          }))
+        }));
+        if (migrated.length > 0) {
+          setWidgets(migrated[0].widgets);
+          setDashboardName(migrated[0].name);
+          setActiveDashboardId(migrated[0].id);
+        } else {
+          setWidgets(defaultWidgets);
+        }
+      } catch (e) {
         setWidgets(defaultWidgets);
       }
     } else {
@@ -313,9 +408,8 @@ export default function App() {
       hosts: ['all'],
       aggregation: 'avg',
       stacked: false,
-      cols: type === 'kpi' ? 1 : 4,
-      rows: type === 'kpi' ? 1 : 2,
-      color: '#0EA5E9'
+      cols: type === 'kpi' ? 6 : 12,
+      rows: type === 'kpi' ? 4 : 10,
     };
     setWidgets([...widgets, newWidget]);
     setEditingWidgetId(newWidget.id);
@@ -635,7 +729,10 @@ export default function App() {
     return (
       <>
         {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-4 auto-rows-[60px] sm:auto-rows-[70px] lg:auto-rows-[60px]">
+        <div 
+          className="grid gap-4 auto-rows-[25px] sm:auto-rows-[30px] lg:auto-rows-[25px]"
+          style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}
+        >
           {widgets.filter(w => 
             w.title.toLowerCase().includes(globalSearch.toLowerCase()) ||
             w.metrics.some(m => m.toLowerCase().includes(globalSearch.toLowerCase())) ||
@@ -643,12 +740,16 @@ export default function App() {
           ).map((w, index) => (
             <div key={w.id} 
               className={cn(
-                "relative transition-all duration-300 group col-span-1 hover:z-50",
-                w.cols === 1 ? 'sm:col-span-1 md:col-span-3 lg:col-span-3' :
-                w.cols === 2 ? 'sm:col-span-2 md:col-span-6 lg:col-span-6' :
-                w.cols === 3 ? 'sm:col-span-2 md:col-span-6 lg:col-span-9' : 'sm:col-span-2 md:col-span-6 lg:col-span-12'
+                "relative transition-all duration-300 group hover:z-50",
+                "max-lg:!col-[span_24/_span_24]" // Full width on small screens
               )}
-              style={{ gridRowEnd: `span ${w.rows * 2 || 2}` }}
+              style={Object.assign(
+                {}, 
+                { 
+                  gridRowEnd: `span ${w.rows || 10}`,
+                  gridColumn: `span ${w.cols || 24} / span ${w.cols || 24}`
+                }
+              )}
             >
               {/* Widget Actions */}
               <div className="absolute inset-0 z-20 pointer-events-none opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -703,9 +804,9 @@ export default function App() {
                     
                     const handleMouseMove = (moveEvent: MouseEvent) => {
                       const deltaY = startY - moveEvent.clientY; 
-                      const rowThreshold = 30; 
+                      const rowThreshold = 35; // Fine grained control
                       const deltaRows = Math.round(deltaY / rowThreshold);
-                      const nextRows = Math.max(1, startRows + deltaRows);
+                      const nextRows = Math.min(20, Math.max(1, startRows + deltaRows));
                       if (nextRows !== w.rows) {
                         handleUpdateWidget(w.id, { rows: nextRows });
                       }
@@ -735,9 +836,9 @@ export default function App() {
                     
                     const handleMouseMove = (moveEvent: MouseEvent) => {
                       const deltaX = moveEvent.clientX - startX;
-                      const colThreshold = 40; 
+                      const colThreshold = Math.round(window.innerWidth / 26); // Dynamic threshold based on screen width
                       const deltaCols = Math.round(deltaX / colThreshold);
-                      const nextCols = Math.min(4, Math.max(1, startCols + deltaCols)) as 1 | 2 | 3 | 4;
+                      const nextCols = Math.min(24, Math.max(1, startCols + deltaCols));
                       if (nextCols !== w.cols) {
                         handleUpdateWidget(w.id, { cols: nextCols });
                       }
@@ -797,14 +898,6 @@ export default function App() {
                                 Identification Label Required
                               </p>
                             )}
-                          </div>
-
-                          <div>
-                            <ColorPicker 
-                              label="Theme Accent" 
-                              value={w.color || '#0EA5E9'} 
-                              onChange={(c) => handleUpdateWidget(w.id, { color: c })} 
-                            />
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -911,7 +1004,7 @@ export default function App() {
                       w.metrics.forEach(m => {
                         w.hosts.forEach(h => {
                           const key = `${m}_${h}`;
-                          if (lastPoint[key] !== undefined) {
+                          if (!hiddenSeries.has(key) && lastPoint[key] !== undefined) {
                             values.push(Number(lastPoint[key]));
                           }
                         });
@@ -931,24 +1024,24 @@ export default function App() {
                     unit={metricUnitsMap[w.metrics[0]] ? (metricUnitsMap[w.metrics[0]] === '%' ? '%' : ` ${metricUnitsMap[w.metrics[0]]}`) : ''} 
                     change={5.2} 
                     trend="up" 
-                    color={w.color}
+                    color={w.aggregation !== 'none' ? globalColorMap['agg_val'] : (w.metrics[0] && w.hosts[0] ? globalColorMap[`${w.metrics[0]}_${w.hosts[0]}`] : '#0EA5E9')}
                   />
                 ) : (
                   (() => {
                     const isAggregated = w.aggregation !== 'none';
-                    let chartSeries: { key: string; name: string }[] = [];
+                    let chartSeries: { key: string; name: string; color?: string }[] = [];
                     let chartData = data;
 
                     if (isAggregated) {
                       const label = w.aggregation === 'sum' ? 'Aggregate Sum' : 'Aggregate Mean';
-                      chartSeries = [{ key: 'agg_val', name: label }];
+                      chartSeries = [{ key: 'agg_val', name: label, color: globalColorMap['agg_val'] }];
                       
                       chartData = data.map(point => {
                         let values: number[] = [];
                         w.metrics.forEach(m => {
                           w.hosts.forEach(h => {
                             const key = `${m}_${h}`;
-                            if (point[key] !== undefined) {
+                            if (!hiddenSeries.has(key) && point[key] !== undefined) {
                               values.push(Number(point[key]));
                             }
                           });
@@ -970,7 +1063,8 @@ export default function App() {
                           const metricLabel = m.toUpperCase();
                           chartSeries.push({
                             key,
-                            name: (w.hosts.length > 1 || w.metrics.length > 1) ? `${metricLabel} [${hostLabel}]` : metricLabel
+                            name: (w.hosts.length > 1 || w.metrics.length > 1) ? `${metricLabel} [${hostLabel}]` : metricLabel,
+                            color: globalColorMap[key]
                           });
                         });
                       });
@@ -988,7 +1082,16 @@ export default function App() {
                         mode={filters.mode as 'live' | 'historical'}
                         granularity={filters.granularity}
                         aggregation={w.aggregation}
-                        color={w.color}
+                        hiddenSeries={hiddenSeries}
+                        onLegendClick={(key) => toggleSeriesVisibility(key)}
+                        onHostClick={(host) => {
+                          // Toggle all series for this host
+                          const keysForHost: string[] = [];
+                          availableMetrics.forEach(m => {
+                            keysForHost.push(`${m}_${host}`);
+                          });
+                          toggleSeriesVisibility(keysForHost);
+                        }}
                       />
                     );
                   })()
@@ -1317,44 +1420,6 @@ export default function App() {
         {renderContent()}
       </div>
     </Shell>
-  );
-}
-
-function ColorPicker({ value, onChange, label }: { value: string, onChange: (val: string) => void, label: string }) {
-  const colors = [
-    { name: 'Sky', value: '#0EA5E9' },
-    { name: 'Indigo', value: '#6366F1' },
-    { name: 'Violet', value: '#8B5CF6' },
-    { name: 'Rose', value: '#F43F5E' },
-    { name: 'Emerald', value: '#10B981' },
-    { name: 'Amber', value: '#F59E0B' },
-    { name: 'Slate', value: '#64748B' },
-  ];
-
-  return (
-    <div>
-      <label className="text-xs font-semibold text-slate-400 block mb-3">{label}</label>
-      <div className="flex flex-wrap gap-3">
-        {colors.map(c => (
-          <button
-            key={c.value}
-            onClick={() => onChange(c.value)}
-            className={cn(
-              "w-8 h-8 rounded-full border-2 transition-all p-0.5",
-              value === c.value ? "border-white scale-110 shadow-lg" : "border-transparent hover:scale-110"
-            )}
-            style={{ backgroundColor: c.value }}
-            title={c.name}
-          >
-            {value === c.value && (
-              <div className="w-full h-full rounded-full border border-slate-900/20 flex items-center justify-center">
-                <Check className="w-4 h-4 text-white" />
-              </div>
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
