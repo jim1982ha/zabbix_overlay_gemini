@@ -42,7 +42,8 @@ import {
   Bell,
   Search,
   X,
-  Calendar
+  Calendar,
+  Zap
 } from "lucide-react";
 import axios from "axios";
 import { cn } from "./lib/utils";
@@ -73,10 +74,11 @@ export default function App() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("dashboard");
+  const [isDiscovering, setIsDiscovering] = useState(false);
   const [filters, setFilters] = useState<any>({ 
     mode: 'live',
     range: '24h',
-    granularity: '5m',
+    granularity: '1h',
     start: new Date(Date.now() - 86400000).toISOString().substring(0, 16),
     end: new Date().toISOString().substring(0, 16)
   });
@@ -443,6 +445,7 @@ export default function App() {
       return;
     }
     
+    if (manual) setIsDiscovering(true);
     try {
       // 1. Discover Hosts
       const hostRes = await axios.post("/api/zabbix", {
@@ -478,11 +481,13 @@ export default function App() {
       }
       
       console.log("Zabbix Assets Discovered Successfully");
-      if (manual) alert("Zabbix Assets Discovered Successfully");
+      if (manual) alert("Zabbix Assets Discovered Successfully. Found " + hostRes.data.result.length + " hosts and " + itemRes.data.result.length + " metrics.");
     } catch (e: any) {
       console.error("Zabbix Discovery Failed", e);
       const msg = e.response?.data?.error || e.message || "Zabbix Discovery Failed";
       if (manual) alert(msg);
+    } finally {
+      if (manual) setIsDiscovering(false);
     }
   }, [zabbixConfig]);
 
@@ -576,10 +581,10 @@ export default function App() {
                     onClick={async () => {
                       await discoverZabbixAssets(true);
                     }}
-                    className="w-full py-3 bg-slate-800 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2"
-                    disabled={!zabbixConfig.url || !zabbixConfig.token}
+                    className="w-full py-3 bg-slate-800 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!zabbixConfig.url || !zabbixConfig.token || isDiscovering}
                   >
-                    <RefreshCw className="w-4 h-4" /> Trigger Discovery
+                    <RefreshCw className={cn("w-4 h-4", isDiscovering && "animate-spin")} /> {isDiscovering ? 'Discovering...' : 'Trigger Discovery'}
                   </button>
                 </div>
                 <p className="text-xs text-slate-500 text-center font-medium">
@@ -987,7 +992,19 @@ export default function App() {
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-center shadow-sm shrink-0">
-                <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                {view === 'dashboard' ? (
+                  <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                ) : view === 'network' ? (
+                  <Activity className="w-4 h-4 text-blue-600" />
+                ) : view === 'events' ? (
+                  <Zap className="w-4 h-4 text-blue-600" />
+                ) : view === 'infra' ? (
+                  <Server className="w-4 h-4 text-blue-600" />
+                ) : view === 'notifications' ? (
+                  <Bell className="w-4 h-4 text-blue-600" />
+                ) : (
+                  <Settings2 className="w-4 h-4 text-blue-600" />
+                )}
               </div>
               <div className="flex items-center gap-4 group/header min-w-0">
                 {isRenaming ? (
@@ -1016,9 +1033,9 @@ export default function App() {
                   <>
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight truncate">
                       {view === 'dashboard' ? dashboardName : 
-                      view === 'network' ? 'Network Elements' : 
-                      view === 'events' ? 'Application Services' :
-                      view === 'infra' ? 'Interface Inventory' : 'Gateway Config'}
+                      view === 'network' ? 'Network Topology' : 
+                      view === 'events' ? 'Application Events' :
+                      view === 'infra' ? 'Asset Inventory' : 'Zabbix API Settings'}
                     </h1>
                     {view === 'dashboard' && (
                       <button 
@@ -1037,16 +1054,18 @@ export default function App() {
                   </>
                 )}
                 <div className="hidden sm:block w-[1px] h-8 bg-slate-200 mx-2" />
-                <div className="relative group w-full sm:w-80">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                  <input 
-                    type="text" 
-                    value={globalSearch}
-                    onChange={(e) => setGlobalSearch(e.target.value)}
-                    placeholder="Search metrics, hosts, or entities..." 
-                    className="w-full bg-white border border-slate-200 focus:border-blue-500/50 rounded-lg py-2 pl-9 pr-3 text-sm font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400 shadow-sm" 
-                  />
-                </div>
+                {view !== 'config' && (
+                  <div className="relative group w-full sm:w-80">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                    <input 
+                      type="text" 
+                      value={globalSearch}
+                      onChange={(e) => setGlobalSearch(e.target.value)}
+                      placeholder="Search metrics, hosts, or entities..." 
+                      className="w-full bg-white border border-slate-200 focus:border-blue-500/50 rounded-lg py-2 pl-9 pr-3 text-sm font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400 shadow-sm" 
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

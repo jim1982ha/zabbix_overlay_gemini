@@ -21,13 +21,13 @@ export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, 
   
   const nodes = [
     { id: 'gw-01', type: 'gateway', x: 50, y: 50, status: 'online', label: 'Primary Gateway' },
-    { id: 'sw-01', type: 'switch', x: 30, y: 150, status: 'online', label: 'Core Switch 01' },
-    { id: 'sw-02', type: 'switch', x: 70, y: 150, status: 'online', label: 'Core Switch 02' },
-    { id: 'srv-01', type: 'server', x: 15, y: 250, status: 'online', label: 'App Server 01' },
-    { id: 'srv-02', type: 'server', x: 30, y: 250, status: 'online', label: 'App Server 02' },
-    { id: 'srv-03', type: 'server', x: 45, y: 250, status: 'online', label: 'App Server 03' },
-    { id: 'db-01', type: 'server', x: 70, y: 250, status: 'online', label: 'DB Cluster A' },
-    { id: 'db-02', type: 'server', x: 85, y: 250, status: 'online', label: 'DB Cluster B' },
+    { id: 'sw-01', type: 'switch', x: 35, y: 150, status: 'online', label: 'Core Switch 01' },
+    { id: 'sw-02', type: 'switch', x: 65, y: 150, status: 'online', label: 'Core Switch 02' },
+    { id: 'srv-01', type: 'server', x: 10, y: 300, status: 'online', label: 'App Server 01' },
+    { id: 'srv-02', type: 'server', x: 30, y: 300, status: 'online', label: 'App Server 02' },
+    { id: 'srv-03', type: 'server', x: 50, y: 300, status: 'online', label: 'App Server 03' },
+    { id: 'db-01', type: 'server', x: 70, y: 300, status: 'online', label: 'DB Cluster A' },
+    { id: 'db-02', type: 'server', x: 90, y: 300, status: 'online', label: 'DB Cluster B' },
   ];
 
   const links = [
@@ -65,8 +65,8 @@ export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, 
           </div>
         </div>
       )}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-8 relative overflow-hidden h-[500px] shadow-sm">
+      <div className="flex flex-col gap-6">
+        <div className="bg-white border border-slate-100 rounded-2xl p-8 relative overflow-hidden h-[600px] shadow-sm">
           <div className="absolute top-8 left-8 z-10">
             <h3 className="text-xl font-bold text-slate-800 tracking-tight">Visual Topology</h3>
             <p className="text-sm text-slate-500 font-medium mt-1">Live Mesh Connectivity</p>
@@ -172,64 +172,6 @@ export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, 
 
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(2,132,199,0.02),transparent)] pointer-events-none" />
         </div>
-
-        <div className="space-y-6">
-          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-            <h3 className="text-xs font-semibold text-slate-500 mb-6 px-1">Traffic Analysis</h3>
-            <div className="space-y-4">
-              <TrafficStat label="Ingress Bandwidth" value={(getSeedMetric(300, 200, periodKey + 'in') / 100).toFixed(1)} unit="Gb/s" trend="up" percent={getSeedMetric(2, 10, periodKey + 'p1')} color="emerald" icon={<ArrowDownRight className="w-4 h-4" />} />
-              <TrafficStat label="Egress Bandwidth" value={(getSeedMetric(100, 150, periodKey + 'out') / 100).toFixed(1)} unit="Gb/s" trend="down" percent={getSeedMetric(1, 8, periodKey + 'p2')} color="blue" icon={<ArrowUpRight className="w-4 h-4" />} />
-              <TrafficStat label="Latency (Avg)" value={getSeedMetric(5, 25, periodKey + 'lat')} unit="ms" trend="up" percent={getSeedMetric(0, 5, periodKey + 'p3')} color="amber" icon={<Zap className="w-4 h-4" />} />
-              <TrafficStat label="Packet Loss" value={(getSeedMetric(0, 10, periodKey + 'pk') / 1000).toFixed(3)} unit="%" trend="down" percent={0} color="rose" icon={<Shield className="w-4 h-4" />} />
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-100 rounded-2xl p-6 flex-1 shadow-sm">
-             <h3 className="text-xs font-semibold text-slate-500 mb-4 px-1">Security Perimeter</h3>
-             <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
-                <div className="flex items-center gap-3 mb-2">
-                  <Shield className="w-5 h-5 text-emerald-600" />
-                  <span className="text-sm font-semibold text-slate-900 tracking-tight">WAF Filtering Active</span>
-                </div>
-                <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  Real-time intrusion detection monitoring 1.2M queries/sec. All signatures up to date.
-                </p>
-             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TrafficStat({ label, value, unit, trend, percent, color, icon }: any) {
-  return (
-    <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-xl border border-slate-50 hover:bg-white hover:shadow-md transition-all cursor-pointer group">
-      <div className="flex items-center gap-4">
-        <div className={cn(
-          "w-10 h-10 rounded-lg flex items-center justify-center transition-all",
-          color === 'emerald' ? "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white" :
-          color === 'blue' ? "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white" :
-          color === 'amber' ? "bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white" :
-          "bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white"
-        )}>
-          {icon}
-        </div>
-        <div>
-          <p className="text-xs font-semibold text-slate-500">{label}</p>
-          <div className="flex items-baseline gap-1">
-            <span className="text-lg font-bold text-slate-900 tracking-tight">{value}</span>
-            <span className="text-xs font-medium text-slate-500">{unit}</span>
-          </div>
-        </div>
-      </div>
-      <div className={cn(
-        "text-xs font-semibold px-2 py-1 rounded-md",
-        trend === 'up' && color !== 'rose' ? "text-emerald-700 bg-emerald-100" : 
-        trend === 'down' && color === 'rose' ? "text-emerald-700 bg-emerald-100" :
-        "text-rose-700 bg-rose-100"
-      )}>
-        {trend === 'up' ? '+' : '-'}{percent}%
       </div>
     </div>
   );

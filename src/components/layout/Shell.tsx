@@ -192,20 +192,20 @@ export function Shell({
 
           {!isCollapsed && (
             <div className="pt-6 pb-2 px-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              Diagnostics
+              Observability
             </div>
           )}
-          <NavItem icon={<Activity className="w-4 h-4" />} label="Network Elements" active={currentView === 'network'} isCollapsed={isCollapsed} onClick={() => { onNavigate('network'); closeMobileMenu(); }} />
-          <NavItem icon={<Server className="w-4 h-4" />} label="Interfaces" active={currentView === 'infra'} isCollapsed={isCollapsed} onClick={() => { onNavigate('infra'); closeMobileMenu(); }} />
-          <NavItem icon={<Activity className="w-4 h-4" />} label="Applications" active={currentView === 'events'} isCollapsed={isCollapsed} onClick={() => { onNavigate('events'); closeMobileMenu(); }} />
+          <NavItem icon={<Activity className="w-4 h-4" />} label="Network Topology" active={currentView === 'network'} isCollapsed={isCollapsed} onClick={() => { onNavigate('network'); closeMobileMenu(); }} />
+          <NavItem icon={<Server className="w-4 h-4" />} label="Asset Inventory" active={currentView === 'infra'} isCollapsed={isCollapsed} onClick={() => { onNavigate('infra'); closeMobileMenu(); }} />
+          <NavItem icon={<Zap className="w-4 h-4" />} label="Application Events" active={currentView === 'events'} isCollapsed={isCollapsed} onClick={() => { onNavigate('events'); closeMobileMenu(); }} />
           
           {!isCollapsed && (
             <div className="pt-6 pb-2 px-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              Control
+              Settings
             </div>
           )}
-          <NavItem icon={<Bell className="w-4 h-4" />} label="Alert Management" active={currentView === 'notifications'} isCollapsed={isCollapsed} onClick={() => { onNavigate('notifications'); closeMobileMenu(); }} />
-          <NavItem icon={<Settings className="w-4 h-4" />} label="GW Integration" active={currentView === 'config'} isCollapsed={isCollapsed} onClick={() => { onNavigate('config'); closeMobileMenu(); }} />
+          <NavItem icon={<Bell className="w-4 h-4" />} label="Alert Rules" active={currentView === 'notifications'} isCollapsed={isCollapsed} onClick={() => { onNavigate('notifications'); closeMobileMenu(); }} />
+          <NavItem icon={<Settings className="w-4 h-4" />} label="Zabbix API Settings" active={currentView === 'config'} isCollapsed={isCollapsed} onClick={() => { onNavigate('config'); closeMobileMenu(); }} />
         </nav>
 
         <div className="p-3 border-t border-slate-200 bg-slate-50 shrink-0">
