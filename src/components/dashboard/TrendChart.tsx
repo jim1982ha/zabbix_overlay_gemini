@@ -58,7 +58,6 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
 
   const [refAreaLeft, setRefAreaLeft] = useState<string | null>(null);
   const [refAreaRight, setRefAreaRight] = useState<string | null>(null);
-  const [highlightedHost, setHighlightedHost] = useState<string | null>(null);
 
   let displayedData = data;
   if (zoomDomain) {
@@ -217,24 +216,20 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }} onClick={(e: any) => onLegendClick?.(e.dataKey)} />
-            {series.map((s, i) => {
-              const isDimmed = highlightedHost && !s.key.endsWith(`_${highlightedHost}`);
-              return (
-                <Line 
-                  key={s.key} 
-                  hide={hiddenSeries?.has(s.key)} 
-                  name={s.name} 
-                  type="monotone" 
-                  dataKey={s.key} 
-                  stroke={getSeriesColor(s, i)} 
-                  strokeWidth={isDimmed ? 1 : 2.5} 
-                  strokeOpacity={isDimmed ? 0.2 : 1}
-                  dot={false} 
-                  activeDot={isDimmed ? false : { r: 4, strokeWidth: 0 }} 
-                  unit={unit} 
-                />
-              );
-            })}
+            {series.map((s, i) => (
+              <Line 
+                key={s.key} 
+                hide={hiddenSeries?.has(s.key)} 
+                name={s.name} 
+                type="monotone" 
+                dataKey={s.key} 
+                stroke={getSeriesColor(s, i)} 
+                strokeWidth={2.5} 
+                dot={false} 
+                activeDot={{ r: 4, strokeWidth: 0 }} 
+                unit={unit} 
+              />
+            ))}
             {refAreaLeft && refAreaRight ? (
               <ReferenceArea x1={refAreaLeft} x2={refAreaRight} strokeOpacity={0.3} fill="#0ea5e9" fillOpacity={0.1} />
             ) : null}
@@ -255,22 +250,18 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             <Legend verticalAlign="bottom" height={36} iconType="rect" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }} onClick={(e: any) => onLegendClick?.(e.dataKey)} />
-            {series.map((s, i) => {
-              const isDimmed = highlightedHost && !s.key.endsWith(`_${highlightedHost}`);
-              return (
-                <Bar 
-                  key={s.key} 
-                  hide={hiddenSeries?.has(s.key)} 
-                  name={s.name} 
-                  dataKey={s.key} 
-                  fill={getSeriesColor(s, i)} 
-                  fillOpacity={isDimmed ? 0.2 : 1}
-                  stackId={stacked ? "a" : undefined} 
-                  unit={unit} 
-                  radius={[4, 4, 0, 0]} 
-                />
-              );
-            })}
+            {series.map((s, i) => (
+              <Bar 
+                key={s.key} 
+                hide={hiddenSeries?.has(s.key)} 
+                name={s.name} 
+                dataKey={s.key} 
+                fill={getSeriesColor(s, i)} 
+                stackId={stacked ? "a" : undefined} 
+                unit={unit} 
+                radius={[4, 4, 0, 0]} 
+              />
+            ))}
             {refAreaLeft && refAreaRight ? (
               <ReferenceArea x1={refAreaLeft} x2={refAreaRight} strokeOpacity={0.3} fill="#0ea5e9" fillOpacity={0.1} />
             ) : null}
@@ -280,15 +271,12 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
         return (
           <AreaChart data={displayedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} {...dragProps}>
             <defs>
-              {series.map((s, i) => {
-                const isDimmed = highlightedHost && !s.key.endsWith(`_${highlightedHost}`);
-                return (
-                  <linearGradient key={s.key} id={`gradient-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={isDimmed ? 0.05 : 0.15}/>
-                    <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0}/>
-                  </linearGradient>
-                );
-              })}
+              {series.map((s, i) => (
+                <linearGradient key={s.key} id={`gradient-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={0.15}/>
+                  <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0}/>
+                </linearGradient>
+              ))}
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
             <XAxis 
@@ -302,26 +290,22 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }} onClick={(e: any) => onLegendClick?.(e.dataKey)} />
-            {series.map((s, i) => {
-              const isDimmed = highlightedHost && !s.key.endsWith(`_${highlightedHost}`);
-              return (
-                <Area 
-                  key={s.key} 
-                  hide={hiddenSeries?.has(s.key)} 
-                  name={s.name} 
-                  type="monotone" 
-                  dataKey={s.key} 
-                  stroke={getSeriesColor(s, i)} 
-                  strokeOpacity={isDimmed ? 0.2 : 1}
-                  stackId={stacked ? "1" : undefined} 
-                  strokeWidth={isDimmed ? 1 : 2.5} 
-                  fillOpacity={isDimmed ? 0.2 : 1} 
-                  fill={`url(#gradient-${s.key})`} 
-                  unit={unit} 
-                  animationDuration={1000} 
-                />
-              );
-            })}
+            {series.map((s, i) => (
+              <Area 
+                key={s.key} 
+                hide={hiddenSeries?.has(s.key)} 
+                name={s.name} 
+                type="monotone" 
+                dataKey={s.key} 
+                stroke={getSeriesColor(s, i)} 
+                stackId={stacked ? "1" : undefined} 
+                strokeWidth={2.5} 
+                fillOpacity={1} 
+                fill={`url(#gradient-${s.key})`} 
+                unit={unit} 
+                animationDuration={1000} 
+              />
+            ))}
             {refAreaLeft && refAreaRight ? (
               <ReferenceArea x1={refAreaLeft} x2={refAreaRight} strokeOpacity={0.3} fill="#0ea5e9" fillOpacity={0.1} />
             ) : null}
@@ -348,21 +332,25 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5 items-center pl-3.5">
-            {hosts.map(h => (
+            {hosts.map(h => {
+              const hostSeries = series.filter(s => s.key.endsWith(`_${h}`));
+              const isFiltered = hostSeries.length > 0 && hostSeries.every(s => hiddenSeries?.has(s.key));
+              
+              return (
               <button 
                 key={h} 
-                onClick={() => setHighlightedHost(highlightedHost === h ? null : h)}
+                onClick={() => onHostClick?.(h)}
                 className={cn(
                   "text-xs px-2 py-0.5 rounded font-medium border transition-colors cursor-pointer",
-                  highlightedHost === h 
-                    ? "bg-blue-100 text-blue-700 border-blue-300 shadow-inner" 
+                  isFiltered 
+                    ? "bg-amber-50 text-amber-600 border-amber-200 line-through opacity-70" 
                     : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-slate-200"
                 )}
-                title="Click to highlight this host"
+                title={isFiltered ? "Click to show this host globally" : "Click to hide this host globally"}
               >
                 {h}
               </button>
-            ))}
+            )})}
             {aggregation && aggregation !== 'none' && (
               <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded font-medium border border-emerald-200">{aggregation}</span>
             )}

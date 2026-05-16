@@ -208,9 +208,9 @@ export function Shell({
           <NavItem icon={<Zap className="w-4 h-4" />} label="Application Events" active={currentView === 'events'} isCollapsed={isCollapsed} onClick={() => { onNavigate('events'); closeMobileMenu(); }} />
           <NavItem icon={<Bell className="w-4 h-4" />} label="Alert Rules" active={currentView === 'notifications'} isCollapsed={isCollapsed} onClick={() => { onNavigate('notifications'); closeMobileMenu(); }} />
 
-          {/* Active Filters Context Box */}
+            {/* Active Filters Context Box */}
           {hiddenSeries && hiddenSeries.size > 0 && (
-            <div className={cn("px-4 py-2 mt-auto transition-all duration-300", isCollapsed && "px-2 items-center flex flex-col")}>
+            <div className={cn("px-4 py-4 mt-auto transition-all duration-300", isCollapsed && "px-2 items-center flex flex-col")}>
               {!isCollapsed ? (
                 <div className="bg-amber-50/80 border border-amber-200/60 rounded-xl p-3 relative overflow-hidden shadow-sm animate-in fade-in zoom-in-95">
                   <div className="flex items-center justify-between mb-2">
@@ -258,7 +258,9 @@ export function Shell({
               )}
             </div>
           )}
-          <div className={cn(hiddenSeries && hiddenSeries.size > 0 ? "pt-2" : "mt-auto pt-4")} />
+        </nav>
+        
+        <div className="shrink-0 border-t border-slate-200 bg-slate-50/50 py-2">
           <NavItem icon={<Settings className="w-4 h-4" />} label="Zabbix API Settings" active={currentView === 'config'} isCollapsed={isCollapsed} onClick={() => { onNavigate('config'); closeMobileMenu(); }} />
           <NavItem 
             icon={
@@ -283,9 +285,9 @@ export function Shell({
             }
             active={false}
             isCollapsed={isCollapsed}
-            className="mb-2 !bg-transparent !cursor-default !text-slate-600 hover:!bg-transparent pt-0 pb-3"
+            className="mb-1 !bg-transparent !cursor-default !text-slate-600 hover:!bg-transparent pt-0 pb-2"
           />
-        </nav>
+        </div>
       </aside>
 
       {/* Main Content */}

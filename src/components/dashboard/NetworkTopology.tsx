@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Activity, Globe, Zap, Shield, ArrowUpRight, ArrowDownRight, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, globalSearch?: string }) {
   const isHistorical = filters.mode === 'historical';
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [hoveredLink, setHoveredLink] = useState<{from: string, to: string} | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   // Helper to generate "sticky" random numbers based on a string seed (the period)
   const getSeedMetric = (base: number, variance: number, seed: string) => {
@@ -94,20 +97,45 @@ export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, 
               const isSearching = globalSearch.length > 0;
               const fromMatch = isSearching && (fromNode.id.toLowerCase().includes(globalSearch.toLowerCase()) || fromNode.label.toLowerCase().includes(globalSearch.toLowerCase()));
               const toMatch = isSearching && (toNode.id.toLowerCase().includes(globalSearch.toLowerCase()) || toNode.label.toLowerCase().includes(globalSearch.toLowerCase()));
+              const searchFocus = fromMatch || toMatch;
+              
+              const isLinkHovered = hoveredLink?.from === link.from && hoveredLink?.to === link.to;
+              const isNodeHovered = hoveredNode === fromNode.id || hoveredNode === toNode.id;
+              const isHighlighted = isLinkHovered || isNodeHovered || searchFocus;
+              
+              const shouldDim = (hoveredNode || hoveredLink) && !isHighlighted;
 
               return (
-                <g key={`link-${i}`} className={cn("transition-opacity", isSearching && !fromMatch && !toMatch ? "opacity-10" : "opacity-100")}>
+                <g 
+                  key={`link-${i}`} 
+                  className={cn("transition-opacity cursor-pointer", isSearching && !searchFocus ? "opacity-10" : (shouldDim ? "opacity-20" : "opacity-100"))}
+                  onMouseEnter={(e) => {
+                    setHoveredLink(link);
+                    setTooltipPos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => setHoveredLink(null)}
+                >
                   <line 
                     x1={`${fromNode.x}%`} 
                     y1={fromNode.y} 
                     x2={`${toNode.x}%`} 
                     y2={toNode.y} 
-                    stroke={fromMatch || toMatch ? "#0284c7" : "url(#linkGradient)"} 
-                    strokeWidth={fromMatch || toMatch ? "1.5" : "1"} 
+                    stroke={isHighlighted ? "#0284c7" : "url(#linkGradient)"} 
+                    strokeWidth={isHighlighted ? "2" : "1"} 
+                  />
+                  {/* Invisible wider line for easier hover targeting */}
+                  <line 
+                    x1={`${fromNode.x}%`} 
+                    y1={fromNode.y} 
+                    x2={`${toNode.x}%`} 
+                    y2={toNode.y} 
+                    stroke="transparent" 
+                    strokeWidth="15" 
                   />
                   <motion.circle
-                    r={fromMatch || toMatch ? "1" : "0.5"}
-                    fill="#0284c7"
+                    r={isHighlighted ? "1.5" : "0.5"}
+                    fill={isHighlighted ? (link.load > 80 ? "#ef4444" : "#0284c7") : "#0284c7"}
                     initial={{ offsetDistance: "0%" }}
                     animate={{ offsetDistance: "100%" }}
                     transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: i * 0.5 }}
@@ -126,20 +154,43 @@ export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, 
             {nodes.map((node) => {
               const isSearching = globalSearch.length > 0;
               const isMatch = isSearching && (node.id.toLowerCase().includes(globalSearch.toLowerCase()) || node.label.toLowerCase().includes(globalSearch.toLowerCase()));
+              
+              const isNodeHovered = hoveredNode === node.id;
+              const isConnectedToHoveredLink = hoveredLink?.from === node.id || hoveredLink?.to === node.id;
+              const isConnectedToHoveredNode = hoveredNode && links.some(l => (l.from === hoveredNode && l.to === node.id) || (l.to === hoveredNode && l.from === node.id));
+              
+              const isHighlighted = isNodeHovered || isConnectedToHoveredLink || isConnectedToHoveredNode || isMatch;
+              const shouldDim = (hoveredNode || hoveredLink) && !isHighlighted;
 
               return (
-                <g key={node.id} className={cn("transition-all", isSearching && !isMatch ? "opacity-20 scale-90" : "opacity-100 scale-100")}>
+                <g 
+                  key={node.id} 
+                  className={cn("transition-all cursor-pointer", isSearching && !isMatch ? "opacity-20 scale-90" : (shouldDim ? "opacity-30 scale-95" : "opacity-100 scale-100"))}
+                  onMouseEnter={(e) => {
+                    setHoveredNode(node.id);
+                    setTooltipPos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => setHoveredNode(null)}
+                >
                   <circle 
                     cx={`${node.x}%`} 
                     cy={node.y} 
-                    r={isMatch ? "12" : "8"} 
+                    r={isHighlighted ? "12" : "8"} 
                     className={cn(
                       "fill-white transition-all",
-                      isMatch ? "stroke-blue-600 stroke-2" : (node.type === 'gateway' ? "stroke-blue-500" : "stroke-slate-100")
+                      isHighlighted ? "stroke-blue-600 stroke-2" : (node.type === 'gateway' ? "stroke-blue-500" : "stroke-slate-100")
                     )}
                     strokeWidth="1"
                   />
-                  {isMatch && (
+                  {/* Invisible wider circle for easier hover targeting */}
+                  <circle 
+                    cx={`${node.x}%`} 
+                    cy={node.y} 
+                    r="20" 
+                    fill="transparent"
+                  />
+                  {isHighlighted && (
                     <circle 
                       cx={`${node.x}%`} 
                       cy={node.y} 
@@ -155,11 +206,11 @@ export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, 
                   />
                   <text 
                     x={`${node.x}%`} 
-                    y={node.y + (isMatch ? 20 : 15)} 
+                    y={node.y + (isHighlighted ? 20 : 15)} 
                     textAnchor="middle" 
                     className={cn(
-                      "transition-all string capitalize",
-                      isMatch ? "fill-blue-600 text-[10px] font-semibold" : "fill-slate-500 text-[9px] font-medium"
+                      "transition-all string capitalize pointer-events-none",
+                      isHighlighted ? "fill-blue-600 text-[10px] font-bold" : "fill-slate-500 text-[9px] font-medium"
                     )}
                   >
                     {node.label}
@@ -173,6 +224,104 @@ export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, 
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(2,132,199,0.02),transparent)] pointer-events-none" />
         </div>
       </div>
+      
+      {/* Tooltip Overlay */}
+      {(hoveredNode || hoveredLink) && (
+        <div 
+          className="fixed z-[100] pointer-events-none transition-opacity duration-200"
+          style={{ 
+            left: Math.min(tooltipPos.x + 15, window.innerWidth - 250), 
+            top: Math.min(tooltipPos.y + 15, window.innerHeight - 150) 
+          }}
+        >
+          <div className="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-xl rounded-xl p-3 min-w-[200px] animate-in fade-in zoom-in-95 duration-200">
+            {hoveredNode && (() => {
+              const node = nodes.find(n => n.id === hoveredNode)!;
+              return (
+                <>
+                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="font-semibold text-slate-800 text-sm">{node.label}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {node.type === 'server' && (
+                      <>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">CPU Usage:</span>
+                          <span className="font-medium text-slate-700">{getSeedMetric(30, 60, periodKey + node.id + 'cpu')}%</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">RAM Usage:</span>
+                          <span className="font-medium text-slate-700">{getSeedMetric(40, 50, periodKey + node.id + 'ram')}%</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Active Connections:</span>
+                          <span className="font-medium text-slate-700">{getSeedMetric(100, 900, periodKey + node.id + 'conn')}</span>
+                        </div>
+                      </>
+                    )}
+                    {node.type === 'gateway' && (
+                      <>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Packet Loss:</span>
+                          <span className="font-medium text-slate-700">{(getSeedMetric(0, 5, periodKey + node.id + 'pl') / 10).toFixed(2)}%</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Throughput:</span>
+                          <span className="font-medium text-slate-700">{getSeedMetric(500, 1500, periodKey + node.id + 'tp')} Mbps</span>
+                        </div>
+                      </>
+                    )}
+                    {node.type === 'switch' && (
+                      <>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Port Utilization:</span>
+                          <span className="font-medium text-slate-700">{getSeedMetric(20, 40, periodKey + node.id + 'pu')}%</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Dropped Packets:</span>
+                          <span className="font-medium text-slate-700">{getSeedMetric(0, 100, periodKey + node.id + 'dp')}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+            {hoveredLink && (() => {
+              const link = hoveredLink;
+              const fromNode = nodes.find(n => n.id === link.from)!;
+              const toNode = nodes.find(n => n.id === link.to)!;
+              // We need the load from the array. Since hoveredLink represents the original link object logic... 
+              // Wait, hoveredLink is stored as link obj, so we can access `.load`
+              const actualLink = links.find(l => l.from === link.from && l.to === link.to);
+              const load = actualLink ? actualLink.load : 0;
+              return (
+                <>
+                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+                    <Zap className="w-4 h-4 text-sky-500" />
+                    <span className="font-semibold text-slate-800 text-sm">Link Metrics</span>
+                  </div>
+                  <div className="space-y-1.5 flex flex-col items-center">
+                     <div className="flex items-center justify-between w-full text-xs text-slate-600 font-medium mb-1">
+                       <span className="truncate max-w-[80px]">{fromNode.label}</span>
+                       <ArrowDownRight className="w-3 h-3 text-slate-400 shrink-0" />
+                       <span className="truncate max-w-[80px] text-right">{toNode.label}</span>
+                     </div>
+                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mt-1 relative">
+                        <div className={cn("absolute left-0 top-0 bottom-0", load > 80 ? "bg-rose-500" : "bg-sky-500")} style={{ width: `${load}%` }} />
+                     </div>
+                     <div className="flex justify-between w-full text-xs mt-1">
+                        <span className="text-slate-500">Utilization:</span>
+                        <span className={cn("font-semibold", load > 80 ? "text-rose-600" : "text-sky-600")}>{load}%</span>
+                     </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

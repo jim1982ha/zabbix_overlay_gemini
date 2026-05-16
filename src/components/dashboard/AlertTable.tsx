@@ -12,6 +12,7 @@ interface Alert {
   time: string;
   type: string;
   acknowledged?: boolean;
+  zabbixTriggerId?: string;
 }
 
 const initialAlerts: Alert[] = [
@@ -58,6 +59,7 @@ export function AlertTable({ mode = 'live', globalSearch = "", zabbixConfig }: {
           time: "Live from Zabbix",
           type: "system",
           acknowledged: t.value === "0", // In Zabbix value 0 means OK, 1 means Problem. But here we want acknowledged state.
+          zabbixTriggerId: t.triggerid,
           // Actually Zabbix triggers don't have a simple 'acknowledged' boolean on the trigger itself, 
           // it's on events. But some setups use trigger value or tags.
           // For now, let's assume we fetch problems.
@@ -261,10 +263,20 @@ export function AlertTable({ mode = 'live', globalSearch = "", zabbixConfig }: {
                     </div>
                   </td>
                   <td className="px-6 sm:px-8 py-4">
-                    <p className={cn(
-                      "text-sm font-medium transition-all max-w-[200px] sm:max-w-md truncate",
-                      alert.acknowledged ? "text-slate-400 line-through" : "text-slate-700"
-                    )}>{alert.issue}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={cn(
+                        "text-sm font-medium transition-all max-w-[200px] sm:max-w-md truncate",
+                        alert.acknowledged ? "text-slate-400 line-through" : "text-slate-700"
+                      )}>{alert.issue}</p>
+                      {alert.zabbixTriggerId && (
+                        <span 
+                          className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200 cursor-help shrink-0"
+                          title={`Zabbix Trigger ID: ${alert.zabbixTriggerId}`}
+                        >
+                          #{alert.zabbixTriggerId}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 sm:px-8 py-4">
                     <div className="flex items-center gap-1.5 sm:gap-2 text-slate-500">
