@@ -8,7 +8,7 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.APP_PORT ? parseInt(process.env.APP_PORT, 10) : 3000;
 
   app.use(express.json());
 

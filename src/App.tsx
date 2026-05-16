@@ -288,10 +288,20 @@ export default function App() {
     setData([]);
     fetchStats();
     if (filters.mode === 'live') {
-      const interval = setInterval(fetchStats, 60000);
+      let intervalTime = 60000;
+      switch (filters.granularity) {
+        case '1m': intervalTime = 60000; break;
+        case '5m': intervalTime = 300000; break;
+        case '15m': intervalTime = 900000; break;
+        case '30m': intervalTime = 1800000; break;
+        case '1h': intervalTime = 3600000; break;
+        case '1d': intervalTime = 86400000; break;
+        default: intervalTime = 60000;
+      }
+      const interval = setInterval(fetchStats, intervalTime);
       return () => clearInterval(interval);
     }
-  }, [fetchStats, filters.mode]);
+  }, [fetchStats, filters.mode, filters.granularity]);
 
   const handleAddWidget = (type: 'kpi' | 'chart') => {
     const newWidget: Widget = {
