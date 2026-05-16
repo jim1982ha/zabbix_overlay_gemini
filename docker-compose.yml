@@ -4,7 +4,7 @@ services:
   ha-reporting:
     image: ha-reporting:latest
     ports:
-      - "3000:3000" # Maps host port 3000 to container port 3000
+      - "80:3000" # Maps host port 80 to container port 3000
     environment:
       # Provide your actual Zabbix environment variables here
       - VITE_ZABBIX_URL=http://your-zabbix-instance/api_jsonrpc.php

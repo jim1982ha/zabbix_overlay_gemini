@@ -123,7 +123,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip />} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             <Legend 
               layout="vertical" 
               align="right" 
@@ -146,7 +146,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               minTickGap={30}
             />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600 }} />
             {series.map((s, i) => (
               <Line key={s.key} name={s.name} type="monotone" dataKey={s.key} stroke={chartColors[i % chartColors.length]} strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} unit={unit} />
@@ -166,7 +166,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               minTickGap={30}
             />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             <Legend verticalAlign="bottom" height={36} iconType="rect" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600 }} />
             {series.map((s, i) => (
               <Bar key={s.key} name={s.name} dataKey={s.key} fill={chartColors[i % chartColors.length]} stackId={stacked ? "a" : undefined} unit={unit} radius={[4, 4, 0, 0]} />
@@ -194,7 +194,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               minTickGap={30} 
             />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600 }} />
             {series.map((s, i) => (
               <Area key={s.key} name={s.name} type="monotone" dataKey={s.key} stroke={chartColors[i % chartColors.length]} stackId={stacked ? "1" : undefined} strokeWidth={2.5} fillOpacity={1} fill={`url(#gradient-${s.key})`} unit={unit} animationDuration={1000} />

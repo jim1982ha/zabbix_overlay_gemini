@@ -86,6 +86,7 @@ export default function App() {
   const [activeDashboardId, setActiveDashboardId] = useState<string | undefined>();
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [globalSearch, setGlobalSearch] = useState("");
+  const [discoveryStatus, setDiscoveryStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [dashboardName, setDashboardName] = useState<string>('Executive Overview');
   const [lastSync, setLastSync] = useState<Date>(new Date());
   const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
@@ -441,11 +442,14 @@ export default function App() {
 
   const discoverZabbixAssets = useCallback(async (manual = false) => {
     if (!zabbixConfig.token || !zabbixConfig.url) {
-      if (manual) alert("Please specify URL and Token first.");
+      if (manual) setDiscoveryStatus({ type: 'error', message: "Please specify URL and Token first." });
       return;
     }
     
-    if (manual) setIsDiscovering(true);
+    if (manual) {
+      setIsDiscovering(true);
+      setDiscoveryStatus(null);
+    }
     try {
       // 1. Discover Hosts
       const hostRes = await axios.post("/api/zabbix", {
@@ -481,11 +485,16 @@ export default function App() {
       }
       
       console.log("Zabbix Assets Discovered Successfully");
-      if (manual) alert("Zabbix Assets Discovered Successfully. Found " + hostRes.data.result.length + " hosts and " + itemRes.data.result.length + " metrics.");
+      if (manual) {
+        setDiscoveryStatus({ 
+          type: 'success', 
+          message: `Discovered ${hostRes.data.result.length} hosts and ${itemRes.data.result.length} metrics.` 
+        });
+      }
     } catch (e: any) {
       console.error("Zabbix Discovery Failed", e);
       const msg = e.response?.data?.error || e.message || "Zabbix Discovery Failed";
-      if (manual) alert(msg);
+      if (manual) setDiscoveryStatus({ type: 'error', message: msg });
     } finally {
       if (manual) setIsDiscovering(false);
     }
@@ -495,11 +504,13 @@ export default function App() {
     localStorage.setItem('hareporting_zabbix_url', zabbixConfig.url);
     localStorage.setItem('hareporting_zabbix_token', zabbixConfig.token);
     localStorage.setItem('hareporting_zabbix_interval', zabbixConfig.discoveryInterval.toString());
+    
+    setDiscoveryStatus({ type: 'success', message: "Configuration saved. Initializing discovery..." });
     discoverZabbixAssets();
+    
     if (widgets.length === defaultWidgets.length) {
       setWidgets([]); // Clear default template to start fresh with real data
     }
-    alert("Connection Verified. Initializing Asset Discovery...");
   };
 
   useEffect(() => {
@@ -587,6 +598,14 @@ export default function App() {
                     <RefreshCw className={cn("w-4 h-4", isDiscovering && "animate-spin")} /> {isDiscovering ? 'Discovering...' : 'Trigger Discovery'}
                   </button>
                 </div>
+                {discoveryStatus && (
+                  <div className={cn(
+                    "p-4 rounded-xl border text-sm font-medium",
+                    discoveryStatus.type === 'success' ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
+                  )}>
+                    {discoveryStatus.message}
+                  </div>
+                )}
                 <p className="text-xs text-slate-500 text-center font-medium">
                   Authentication is handled server-side via the HA Gateway Proxy.
                 </p>
@@ -606,7 +625,7 @@ export default function App() {
     return (
       <>
         {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-4 auto-rows-[60px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-4 auto-rows-[60px] sm:auto-rows-[70px] lg:auto-rows-[60px]">
           {widgets.filter(w => 
             w.title.toLowerCase().includes(globalSearch.toLowerCase()) ||
             w.metrics.some(m => m.toLowerCase().includes(globalSearch.toLowerCase())) ||
@@ -614,16 +633,15 @@ export default function App() {
           ).map((w, index) => (
             <div key={w.id} 
               className={cn(
-                "relative transition-all duration-300 group",
-                w.cols === 1 ? 'lg:col-span-3' :
-                w.cols === 2 ? 'lg:col-span-6' :
-                w.cols === 3 ? 'lg:col-span-9' : 'lg:col-span-12',
-                w.cols === 1 ? 'md:col-span-3' : 'md:col-span-6'
+                "relative transition-all duration-300 group col-span-1 hover:z-50",
+                w.cols === 1 ? 'sm:col-span-1 md:col-span-3 lg:col-span-3' :
+                w.cols === 2 ? 'sm:col-span-2 md:col-span-6 lg:col-span-6' :
+                w.cols === 3 ? 'sm:col-span-2 md:col-span-6 lg:col-span-9' : 'sm:col-span-2 md:col-span-6 lg:col-span-12'
               )}
               style={{ gridRowEnd: `span ${w.rows * 2 || 2}` }}
             >
-              {/* Widget Actions (Hover Only) */}
-              <div className="absolute inset-0 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {/* Widget Actions */}
+              <div className="absolute inset-0 z-20 pointer-events-none opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <div className="absolute top-3 right-3 flex gap-1.5 items-center pointer-events-auto">
                     <div className="flex bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-lg overflow-hidden shadow-sm">
                       <button 
@@ -664,9 +682,9 @@ export default function App() {
                     </button>
                 </div>
 
-                {/* Resize Handles (Hover Only) */}
+                {/* Resize Handles (Hidden on small screens) */}
                 <div 
-                  className="absolute -top-1 left-6 right-6 h-2 cursor-row-resize pointer-events-auto group/v-resize flex flex-col items-center justify-center select-none"
+                  className="hidden sm:flex absolute -top-1 left-6 right-6 h-2 cursor-row-resize pointer-events-auto group/v-resize flex-col items-center justify-center select-none"
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -698,7 +716,7 @@ export default function App() {
                 </div>
 
                 <div 
-                  className="absolute top-6 bottom-6 -right-1 w-2 cursor-col-resize pointer-events-auto group/h-resize flex items-center justify-center select-none"
+                  className="hidden sm:flex absolute top-6 bottom-6 -right-1 w-2 cursor-col-resize pointer-events-auto group/h-resize items-center justify-center select-none"
                   onMouseDown={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
