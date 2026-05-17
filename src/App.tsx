@@ -297,7 +297,7 @@ export default function App() {
   }, []);
 
   const isSimulated = !zabbixConfig.url || (!zabbixConfig.token && !zabbixConfig.isPreconfigured);
-  const [availableHosts, setAvailableHosts] = useState<string[]>(['srv-prod-01', 'sql-db-primary', 'gateway-02', 'all']);
+  const [availableHosts, setAvailableHosts] = useState<string[]>(['srv-prod-01', 'sql-db-primary', 'gateway-02']);
   const [availableMetrics, setAvailableMetrics] = useState<string[]>(['cpu', 'memory', 'traffic', 'latency', 'disk']);
   const [metricUnitsMap, setMetricUnitsMap] = useState<Record<string, string>>({
     'cpu': '%',
@@ -439,7 +439,7 @@ export default function App() {
       type,
       chartType: 'area',
       metrics: isSimulated ? ['cpu'] : (availableMetrics.length > 0 ? [availableMetrics[0]] : []),
-      hosts: isSimulated ? ['all'] : (availableHosts.length > 0 ? [availableHosts[0]] : []),
+      hosts: isSimulated ? ['srv-prod-01'] : (availableHosts.length > 0 ? [availableHosts[0]] : []),
       aggregation: 'avg',
       stacked: false,
       cols: type === 'kpi' ? 6 : 12,
@@ -603,7 +603,7 @@ export default function App() {
       
       if (hostRes.data.result) {
         const hosts = hostRes.data.result.map((h: any) => h.name || h.host);
-        setAvailableHosts([...hosts, 'all']);
+        setAvailableHosts(hosts);
       }
 
       // 2. Discover Items (Metrics)
@@ -680,7 +680,7 @@ export default function App() {
     localStorage.setItem('hareporting_zabbix_token', '');
     setSavedZabbixUrl('');
     setDiscoveryStatus({ type: 'success', message: "Reverted to Simulated Mode." });
-    setAvailableHosts(['srv-prod-01', 'sql-db-primary', 'gateway-02', 'all']);
+    setAvailableHosts(['srv-prod-01', 'sql-db-primary', 'gateway-02']);
     setAvailableMetrics(['cpu', 'memory', 'traffic', 'latency', 'disk']);
   };
 
@@ -795,7 +795,8 @@ export default function App() {
             return (
             <div key={w.id} 
               className={cn(
-                "relative transition-all duration-300 group hover:z-50 rounded-xl",
+                "relative transition-all duration-300 group rounded-xl",
+                editingWidgetId === w.id ? "z-[100]" : "hover:z-50",
                 "max-sm:!col-[span_24/_span_24]", // Full width on mobile screens
                 hasFilter && "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-50"
               )}
@@ -1018,7 +1019,7 @@ export default function App() {
 
                         <div className="space-y-6">
                           <MultiSelect 
-                            label="Target Host Group" 
+                            label="Hostname" 
                             options={availableHosts} 
                             selected={w.hosts} 
                             onChange={(h) => handleUpdateWidget(w.id, { hosts: h })} 
@@ -1556,35 +1557,40 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
 
   return (
     <div className="relative">
-      <label className="text-xs font-semibold text-slate-400 block mb-2">{label}</label>
+      <label className="text-sm font-semibold text-slate-400 block mb-2">{label}</label>
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-full bg-slate-900 border transition-all flex justify-between items-center group shadow-inner",
-          "rounded-lg px-4 py-3",
-          isOpen ? "border-sky-500 ring-2 ring-sky-500/10" : "border-slate-700 hover:border-slate-600"
+          "w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border focus:border-sky-500 outline-none transition-all flex justify-between items-center group",
+          isOpen ? "border-sky-500 ring-1 ring-sky-500/50" : "border-slate-700 hover:border-slate-600"
         )}
       >
-        <span className="truncate text-sky-400 text-sm font-medium">
-           {selected.map(s => {
+        <span className={cn("truncate font-medium flex-1 text-left", selected.length > 0 ? "text-sky-400" : "text-slate-500")}>
+           {selected.length > 0 ? selected.map(s => {
              const unit = metricUnitsMap?.[s];
              return unit ? `${s} (${unit})` : s;
-           }).join(', ')}
+           }).join(', ') : 'None selected'}
         </span>
-        <ChevronDown className={cn("w-4 h-4 text-sky-500 transition-all duration-300", isOpen ? "rotate-180" : "opacity-50 group-hover:opacity-100")} />
+        <ChevronDown className={cn("w-4 h-4 transition-all duration-300 ml-2 shrink-0", isOpen ? "rotate-180 text-sky-500" : "opacity-30 group-hover:opacity-60 text-slate-400")} />
       </button>
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
           <div className="absolute z-50 w-full mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 scrollbar-hide flex flex-col">
-            <div className="sticky top-0 bg-slate-900 pb-2 z-10 p-1">
+            <div className="sticky top-0 bg-slate-900 pb-2 z-10 p-1 flex gap-2">
               <input 
                 type="text" 
                 placeholder="Search..." 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
-                className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:border-sky-500 transition-colors placeholder:text-slate-500"
+                className="flex-1 min-w-0 bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:border-sky-500 transition-colors placeholder:text-slate-500"
               />
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange([]); }}
+                className="px-3 py-2 text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white rounded-md hover:bg-slate-700 border border-slate-700 transition-all whitespace-nowrap opacity-50 hover:opacity-100"
+              >
+                Clear All
+              </button>
             </div>
             {filteredOptions.length === 0 && <div className="text-xs text-slate-500 text-center py-4">No results</div>}
             {filteredOptions.map((opt, i) => {
@@ -1603,7 +1609,7 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
                       checked={selected.includes(opt)}
                       onChange={(e) => {
                         const next = e.target.checked ? [...selected, opt] : selected.filter(s => s !== opt);
-                        onChange(next.length > 0 ? next : [options[0]]);
+                        onChange(next);
                       }}
                       className="w-4 h-4 rounded-md bg-slate-950 border-slate-600 text-sky-500 focus:ring-0 transition-all cursor-pointer appearance-none border checked:bg-sky-500 checked:border-sky-400"
                     />

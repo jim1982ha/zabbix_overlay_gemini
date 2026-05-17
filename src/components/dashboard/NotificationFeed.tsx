@@ -67,11 +67,20 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
           else if (durationSeconds < 86400) durationStr = `${Math.floor(durationSeconds / 3600)}h ${Math.floor((durationSeconds % 3600) / 60)}m`;
           else durationStr = `${Math.floor(durationSeconds / 86400)}d ${Math.floor((durationSeconds % 86400) / 3600)}h`;
 
+          let cleanDesc = t.comments || `Trigger active on host: ${t.hosts?.[0]?.host}`;
+          if (t.lastEvent?.name) {
+              const usedPercentMatch = t.lastEvent.name.match(/used > (\d+(?:\.\d+)?)%/);
+              if (usedPercentMatch) {
+                  cleanDesc = cleanDesc.replace(/\{\$[^:]+?MAX\.(?:WARN|CRIT)[^\}]*\}/g, usedPercentMatch[1]);
+              }
+          }
+          cleanDesc = cleanDesc.replace(/\{\$[A-Z0-9_\.]+(?::[^}]+)?\}/g, "configured");
+
           return {
              id: parseInt(t.triggerid, 10),
              type: 'alert',
-             title: t.description,
-             description: t.comments || `Trigger active on host: ${t.hosts?.[0]?.host}`,
+             title: t.lastEvent?.name || t.description,
+             description: cleanDesc,
              eventName: t.lastEvent?.name,
              time: new Date(parseInt(t.lastchange, 10) * 1000).toLocaleTimeString(),
              duration: durationStr,
@@ -197,7 +206,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                   {n.duration || n.time}
                 </div>
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-1">{n.eventName || n.description}</p>
+              <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-1">{n.description}</p>
             </div>
             <div className="flex flex-col justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                <button 
