@@ -196,14 +196,14 @@ export default function App() {
     if (activeDashboardId) {
       const next = savedDashboards.map(d => d.id === activeDashboardId ? { ...d, name: dashboardName, widgets } : d);
       setSavedDashboards(next);
-      localStorage.setItem('hareporting_dashboards_v1', JSON.stringify(next));
+      localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
     } else {
       const newId = `db-${Date.now()}`;
       const newBoard = { id: newId, name: dashboardName, widgets };
       const next = [...savedDashboards, newBoard];
       setSavedDashboards(next);
       setActiveDashboardId(newId);
-      localStorage.setItem('hareporting_dashboards_v1', JSON.stringify(next));
+      localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
     }
   };
 
@@ -240,7 +240,7 @@ export default function App() {
   const handleRenameDashboardLocal = (id: string, newName: string) => {
     setSavedDashboards(prev => {
       const updated = prev.map(d => d.id === id ? { ...d, name: newName } : d);
-      localStorage.setItem('hareporting_dashboards_v1', JSON.stringify(updated));
+      localStorage.setItem(dashboardStorageKey, JSON.stringify(updated));
       return updated;
     });
     if (activeDashboardId === id) {
@@ -253,6 +253,16 @@ export default function App() {
     token: localStorage.getItem('hareporting_zabbix_token') || '',
     isPreconfigured: false
   });
+
+  const [savedZabbixUrl, setSavedZabbixUrl] = useState<string>(
+    localStorage.getItem('hareporting_zabbix_url') || ''
+  );
+
+  const dashboardStorageKey = useMemo(() => {
+    return savedZabbixUrl 
+      ? `hareporting_dashboards_${btoa(savedZabbixUrl).replace(/=/g, '')}` 
+      : 'hareporting_dashboards_v1_sim';
+  }, [savedZabbixUrl]);
 
   useEffect(() => {
     let configuredFromApi = false;
@@ -269,6 +279,7 @@ export default function App() {
             };
             if (newConfig.url && (newConfig.token || newConfig.isPreconfigured)) {
                configuredFromApi = true;
+               setSavedZabbixUrl(newConfig.url);
             }
             return newConfig;
           });
@@ -310,15 +321,15 @@ export default function App() {
     if (activeDashboardId) {
       setSavedDashboards(prev => {
         const next = prev.map(d => d.id === activeDashboardId ? { ...d, name: newName } : d);
-        localStorage.setItem('hareporting_dashboards_v1', JSON.stringify(next));
+        localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
         return next;
       });
     }
   };
 
-  // Load saved dashboards on mount
+  // Load saved dashboards on storage key change
   useEffect(() => {
-    const saved = localStorage.getItem('hareporting_dashboards_v1');
+    const saved = localStorage.getItem(dashboardStorageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -337,14 +348,15 @@ export default function App() {
       }
     } else {
       // Initialize with default if first time
+      const initialWidgets = dashboardStorageKey === 'hareporting_dashboards_v1_sim' ? defaultWidgets : [];
       const initialDashboard: Dashboard = {
         id: 'default-board-1',
         name: 'Executive Overview',
-        widgets: defaultWidgets
+        widgets: initialWidgets
       };
       setSavedDashboards([initialDashboard]);
       setActiveDashboardId('default-board-1');
-      localStorage.setItem('hareporting_dashboards_v1', JSON.stringify([initialDashboard]));
+      localStorage.setItem(dashboardStorageKey, JSON.stringify([initialDashboard]));
     }
     
     // Set initial widgets
@@ -364,15 +376,15 @@ export default function App() {
           setDashboardName(migrated[0].name);
           setActiveDashboardId(migrated[0].id);
         } else {
-          setWidgets(defaultWidgets);
+          setWidgets(dashboardStorageKey === 'hareporting_dashboards_v1_sim' ? defaultWidgets : []);
         }
       } catch (e) {
-        setWidgets(defaultWidgets);
+        setWidgets(dashboardStorageKey === 'hareporting_dashboards_v1_sim' ? defaultWidgets : []);
       }
     } else {
-      setWidgets(defaultWidgets);
+      setWidgets(dashboardStorageKey === 'hareporting_dashboards_v1_sim' ? defaultWidgets : []);
     }
-  }, []);
+  }, [dashboardStorageKey]);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -485,7 +497,7 @@ export default function App() {
     };
     const updated = [...savedDashboards, newDashboard];
     setSavedDashboards(updated);
-    localStorage.setItem('hareporting_dashboards_v1', JSON.stringify(updated));
+    localStorage.setItem(dashboardStorageKey, JSON.stringify(updated));
     setActiveDashboardId(newDashboard.id);
   };
 
@@ -512,7 +524,7 @@ export default function App() {
     const newBoard: Dashboard = { id: newId, name: newName, widgets: [] };
     setSavedDashboards(prev => {
       const next = [...prev, newBoard];
-      localStorage.setItem('hareporting_dashboards_v1', JSON.stringify(next));
+      localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
       return next;
     });
     setActiveDashboardId(newId);
@@ -534,7 +546,7 @@ export default function App() {
     // but here we'll just proceed with standard state update.
     setSavedDashboards(prev => {
       const updated = prev.filter(d => d.id !== id);
-      localStorage.setItem('hareporting_dashboards_v1', JSON.stringify(updated));
+      localStorage.setItem(dashboardStorageKey, JSON.stringify(updated));
       return updated;
     });
     
@@ -667,12 +679,9 @@ export default function App() {
   const handleSaveZabbixConfig = () => {
     localStorage.setItem('hareporting_zabbix_url', zabbixConfig.url);
     localStorage.setItem('hareporting_zabbix_token', zabbixConfig.token);
+    setSavedZabbixUrl(zabbixConfig.url);
     
     setDiscoveryStatus({ type: 'success', message: "Configuration saved." });
-    
-    if (widgets.length === defaultWidgets.length) {
-      setWidgets([]); // Clear default template to start fresh with real data
-    }
   };
 
   const [showRangeMenu, setShowRangeMenu] = useState(false);
@@ -1221,7 +1230,7 @@ export default function App() {
         });
       });
     });
-    return new Set(Array.from(hiddenSeries).filter(key => activeWidgetKeys.has(key)));
+    return new Set(Array.from(hiddenSeries).filter((key: string) => activeWidgetKeys.has(key)));
   }, [hiddenSeries, widgets, view]);
 
   return (
