@@ -139,26 +139,15 @@ export function AlertTable({ mode = 'live', globalSearch = "", zabbixConfig }: {
     <div className="bg-white border border-slate-100 rounded-[28px] sm:rounded-[32px] shadow-sm overflow-hidden flex flex-col min-h-[600px]">
       <div className="p-6 sm:p-8 border-b border-slate-50 flex flex-col xl:flex-row justify-between items-start xl:items-center bg-slate-50/30 gap-6">
           <div className="flex items-center gap-4">
-            <div className={cn(
-              "w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-md transition-all duration-500 shrink-0",
-              mode === 'live' ? "bg-rose-50 border border-rose-100" : "bg-blue-50 border border-blue-100"
-            )}>
-              {loading ? (
-                <RefreshCw className={cn("w-5 h-5 sm:w-6 sm:h-6 animate-spin", mode === 'live' ? "text-rose-600" : "text-blue-600")} />
-              ) : (
-                <ShieldAlert className={cn("w-5 h-5 sm:w-6 sm:h-6", mode === 'live' ? "text-rose-600" : "text-blue-600")} />
-              )}
-            </div>
-            <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-slate-800 tracking-tight flex items-center gap-3">
-                {mode === 'live' ? "Live System Events" : "Historical Event Archive"}
-                {isSimulated && (
-                  <span className="text-[10px] sm:text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    Simulation Mode
-                  </span>
-                )}
-              </h3>
-              <p className="text-xs text-slate-500 font-medium mt-1">
+             {loading && (
+                 <RefreshCw className={cn("w-4 h-4 animate-spin", mode === 'live' ? "text-rose-600" : "text-blue-600")} />
+             )}
+             {isSimulated && (
+                <span className="text-[10px] sm:text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                  Simulation Mode
+                </span>
+             )}
+             <p className="text-xs text-slate-500 font-medium">
                 {!isSimulated && mode === 'live' && (
                     <span className="flex items-center gap-2">
                         <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -175,8 +164,7 @@ export function AlertTable({ mode = 'live', globalSearch = "", zabbixConfig }: {
                         Using placeholder data for preview
                     </span>
                 )}
-              </p>
-            </div>
+             </p>
           </div>
           
           <div className="w-full xl:w-auto">

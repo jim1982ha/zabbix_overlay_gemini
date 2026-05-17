@@ -53,11 +53,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "" }: { gl
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h3 className="text-2xl font-semibold text-slate-900 tracking-tight">System Notifications</h3>
-          <p className="text-xs text-slate-500 font-medium mt-1">Audit Trail & Live Alerts</p>
-        </div>
+      <div className="flex items-center justify-end mb-6">
         <div className="flex items-center gap-3">
             {globalSearch && (
                 <span className="text-xs text-blue-600 font-medium bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">

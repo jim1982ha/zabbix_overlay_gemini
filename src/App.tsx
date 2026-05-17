@@ -1266,7 +1266,8 @@ export default function App() {
                       {view === 'dashboard' ? dashboardName : 
                       view === 'network' ? 'Network Topology' : 
                       view === 'events' ? 'Application Events' :
-                      view === 'infra' ? 'Asset Inventory' : 'Zabbix API Settings'}
+                      view === 'infra' ? 'Asset Inventory' : 
+                      view === 'notifications' ? 'Alert Rules' : 'Zabbix API Settings'}
                     </h1>
                     {view === 'dashboard' && (
                       <button 
