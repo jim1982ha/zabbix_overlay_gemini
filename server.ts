@@ -17,6 +17,15 @@ async function startServer() {
   const ZABBIX_URL = process.env.VITE_ZABBIX_URL || "http://localhost/zabbix/api_jsonrpc.php";
   const ZABBIX_TOKEN = process.env.VITE_ZABBIX_TOKEN;
 
+  // Expose runtime environment configuration to the frontend
+  app.get("/api/config", (req, res) => {
+    res.json({
+      url: process.env.VITE_ZABBIX_URL || "",
+      token: process.env.VITE_ZABBIX_TOKEN ? '********************************' : "", // Obfuscate token for security, handle specially in frontend
+      hasEnvToken: !!process.env.VITE_ZABBIX_TOKEN
+    });
+  });
+
   // Proxy Zabbix API calls to avoid CORS and hide token
   app.post("/api/zabbix", async (req, res) => {
     try {
@@ -42,7 +51,12 @@ async function startServer() {
 
       // Prefer user-provided values from the frontend configuration, fallback to environment variables
       const url = reqUrl || process.env.VITE_ZABBIX_URL || "http://localhost/zabbix/api_jsonrpc.php";
-      const token = reqToken || process.env.VITE_ZABBIX_TOKEN;
+      
+      // If client sends the obfuscated token placeholder, fall back to the actual environment variable token
+      let token = reqToken;
+      if (!token || token === '********************************') {
+        token = process.env.VITE_ZABBIX_TOKEN;
+      }
 
       if (!token) {
         return res.status(400).json({ error: "Zabbix Token not configured in environment" });

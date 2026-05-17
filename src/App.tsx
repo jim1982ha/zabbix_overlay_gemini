@@ -248,13 +248,33 @@ export default function App() {
     }
   };
 
-  const [zabbixConfig, setZabbixConfig] = useState<{url: string, token: string, discoveryInterval: number}>({
+  const [zabbixConfig, setZabbixConfig] = useState<{url: string, token: string, discoveryInterval: number, isPreconfigured: boolean}>({
     url: localStorage.getItem('hareporting_zabbix_url') || '',
     token: localStorage.getItem('hareporting_zabbix_token') || '',
-    discoveryInterval: parseInt(localStorage.getItem('hareporting_zabbix_interval') || '3600', 10)
+    discoveryInterval: parseInt(localStorage.getItem('hareporting_zabbix_interval') || '3600', 10),
+    isPreconfigured: false
   });
 
-  const isSimulated = !zabbixConfig.url || !zabbixConfig.token;
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await axios.get("/api/config");
+        if (res.data) {
+          setZabbixConfig(prev => ({
+            ...prev,
+            url: prev.url || res.data.url,
+            token: prev.token || res.data.token,
+            isPreconfigured: res.data.hasEnvToken
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to load server configuration:", err);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  const isSimulated = !zabbixConfig.url || (!zabbixConfig.token && !zabbixConfig.isPreconfigured);
   const [availableHosts, setAvailableHosts] = useState<string[]>(['srv-prod-01', 'sql-db-primary', 'gateway-02', 'all']);
   const [availableMetrics, setAvailableMetrics] = useState<string[]>(['cpu', 'memory', 'traffic', 'latency', 'disk']);
   const [metricUnitsMap, setMetricUnitsMap] = useState<Record<string, string>>({
@@ -338,10 +358,6 @@ export default function App() {
       }
     } else {
       setWidgets(defaultWidgets);
-    }
-
-    if (zabbixConfig.token && zabbixConfig.url) {
-        discoverZabbixAssets();
     }
   }, []);
 
@@ -561,6 +577,7 @@ export default function App() {
   };
 
   const discoverZabbixAssets = useCallback(async (manual = false) => {
+    console.log("Starting Zabbix host discovery...");
     if (!zabbixConfig.token || !zabbixConfig.url) {
       if (manual) setDiscoveryStatus({ type: 'error', message: "Please specify URL and Token first." });
       return;
@@ -620,13 +637,21 @@ export default function App() {
     }
   }, [zabbixConfig]);
 
+  const [initialDiscoveryDone, setInitialDiscoveryDone] = useState(false);
+  useEffect(() => {
+    if (zabbixConfig.token && zabbixConfig.url && !initialDiscoveryDone) {
+      discoverZabbixAssets();
+      setInitialDiscoveryDone(true);
+    }
+  }, [zabbixConfig.token, zabbixConfig.url, initialDiscoveryDone, discoverZabbixAssets]);
+
   const handleSaveZabbixConfig = () => {
     localStorage.setItem('hareporting_zabbix_url', zabbixConfig.url);
     localStorage.setItem('hareporting_zabbix_token', zabbixConfig.token);
     localStorage.setItem('hareporting_zabbix_interval', zabbixConfig.discoveryInterval.toString());
     
     setDiscoveryStatus({ type: 'success', message: "Configuration saved. Initializing discovery..." });
-    discoverZabbixAssets();
+    discoverZabbixAssets(true);
     
     if (widgets.length === defaultWidgets.length) {
       setWidgets([]); // Clear default template to start fresh with real data
