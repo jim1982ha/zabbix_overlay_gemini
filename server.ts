@@ -69,17 +69,40 @@ async function startServer() {
 
       console.log(`Proxying Zabbix Request: ${method} to ${url}`);
 
-      const response = await axios.post(url, {
+      const requestPayload: any = {
         jsonrpc: "2.0",
         method,
         params,
         id: Date.now(),
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json-rpc'
+      };
+
+      const doRequest = async (useAuthHeader: boolean) => {
+        const payload = { ...requestPayload };
+        const headers: any = { 'Content-Type': 'application/json-rpc' };
+        
+        if (useAuthHeader) {
+           headers['Authorization'] = `Bearer ${token}`;
+        } else {
+           payload.auth = token;
         }
-      });
+        return await axios.post(url, payload, { headers });
+      };
+
+      let response = await doRequest(true);
+
+      // If we get an authentication error using the modern header-based auth, 
+      // the Zabbix server might be < 6.4, which strictly requires the `auth` property in the body.
+      if (
+        response.data.error && 
+        (
+          response.data.error.data?.includes("Session terminated") || 
+          response.data.error.data?.includes("Not authorized") ||
+          response.data.error.message?.includes("Not authorized")
+        )
+      ) {
+        console.log("Modern Zabbix auth failed, falling back to legacy body auth (Zabbix < 6.4)...");
+        response = await doRequest(false);
+      }
 
       if (response.data.error) {
         console.error("Zabbix API Internal Error:", response.data.error);
