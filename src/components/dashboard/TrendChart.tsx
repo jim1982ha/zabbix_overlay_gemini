@@ -135,22 +135,22 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white border border-slate-100 rounded-xl shadow-xl p-2.5 max-h-[240px] overflow-y-auto flex flex-col gap-1.5 scrollbar-hide border-l-4 border-l-blue-600 min-w-[200px]">
+        <div className="bg-white/95 backdrop-blur-sm border border-slate-100 rounded-lg shadow-lg p-1.5 max-h-[200px] overflow-y-auto flex flex-col gap-0.5 scrollbar-hide border-l-2 border-l-blue-600 min-w-[160px]">
           {label && (
-             <div className="text-xs font-semibold text-slate-500 mb-1 px-1 border-b border-slate-100 pb-1.5">
+             <div className="text-[10px] uppercase font-bold text-slate-500 mb-0.5 px-1 border-b border-slate-100 pb-1">
                {formatXAxis(label)}
              </div>
           )}
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {payload.map((entry: any, index: number) => (
-              <div key={`item-${index}`} className="flex items-center justify-between gap-4 px-1 py-1 hover:bg-slate-50 rounded-md transition-colors">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color || entry.fill }} />
-                  <span className="text-xs font-medium text-slate-600 truncate max-w-[150px]">
+              <div key={`item-${index}`} className="flex items-center justify-between gap-3 px-1 py-0.5 hover:bg-slate-50 rounded bg-transparent transition-colors">
+                <div className="flex items-center gap-1.5 overflow-hidden">
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: entry.color || entry.fill }} />
+                  <span className="text-[10px] font-medium text-slate-600 truncate max-w-[120px]">
                     {entry.name}
                   </span>
                 </div>
-                <span className="text-xs font-bold text-slate-900 whitespace-nowrap">
+                <span className="text-[10px] font-bold text-slate-900 whitespace-nowrap ml-2">
                   {entry.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{unit || ''}
                 </span>
               </div>
