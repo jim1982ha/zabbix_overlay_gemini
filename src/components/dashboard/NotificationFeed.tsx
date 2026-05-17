@@ -9,6 +9,7 @@ interface Notification {
   type: 'alert' | 'security' | 'system';
   title: string;
   description: string;
+  eventName?: string;
   time: string;
   duration?: string;
   severity: 'critical' | 'warning' | 'success' | 'info';
@@ -43,6 +44,8 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
           output: "extend",
           selectHosts: ["host"],
           selectLastEvent: "extend",
+          expandComment: true,
+          expandDescription: true,
           monitored: true,
           only_true: true,
           skipDependent: true,
@@ -69,6 +72,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
              type: 'alert',
              title: t.description,
              description: t.comments || `Trigger active on host: ${t.hosts?.[0]?.host}`,
+             eventName: t.lastEvent?.name,
              time: new Date(parseInt(t.lastchange, 10) * 1000).toLocaleTimeString(),
              duration: durationStr,
              severity,
@@ -99,6 +103,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
       const search = (globalSearch || "").toLowerCase();
       const matchSearch = n.title.toLowerCase().includes(search) || 
              n.description.toLowerCase().includes(search) ||
+             (n.eventName && n.eventName.toLowerCase().includes(search)) ||
              n.host?.toLowerCase().includes(search);
       const matchSeverity = severityFilter === 'all' || n.severity === severityFilter;
       return matchSearch && matchSeverity;
@@ -192,7 +197,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                   {n.duration || n.time}
                 </div>
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-1">{n.description}</p>
+              <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-1">{n.eventName || n.description}</p>
             </div>
             <div className="flex flex-col justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                <button 
