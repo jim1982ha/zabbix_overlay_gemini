@@ -35,12 +35,14 @@ async function startServer() {
 
       const { 
         method,
-        params
+        params,
+        url: reqUrl,
+        token: reqToken
       } = req.body;
 
-      // Force taking Zabbix URL and Token from environment variables only
-      const url = process.env.VITE_ZABBIX_URL || "http://localhost/zabbix/api_jsonrpc.php";
-      const token = process.env.VITE_ZABBIX_TOKEN;
+      // Prefer user-provided values from the frontend configuration, fallback to environment variables
+      const url = reqUrl || process.env.VITE_ZABBIX_URL || "http://localhost/zabbix/api_jsonrpc.php";
+      const token = reqToken || process.env.VITE_ZABBIX_TOKEN;
 
       if (!token) {
         return res.status(400).json({ error: "Zabbix Token not configured in environment" });
