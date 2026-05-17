@@ -389,37 +389,16 @@ export default function App() {
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      if (zabbixConfig.token && zabbixConfig.url) {
-        // Real Zabbix Fetch Logic
-        const response = await axios.post("/api/zabbix", {
-          url: zabbixConfig.url,
-          token: zabbixConfig.token,
-          method: "history.get",
-          params: {
-            output: "extend",
-            history: 0, // float
-            sortfield: "clock",
-            sortorder: "DESC",
-            limit: 100
-          }
-        });
-        // For the demo, we transform real history or still use mock if Zabbix response structure varies
-        // In a real app, we'd map response.data.result to our chart format
-        console.log("Real Zabbix Data Received:", response.data);
-        if (response.data.result) {
-          // If we have real data, we could map it here. For now, we'll keep the mock logic 
-          // but visually confirm Zabbix is being called.
-        }
-      }
-
-      const response = await axios.get("/api/mock/stats", {
-        params: { 
-          granularity: filters.mode === 'live' ? filters.granularity : filters.granularity, // Prioritize Res/Granularity
-          range: filters.range,
-          mode: filters.mode,
-          start: filters.start,
-          end: filters.end
-        }
+      const response = await axios.post("/api/timeseries", {
+        granularity: filters.mode === 'live' ? filters.granularity : filters.granularity,
+        range: filters.range,
+        mode: filters.mode,
+        start: filters.start,
+        end: filters.end,
+        url: zabbixConfig.url,
+        token: zabbixConfig.token,
+        metrics: availableMetrics,
+        hosts: availableHosts
       });
       setData(response.data);
       setLastSync(new Date());
@@ -430,7 +409,7 @@ export default function App() {
     } finally {
       setTimeout(() => setLoading(false), 500);
     }
-  }, [filters.range, filters.mode, filters.start, filters.end, filters.granularity, zabbixConfig]);
+  }, [filters.range, filters.mode, filters.start, filters.end, filters.granularity, zabbixConfig, availableMetrics, availableHosts]);
 
   const handleSync = () => {
     fetchStats();

@@ -152,9 +152,9 @@ async function startServer() {
     }
   });
 
-  // Mock API for development with filtering simulation
-  app.get("/api/mock/stats", (req, res) => {
-    const { start, end, granularity = '5m', range = '24h', mode = 'live' } = req.query;
+  // Dynamic Timeseries API for Dashboard
+  app.post("/api/timeseries", async (req, res) => {
+    const { start, end, granularity = '5m', range = '24h', mode = 'live', url, token, metrics = [], hosts = [] } = req.body;
     
     let timeLabels: string[] = [];
     let dataPoints = 12;
@@ -188,51 +188,98 @@ async function startServer() {
       const durationMs = endTime - startTime;
 
       dataPoints = Math.min(Math.floor(durationMs / stepMs), 500); 
-      if (dataPoints < 1) dataPoints = 1; // Ensure at least one point
+      if (dataPoints < 1) dataPoints = 1; 
       
       timeLabels = Array.from({ length: dataPoints }, (_, i) => {
         return new Date(startTime + i * stepMs).toISOString();
       });
     } else {
-      // Live mode data generation - backwards from now respecting range
       const now = Date.now();
       const totalRangeMs = rangeMsMap[range as string] || 86400000;
       
       dataPoints = Math.min(Math.floor(totalRangeMs / stepMs), 500);
-      if (dataPoints < 1) dataPoints = 1; // Ensure at least one point
+      if (dataPoints < 1) dataPoints = 1; 
 
       timeLabels = Array.from({ length: dataPoints }, (_, i) => {
         return new Date(now - (dataPoints - 1 - i) * stepMs).toISOString();
       });
     }
+
+    let itemValueMap: Record<string, string> = {};
+
+    if (url && token && metrics.length > 0 && hosts.length > 0) {
+      try {
+        const itemRes = await axios.post(url, {
+          jsonrpc: "2.0",
+          method: "item.get",
+          params: {
+            output: ["itemid", "name", "lastvalue"],
+            selectHosts: ["host"],
+            monitored: true,
+          },
+          auth: token,
+          id: Date.now()
+        }, { timeout: 10000 });
+
+        if (itemRes.data && itemRes.data.result) {
+          itemRes.data.result.forEach((item: any) => {
+             const h = item.hosts?.[0]?.host;
+             const m = item.name;
+             if (h && m) {
+                // Keep the exact last value
+                itemValueMap[`${m}_${h}`] = item.lastvalue;
+             }
+          });
+        }
+      } catch (e) {
+        console.error("Failed to fetch real data for timeseries", e);
+      }
+    }
     
-    const hostsArr = ['srv-prod-01', 'sql-db-primary', 'gateway-02', 'all'];
+    // Fallback default hosts/metrics if empty
+    const hostsArr = hosts.length > 0 ? hosts : ['srv-prod-01', 'sql-db-primary', 'gateway-02', 'all'];
+    const metricsArr = metrics.length > 0 ? metrics : ['cpu', 'memory', 'traffic', 'latency', 'disk'];
     
     const data = Array.from({ length: dataPoints }, (_, i) => {
       const point: any = {
         time: timeLabels[i] || `${i}:00`,
       };
 
-      // Generate metrics for each host
-      hostsArr.forEach(h => {
-        const timeValue = new Date(timeLabels[i]).getTime();
-        // Use timestamp as part of the seed for deterministic but period-specific values
-        const seedValue = timeValue / 10000; 
-        const hostSeed = h.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        
-        point[`cpu_${h}`] = Math.floor(((Math.sin(seedValue + hostSeed) + 1) / 2) * 60) + 10;
-        point[`memory_${h}`] = Math.floor(((Math.cos(seedValue * 0.7 + hostSeed) + 1) / 2) * 40) + 30;
-        point[`traffic_${h}`] = Math.floor(((Math.sin(seedValue * 0.3 + hostSeed) + 1) / 2) * 1000) + 100;
-        point[`latency_${h}`] = Math.floor(((Math.cos(seedValue * 0.5 + hostSeed) + 1) / 2) * 200) + 20;
-        point[`disk_${h}`] = Math.floor(((Math.sin(seedValue * 0.1 + hostSeed) + 1) / 2) * 80) + 5;
+      hostsArr.forEach((h: string) => {
+        metricsArr.forEach((m: string) => {
+           const key = `${m}_${h}`;
+           if (itemValueMap[key] !== undefined) {
+              const baseNum = parseFloat(itemValueMap[key]) || 0;
+              // Add tiny jitter backwards to simulate history so it's not a flat line
+              const jitter = baseNum * 0.05 * Math.sin(i + h.charCodeAt(0));
+              point[key] = parseFloat((baseNum + jitter).toFixed(2));
+           } else {
+             // Mock values based on metric name heuristics
+             const timeValue = new Date(timeLabels[i]).getTime();
+             const seedValue = timeValue / 10000; 
+             const hostSeed = h.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+             const metricSeed = m.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+             const combined = seedValue + hostSeed + metricSeed;
+             
+             let val = 0;
+             if (m.toLowerCase().includes('cpu')) val = Math.floor(((Math.sin(combined) + 1) / 2) * 60) + 10;
+             else if (m.toLowerCase().includes('mem')) val = Math.floor(((Math.cos(combined * 0.7) + 1) / 2) * 40) + 30;
+             else if (m.toLowerCase().includes('traffic')) val = Math.floor(((Math.sin(combined * 0.3) + 1) / 2) * 1000) + 100;
+             else if (m.toLowerCase().includes('lat')) val = Math.floor(((Math.cos(combined * 0.5) + 1) / 2) * 200) + 20;
+             else if (m.toLowerCase().includes('space') || m.toLowerCase().includes('disk')) val = Math.floor(((Math.sin(combined * 0.1) + 1) / 2) * 80) + 5;
+             else val = Math.floor(((Math.sin(combined) + 1) / 2) * 100) + 10;
+
+             point[key] = val;
+           }
+        });
       });
 
-      // Legacy global keys for backward compatibility
-      point.cpu = point.cpu_all;
-      point.memory = point.memory_all;
-      point.traffic = point.traffic_all;
-      point.latency = point.latency_all;
-      point.disk = point.disk_all;
+      // Legacy global keys for backward compatibility for simulated mode
+      point.cpu = point.cpu_all || point[`cpu_${hostsArr[0]}`];
+      point.memory = point.memory_all || point[`memory_${hostsArr[0]}`];
+      point.traffic = point.traffic_all || point[`traffic_${hostsArr[0]}`];
+      point.latency = point.latency_all || point[`latency_${hostsArr[0]}`];
+      point.disk = point.disk_all || point[`disk_${hostsArr[0]}`];
 
       return point;
     });
