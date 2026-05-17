@@ -1,15 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { Server, Cpu, HardDrive, Database, Zap, Activity, ChevronRight, Search } from 'lucide-react';
+import { Server, Cpu, HardDrive, Database, Zap, Activity, ChevronRight, ChevronLeft, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import axios from 'axios';
 
 export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string } }) {
   const isHistorical = filters.mode === 'historical';
-  const [activeCluster, setActiveCluster] = React.useState<'all' | 'prod'>('all');
+  const [activeHostGroup, setActiveHostGroup] = React.useState<string>('all');
   
   const isSimulated = !zabbixConfig?.url || !zabbixConfig?.token;
   const [zabbixAssets, setZabbixAssets] = useState<any[]>([]);
+
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const checkScroll = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
+    }
+  }, []);
 
   const fetchZabbixAssets = useCallback(async () => {
     if (isSimulated) return;
@@ -19,13 +31,14 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
         token: zabbixConfig.token,
         method: "host.get",
         params: {
-          output: ["host", "name", "status", "description"]
+          output: ["host", "name", "status", "description"],
+          selectHostGroups: ["name"]
         }
       });
       if (response.data.result) {
         const mapped = response.data.result.map((h: any) => ({
           id: h.name || h.host,
-          cluster: 'prod',
+          hostGroup: h.hostgroups && h.hostgroups.length > 0 ? h.hostgroups[0].name : 'Uncategorized',
           type: 'Zabbix Host',
           status: h.status === '0' ? 'optimal' : 'offline',
           cpu: Math.floor(Math.random() * 60) + 10,
@@ -61,7 +74,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
   const simAssets = [
     { 
       id: 'SRV-PROD-01', 
-      cluster: 'prod',
+      hostGroup: 'Linux servers',
       type: 'App Server', 
       status: 'optimal', 
       cpu: getSeedMetric(30, 25, periodKey + 'cpu1'), 
@@ -72,7 +85,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
     },
     { 
       id: 'SQL-DB-PRIMARY', 
-      cluster: 'prod',
+      hostGroup: 'Databases',
       type: 'Database Host', 
       status: getSeedMetric(0, 100, periodKey) > 70 ? 'high_load' : 'optimal', 
       cpu: getSeedMetric(40, 50, periodKey + 'cpu2'), 
@@ -83,7 +96,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
     },
     { 
       id: 'GW-02-CORE', 
-      cluster: 'prod',
+      hostGroup: 'Network Gateway',
       type: 'Network Gateway', 
       status: 'optimal', 
       cpu: getSeedMetric(5, 15, periodKey + 'cpu3'), 
@@ -94,7 +107,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
     },
     { 
       id: 'SRV-STG-01', 
-      cluster: 'staging',
+      hostGroup: 'Virtual machines',
       type: 'Staging Server', 
       status: 'idle', 
       cpu: getSeedMetric(2, 8, periodKey + 'cpu4'), 
@@ -105,7 +118,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
     },
     { 
       id: 'NAS-01-BKUP', 
-      cluster: 'prod',
+      hostGroup: 'Storage',
       type: 'Storage Array', 
       status: 'optimal', 
       cpu: getSeedMetric(10, 10, periodKey + 'cpu5'), 
@@ -117,14 +130,21 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
   ];
 
   const allAssets = isSimulated ? simAssets : (zabbixAssets.length > 0 ? zabbixAssets : simAssets);
+  const uniqueHostGroups = React.useMemo(() => Array.from(new Set(allAssets.map(a => a.hostGroup))), [allAssets]);
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [checkScroll, uniqueHostGroups]);
 
   const filteredAssets = allAssets.filter(asset => {
     const combinedSearch = (globalSearch || "").toLowerCase().trim();
     const matchesSearch = asset.id.toLowerCase().includes(combinedSearch) || 
                          asset.model.toLowerCase().includes(combinedSearch) ||
                          asset.type.toLowerCase().includes(combinedSearch);
-    const matchesCluster = activeCluster === 'all' || asset.cluster === activeCluster;
-    return matchesSearch && matchesCluster;
+    const matchesGroup = activeHostGroup === 'all' || asset.hostGroup === activeHostGroup;
+    return matchesSearch && matchesGroup;
   });
 
   return (
@@ -146,40 +166,72 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
         </div>
       )}
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white border border-slate-200 p-2 rounded-xl shadow-sm">
-        <div className="flex-1 flex items-center px-4">
-            <span className="text-xs font-semibold text-slate-500">
-                {globalSearch ? `Filtering for: "${globalSearch}"` : 'Cluster Inventory Active'}
-            </span>
-        </div>
-        <div className="flex gap-2 shrink-0 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
-          <button 
-            onClick={() => setActiveCluster('all')}
-            className={cn(
-              "px-4 py-2 text-sm font-semibold transition-all rounded-lg",
-              activeCluster === 'all' ? "bg-slate-100 text-slate-800" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-            )}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white border border-slate-200 p-2 rounded-xl shadow-sm relative overflow-hidden">
+        {globalSearch && (
+          <div className="flex items-center px-2 sm:px-4 shrink-0">
+              <span className="text-xs font-semibold text-slate-500">
+                  Filtering for: "{globalSearch}"
+              </span>
+          </div>
+        )}
+        <div className="relative flex-1 min-w-0 flex items-center group/nav">
+          {canScrollLeft && (
+            <button 
+              onClick={() => {
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+                }
+              }}
+              className="absolute left-0 z-10 w-8 h-full flex items-center justify-start bg-gradient-to-r from-white from-50% to-transparent pointer-events-auto"
+            >
+              <div className="w-6 h-6 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:shadow transition-all">
+                 <ChevronLeft className="w-4 h-4" />
+              </div>
+            </button>
+          )}
+
+          <div 
+            ref={scrollContainerRef}
+            onScroll={checkScroll}
+            className="flex gap-2 flex-1 overflow-x-auto no-scrollbar scroll-smooth pb-1 sm:pb-0"
           >
-            All Clusters
-          </button>
-          <button 
-            onClick={() => setActiveCluster('prod')}
-            className={cn(
-              "px-4 py-2 text-sm font-semibold transition-all rounded-lg",
-              activeCluster === 'prod' ? "bg-blue-600 text-white" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-            )}
-          >
-            Production
-          </button>
-          <button 
-            onClick={() => setActiveCluster('staging' as any)}
-            className={cn(
-              "px-4 py-2 text-sm font-semibold transition-all rounded-lg",
-              (activeCluster as string) === 'staging' ? "bg-blue-100 text-blue-700" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-            )}
-          >
-            Staging
-          </button>
+            <button 
+              onClick={() => setActiveHostGroup('all')}
+              className={cn(
+                "px-4 py-2 text-sm font-semibold transition-all rounded-lg whitespace-nowrap",
+                activeHostGroup === 'all' ? "bg-slate-100 text-slate-800" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+              )}
+            >
+              All
+            </button>
+            {uniqueHostGroups.map(group => (
+              <button 
+                key={group}
+                onClick={() => setActiveHostGroup(group)}
+                className={cn(
+                  "px-4 py-2 text-sm font-semibold transition-all rounded-lg whitespace-nowrap",
+                  activeHostGroup === group ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                {group}
+              </button>
+            ))}
+          </div>
+
+          {canScrollRight && (
+            <button 
+              onClick={() => {
+                if (scrollContainerRef.current) {
+                  scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+                }
+              }}
+              className="absolute right-0 z-10 w-8 h-full flex items-center justify-end bg-gradient-to-l from-white from-50% to-transparent pointer-events-auto"
+            >
+              <div className="w-6 h-6 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:shadow transition-all">
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -191,7 +243,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white border border-slate-100 rounded-2xl p-6 group hover:border-blue-200 transition-all cursor-pointer relative overflow-hidden shadow-sm hover:shadow-md"
+              className="bg-white border border-slate-100 rounded-2xl p-6 group hover:border-blue-200 transition-all relative overflow-hidden shadow-sm hover:shadow-md"
             >
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
@@ -207,7 +259,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
                   </div>
                   <div>
                     <h3 className="text-base font-semibold text-slate-800 tracking-tight">{asset.id}</h3>
-                    <p className="text-xs text-slate-500 font-medium capitalize mt-0.5">{asset.type} • {asset.cluster}</p>
+                    <p className="text-xs text-slate-500 font-medium capitalize mt-0.5">{asset.type} • {asset.hostGroup}</p>
                   </div>
                 </div>
                 <div className={cn(

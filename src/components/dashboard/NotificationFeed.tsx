@@ -118,7 +118,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between mb-6 border-b border-slate-200 pb-4">
+      <div className="flex items-center justify-between">
         <div className="flex gap-2">
             {['all', 'critical', 'warning', 'info', 'success'].map(sev => (
                 <button
@@ -173,25 +173,20 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between mb-1">
-                <h4 className="text-base font-semibold text-slate-900">{n.title}</h4>
-                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                <div className="flex items-center gap-3">
+                  <h4 className="text-base font-semibold text-slate-900">{n.title}</h4>
+                  {n.host && (
+                    <span className="text-[11px] uppercase tracking-wide font-bold text-blue-600 border border-blue-200 px-2 py-0.5 rounded-md bg-blue-50">
+                      {n.host}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 shrink-0">
                   <Clock className="w-3 h-3" />
-                  {n.time}
+                  {n.duration || n.time}
                 </div>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-1">{n.description}</p>
-              <div className="mt-2 flex items-center gap-2">
-                  {n.host && (
-                      <span className="text-xs font-medium text-blue-600 border border-blue-200 px-2 py-1 rounded-md bg-blue-50">
-                        Source: {n.host}
-                      </span>
-                  )}
-                  {n.duration && (
-                      <span className="text-xs font-medium text-slate-600 border border-slate-200 px-2 py-1 rounded-md bg-slate-50 flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Duration: {n.duration}
-                      </span>
-                  )}
-              </div>
             </div>
             <div className="flex flex-col justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                <button 
@@ -206,13 +201,6 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
             </div>
           </motion.div>
         ))}
-      </div>
-
-      <div className="pt-10 flex flex-col items-center">
-         <div className="w-1.5 h-1.5 bg-slate-200 rounded-full mb-4" />
-         <button className="text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors">
-            Load Historical Audit Trail
-         </button>
       </div>
 
       {/* Drill-down Modal */}

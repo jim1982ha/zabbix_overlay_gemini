@@ -29,7 +29,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
         const hosts = response.data.result;
         
         // Generate a simple star topology around a central pseudo-gateway
-        const gateway = { id: 'gw-real-01', type: 'gateway', x: 50, y: 50, status: 'online', label: 'Zabbix Gateway' };
+        const gateway = { id: 'gw-real-01', type: 'gateway', x: 50, y: 15, status: 'online', label: 'Zabbix Gateway' };
         
         const generatedNodes = hosts.map((h: any, i: number) => {
            // Position them in a semi-circle or grid below the gateway
@@ -41,7 +41,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
               id: h.host,
               type: 'server',
               x: 15 + (col * 22),
-              y: 150 + (row * 60),
+              y: 100 + (row * 60),
               status: h.status === '0' ? 'online' : 'offline',
               label: h.name || h.host
            };
@@ -81,14 +81,14 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
   const periodKey = isHistorical ? `${filters.start}-${filters.end}` : filters.range;
   
   const simNodes = [
-    { id: 'gw-01', type: 'gateway', x: 50, y: 50, status: 'online', label: 'Primary Gateway' },
-    { id: 'sw-01', type: 'switch', x: 35, y: 150, status: 'online', label: 'Core Switch 01' },
-    { id: 'sw-02', type: 'switch', x: 65, y: 150, status: 'online', label: 'Core Switch 02' },
-    { id: 'srv-01', type: 'server', x: 10, y: 300, status: 'online', label: 'App Server 01' },
-    { id: 'srv-02', type: 'server', x: 30, y: 300, status: 'online', label: 'App Server 02' },
-    { id: 'srv-03', type: 'server', x: 50, y: 300, status: 'online', label: 'App Server 03' },
-    { id: 'db-01', type: 'server', x: 70, y: 300, status: 'online', label: 'DB Cluster A' },
-    { id: 'db-02', type: 'server', x: 90, y: 300, status: 'online', label: 'DB Cluster B' },
+    { id: 'gw-01', type: 'gateway', x: 50, y: 15, status: 'online', label: 'Primary Gateway' },
+    { id: 'sw-01', type: 'switch', x: 35, y: 100, status: 'online', label: 'Core Switch 01' },
+    { id: 'sw-02', type: 'switch', x: 65, y: 100, status: 'online', label: 'Core Switch 02' },
+    { id: 'srv-01', type: 'server', x: 10, y: 220, status: 'online', label: 'App Server 01' },
+    { id: 'srv-02', type: 'server', x: 30, y: 220, status: 'online', label: 'App Server 02' },
+    { id: 'srv-03', type: 'server', x: 50, y: 220, status: 'online', label: 'App Server 03' },
+    { id: 'db-01', type: 'server', x: 70, y: 220, status: 'online', label: 'DB Cluster A' },
+    { id: 'db-02', type: 'server', x: 90, y: 220, status: 'online', label: 'DB Cluster B' },
   ];
 
   const simLinks = [
@@ -130,20 +130,9 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
         </div>
       )}
       <div className="flex flex-col gap-6">
-        <div className="bg-white border border-slate-100 rounded-2xl p-8 relative overflow-hidden h-[600px] shadow-sm">
-          <div className="absolute top-8 left-8 z-10">
-            <h3 className="text-xl font-bold text-slate-800 tracking-tight">Visual Topology</h3>
-            <p className="text-sm text-slate-500 font-medium mt-1">Live Mesh Connectivity</p>
-          </div>
-
-          <div className="absolute top-8 right-8 z-10 flex gap-2">
-             <div className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-lg text-xs font-semibold text-blue-700 flex items-center gap-2 animate-pulse">
-                <Globe className="w-3.5 h-3.5" /> External Link Active
-             </div>
-          </div>
-
+        <div className="bg-white border border-slate-100 rounded-2xl p-8 relative overflow-hidden h-[450px] shadow-sm">
           {/* SVG Topology Graph */}
-          <svg className="w-full h-full" viewBox="0 0 100 300">
+          <svg className="w-full h-full" viewBox="0 0 100 260">
             <defs>
               <linearGradient id="linkGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#0284c7" stopOpacity="0.15" />
