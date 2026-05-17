@@ -1,13 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Activity, Globe, Zap, Shield, ArrowUpRight, ArrowDownRight, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import axios from 'axios';
 
-export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, globalSearch?: string }) {
+export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string } }) {
   const isHistorical = filters.mode === 'historical';
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [hoveredLink, setHoveredLink] = useState<{from: string, to: string} | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
+  const isSimulated = !zabbixConfig?.url || !zabbixConfig?.token;
+  const [zabbixNodes, setZabbixNodes] = useState<any[]>([]);
+  const [zabbixLinks, setZabbixLinks] = useState<any[]>([]);
+
+  const fetchZabbixTopology = useCallback(async () => {
+    if (isSimulated) return;
+    try {
+      const response = await axios.post("/api/zabbix", {
+        url: zabbixConfig.url,
+        token: zabbixConfig.token,
+        method: "host.get",
+        params: {
+          output: ["host", "name", "status"]
+        }
+      });
+      if (response.data.result) {
+        const hosts = response.data.result;
+        
+        // Generate a simple star topology around a central pseudo-gateway
+        const gateway = { id: 'gw-real-01', type: 'gateway', x: 50, y: 50, status: 'online', label: 'Zabbix Gateway' };
+        
+        const generatedNodes = hosts.map((h: any, i: number) => {
+           // Position them in a semi-circle or grid below the gateway
+           const cols = 4;
+           const row = Math.floor(i / cols);
+           const col = i % cols;
+           
+           return {
+              id: h.host,
+              type: 'server',
+              x: 15 + (col * 22),
+              y: 150 + (row * 60),
+              status: h.status === '0' ? 'online' : 'offline',
+              label: h.name || h.host
+           };
+        });
+        
+        setZabbixNodes([gateway, ...generatedNodes]);
+
+        // Links from gateway to all
+        const generatedLinks = generatedNodes.map((n: any) => ({
+           from: gateway.id,
+           to: n.id,
+           load: Math.floor(Math.random() * 40) + 10 // pseudo random load
+        }));
+        
+        setZabbixLinks(generatedLinks);
+      }
+    } catch (e) {
+      console.error("Failed to fetch topology from Zabbix", e);
+    }
+  }, [zabbixConfig, isSimulated]);
+
+  useEffect(() => {
+    fetchZabbixTopology();
+  }, [fetchZabbixTopology]);
 
   // Helper to generate "sticky" random numbers based on a string seed (the period)
   const getSeedMetric = (base: number, variance: number, seed: string) => {
@@ -22,7 +80,7 @@ export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, 
 
   const periodKey = isHistorical ? `${filters.start}-${filters.end}` : filters.range;
   
-  const nodes = [
+  const simNodes = [
     { id: 'gw-01', type: 'gateway', x: 50, y: 50, status: 'online', label: 'Primary Gateway' },
     { id: 'sw-01', type: 'switch', x: 35, y: 150, status: 'online', label: 'Core Switch 01' },
     { id: 'sw-02', type: 'switch', x: 65, y: 150, status: 'online', label: 'Core Switch 02' },
@@ -33,7 +91,7 @@ export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, 
     { id: 'db-02', type: 'server', x: 90, y: 300, status: 'online', label: 'DB Cluster B' },
   ];
 
-  const links = [
+  const simLinks = [
     { from: 'gw-01', to: 'sw-01', load: getSeedMetric(10, 60, periodKey + 'l1') },
     { from: 'gw-01', to: 'sw-02', load: getSeedMetric(10, 40, periodKey + 'l2') },
     { from: 'sw-01', to: 'srv-01', load: getSeedMetric(5, 20, periodKey + 'l3') },
@@ -42,6 +100,9 @@ export function NetworkTopology({ filters, globalSearch = "" }: { filters: any, 
     { from: 'sw-02', to: 'db-01', load: getSeedMetric(15, 30, periodKey + 'l6') },
     { from: 'sw-02', to: 'db-02', load: getSeedMetric(15, 30, periodKey + 'l7') },
   ];
+
+  const nodes = isSimulated ? simNodes : (zabbixNodes.length > 0 ? zabbixNodes : simNodes);
+  const links = isSimulated ? simLinks : (zabbixLinks.length > 0 ? zabbixLinks : simLinks);
 
   return (
     <div className="space-y-6">

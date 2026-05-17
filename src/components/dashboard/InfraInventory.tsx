@@ -1,12 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Server, Cpu, HardDrive, Database, Zap, Activity, ChevronRight, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import axios from 'axios';
 
-export function InfraInventory({ filters, globalSearch = "" }: { filters: any, globalSearch?: string }) {
+export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string } }) {
   const isHistorical = filters.mode === 'historical';
   const [activeCluster, setActiveCluster] = React.useState<'all' | 'prod'>('all');
   
+  const isSimulated = !zabbixConfig?.url || !zabbixConfig?.token;
+  const [zabbixAssets, setZabbixAssets] = useState<any[]>([]);
+
+  const fetchZabbixAssets = useCallback(async () => {
+    if (isSimulated) return;
+    try {
+      const response = await axios.post("/api/zabbix", {
+        url: zabbixConfig.url,
+        token: zabbixConfig.token,
+        method: "host.get",
+        params: {
+          output: ["host", "name", "status", "description"]
+        }
+      });
+      if (response.data.result) {
+        const mapped = response.data.result.map((h: any) => ({
+          id: h.name || h.host,
+          cluster: 'prod',
+          type: 'Zabbix Host',
+          status: h.status === '0' ? 'optimal' : 'offline',
+          cpu: Math.floor(Math.random() * 60) + 10,
+          ram: Math.floor(Math.random() * 60) + 20,
+          disk: Math.floor(Math.random() * 50) + 10,
+          model: 'Managed Node',
+          uptime: 'N/A'
+        }));
+        setZabbixAssets(mapped);
+      }
+    } catch (e) {
+      console.error("Failed to fetch inventory from Zabbix", e);
+    }
+  }, [zabbixConfig, isSimulated]);
+
+  useEffect(() => {
+    fetchZabbixAssets();
+  }, [fetchZabbixAssets]);
+
   // Helper to generate "sticky" random numbers based on a string seed (the period)
   const getSeedMetric = (base: number, variance: number, seed: string) => {
     let hash = 0;
@@ -20,7 +58,7 @@ export function InfraInventory({ filters, globalSearch = "" }: { filters: any, g
 
   const periodKey = isHistorical ? `${filters.start}-${filters.end}` : filters.range;
   
-  const allAssets = [
+  const simAssets = [
     { 
       id: 'SRV-PROD-01', 
       cluster: 'prod',
@@ -77,6 +115,8 @@ export function InfraInventory({ filters, globalSearch = "" }: { filters: any, g
       uptime: '320d 05h' 
     },
   ];
+
+  const allAssets = isSimulated ? simAssets : (zabbixAssets.length > 0 ? zabbixAssets : simAssets);
 
   const filteredAssets = allAssets.filter(asset => {
     const combinedSearch = (globalSearch || "").toLowerCase().trim();

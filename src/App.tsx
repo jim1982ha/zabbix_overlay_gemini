@@ -716,16 +716,16 @@ export default function App() {
     }
 
     if (view === "network") {
-      return <NetworkTopology filters={filters} globalSearch={globalSearch} />;
+      return <NetworkTopology filters={filters} globalSearch={globalSearch} zabbixConfig={zabbixConfig} />;
     }
 
     if (view === "infra") {
-      return <InfraInventory filters={filters} globalSearch={globalSearch} />;
+      return <InfraInventory filters={filters} globalSearch={globalSearch} zabbixConfig={zabbixConfig} />;
     }
 
     if (view === "notifications") {
       const zabbixBaseUrl = zabbixConfig.url.replace('/api_jsonrpc.php', '');
-      return <NotificationFeed globalSearch={globalSearch} zabbixBaseUrl={zabbixBaseUrl} />;
+      return <NotificationFeed globalSearch={globalSearch} zabbixBaseUrl={zabbixBaseUrl} zabbixConfig={zabbixConfig} />;
     }
 
     if (view !== "dashboard") {

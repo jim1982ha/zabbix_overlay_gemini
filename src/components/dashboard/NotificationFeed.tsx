@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Activity, Shield, AlertTriangle, CheckCircle, Clock, X, ExternalLink, Zap, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import axios from 'axios';
 
 interface Notification {
   id: number;
@@ -14,15 +15,71 @@ interface Notification {
   host?: string;
 }
 
-export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "" }: { globalSearch?: string, zabbixBaseUrl?: string }) {
+export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbixConfig }: { globalSearch?: string, zabbixBaseUrl?: string, zabbixConfig?: { url: string, token: string } }) {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
-  const [notificationsList, setNotificationsList] = useState<Notification[]>([
-    { id: 1, type: 'alert', title: 'High CPU Latency', description: 'SQL-DB-PRIMARY reporting 92% steal time. Investigating hypervisor load.', time: '2m ago', severity: 'critical', itemId: '10293', host: 'SQL-DB-PRIMARY' },
-    { id: 2, type: 'security', title: 'WAF Signature Update', description: 'Global signatures updated to v4.2.1-stable. 12 new rules applied.', time: '15m ago', severity: 'info', host: 'EDGE-GW-PROXY' },
-    { id: 3, type: 'system', title: 'Backup Completed', description: 'Daily differential backup for NAS-01-BKUP finished successfully.', time: '1h ago', severity: 'success', host: 'NAS-01-BKUP' },
-    { id: 4, type: 'alert', title: 'Port Flap Detected', description: 'GigabitEthernet1/0/12 on SW-01 toggled status 4 times in 60s.', time: '3h ago', severity: 'warning', itemId: '3392', host: 'SW-CORE-01' },
-    { id: 5, type: 'system', title: 'New Dashboard Created', description: 'Executive user "admin" created board "Q3 Hardware Audit".', time: '5h ago', severity: 'info' },
-  ]);
+  
+  const simNotifications = [
+    { id: 1, type: 'alert' as const, title: 'High CPU Latency', description: 'SQL-DB-PRIMARY reporting 92% steal time. Investigating hypervisor load.', time: '2m ago', severity: 'critical' as const, itemId: '10293', host: 'SQL-DB-PRIMARY' },
+    { id: 2, type: 'security' as const, title: 'WAF Signature Update', description: 'Global signatures updated to v4.2.1-stable. 12 new rules applied.', time: '15m ago', severity: 'info' as const, host: 'EDGE-GW-PROXY' },
+    { id: 3, type: 'system' as const, title: 'Backup Completed', description: 'Daily differential backup for NAS-01-BKUP finished successfully.', time: '1h ago', severity: 'success' as const, host: 'NAS-01-BKUP' },
+    { id: 4, type: 'alert' as const, title: 'Port Flap Detected', description: 'GigabitEthernet1/0/12 on SW-01 toggled status 4 times in 60s.', time: '3h ago', severity: 'warning' as const, itemId: '3392', host: 'SW-CORE-01' },
+    { id: 5, type: 'system' as const, title: 'New Dashboard Created', description: 'Executive user "admin" created board "Q3 Hardware Audit".', time: '5h ago', severity: 'info' as const },
+  ];
+
+  const [zabbixNotifications, setZabbixNotifications] = useState<Notification[]>([]);
+  const isSimulated = !zabbixConfig?.url || !zabbixConfig?.token;
+
+  const fetchZabbixTriggers = useCallback(async () => {
+    if (isSimulated) return;
+    try {
+      const response = await axios.post("/api/zabbix", {
+        url: zabbixConfig.url,
+        token: zabbixConfig.token,
+        method: "trigger.get",
+        params: {
+          output: "extend",
+          selectHosts: ["host"],
+          monitored: true,
+          only_true: true,
+          skipDependent: true,
+          limit: 50,
+          sortfield: "lastchange",
+          sortorder: "DESC"
+        }
+      });
+      if (response.data.result) {
+        const mapped = response.data.result.map((t: any) => {
+          let severity: 'info' | 'warning' | 'critical' | 'success' = 'info';
+          if (t.priority > 3) severity = 'critical';
+          else if (t.priority > 1) severity = 'warning';
+          
+          return {
+             id: parseInt(t.triggerid, 10),
+             type: 'alert',
+             title: t.description,
+             description: `Trigger active on host: ${t.hosts?.[0]?.host}`,
+             time: new Date(parseInt(t.lastchange, 10) * 1000).toLocaleTimeString(),
+             severity,
+             itemId: t.triggerid,
+             host: t.hosts?.[0]?.host
+          };
+        });
+        setZabbixNotifications(mapped);
+      }
+    } catch (e) {
+      console.error("Failed to fetch triggers from Zabbix", e);
+    }
+  }, [zabbixConfig, isSimulated]);
+
+  useEffect(() => {
+    fetchZabbixTriggers();
+  }, [fetchZabbixTriggers]);
+
+  const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    setNotificationsList(isSimulated ? simNotifications : zabbixNotifications);
+  }, [isSimulated, zabbixNotifications]); // Only recompute on these dependencies
 
   const filteredNotifications = useMemo(() => {
     return notificationsList.filter(n => {
