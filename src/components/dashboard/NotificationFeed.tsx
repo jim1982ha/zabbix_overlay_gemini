@@ -13,6 +13,7 @@ interface Notification {
   duration?: string;
   severity: 'critical' | 'warning' | 'success' | 'info';
   itemId?: string;
+  eventId?: string;
   host?: string;
 }
 
@@ -41,6 +42,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
         params: {
           output: "extend",
           selectHosts: ["host"],
+          selectLastEvent: "extend",
           monitored: true,
           only_true: true,
           skipDependent: true,
@@ -66,11 +68,12 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
              id: parseInt(t.triggerid, 10),
              type: 'alert',
              title: t.description,
-             description: `Trigger active on host: ${t.hosts?.[0]?.host}`,
+             description: t.comments || `Trigger active on host: ${t.hosts?.[0]?.host}`,
              time: new Date(parseInt(t.lastchange, 10) * 1000).toLocaleTimeString(),
              duration: durationStr,
              severity,
              itemId: t.triggerid,
+             eventId: t.lastEvent?.eventid,
              host: t.hosts?.[0]?.host
           };
         });
@@ -110,6 +113,9 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
   const getZabbixUrl = (n: Notification) => {
     if (!zabbixBaseUrl) return null;
     if (n.type === 'alert' && n.itemId) {
+        if (n.eventId) {
+            return `${zabbixBaseUrl}/tr_events.php?triggerid=${n.itemId}&eventid=${n.eventId}`;
+        }
         // Assume it's a trigger ID for alerts
         return `${zabbixBaseUrl}/zabbix.php?action=problem.view&filter_triggerids[]=${n.itemId}&filter_set=1`;
     }
@@ -262,7 +268,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                             </div>
 
                             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                                <p className="text-sm text-slate-600 font-medium leading-relaxed">
+                                <p className="text-sm text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">
                                     {selectedNotification.description}
                                 </p>
                             </div>
