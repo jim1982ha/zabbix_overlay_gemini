@@ -95,7 +95,16 @@ async function startServer() {
       
       let upstreamErr = error.message;
       if (error.response?.data) {
-        upstreamErr = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
+        if (typeof error.response.data === 'string') {
+          // If it's an HTML error page from a bad gateway/404, just return the status text.
+          if (error.response.data.toLowerCase().includes('<html')) {
+             upstreamErr = `HTTP ${error.response.status} ${error.response.statusText}`;
+          } else {
+             upstreamErr = error.response.data;
+          }
+        } else {
+          upstreamErr = JSON.stringify(error.response.data);
+        }
       } else if (error.code) {
         upstreamErr = error.code;
       }

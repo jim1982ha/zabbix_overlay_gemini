@@ -461,8 +461,8 @@ export default function App() {
       title: 'New Telemetry Probe',
       type,
       chartType: 'area',
-      metrics: ['cpu'],
-      hosts: ['all'],
+      metrics: isSimulated ? ['cpu'] : (availableMetrics.length > 0 ? [availableMetrics[0]] : []),
+      hosts: isSimulated ? ['all'] : (availableHosts.length > 0 ? [availableHosts[0]] : []),
       aggregation: 'avg',
       stacked: false,
       cols: type === 'kpi' ? 6 : 12,
@@ -601,9 +601,12 @@ export default function App() {
     e.target.value = '';
   };
 
-  const discoverZabbixAssets = useCallback(async (manual = false) => {
+  const discoverZabbixAssets = useCallback(async (manual = false, overrideConfig?: {url: string, token: string}) => {
     console.log("Starting Zabbix host discovery...");
-    if (!zabbixConfig.token || !zabbixConfig.url) {
+    const urlToUse = overrideConfig?.url || zabbixConfig.url;
+    const tokenToUse = overrideConfig?.token || zabbixConfig.token;
+    
+    if (!tokenToUse || !urlToUse) {
       if (manual) setDiscoveryStatus({ type: 'error', message: "Please specify URL and Token first." });
       return;
     }
@@ -615,8 +618,8 @@ export default function App() {
     try {
       // 1. Discover Hosts
       const hostRes = await axios.post("/api/zabbix", {
-        url: zabbixConfig.url,
-        token: zabbixConfig.token,
+        url: urlToUse,
+        token: tokenToUse,
         method: "host.get",
         params: { output: ["host", "name"] }
       });
@@ -628,8 +631,8 @@ export default function App() {
 
       // 2. Discover Items (Metrics)
       const itemRes = await axios.post("/api/zabbix", {
-        url: zabbixConfig.url,
-        token: zabbixConfig.token,
+        url: urlToUse,
+        token: tokenToUse,
         method: "item.get",
         params: { output: ["name", "key_", "units"] }
       });
@@ -676,12 +679,32 @@ export default function App() {
     }
   }, [zabbixConfig, initialDiscoveryTriggered, discoverZabbixAssets]);
 
+  const [draftZabbixConfig, setDraftZabbixConfig] = useState(zabbixConfig);
+
+  // Sync draft when zabbixConfig changes from the initial load
+  useEffect(() => {
+    setDraftZabbixConfig(zabbixConfig);
+  }, [zabbixConfig]);
+
   const handleSaveZabbixConfig = () => {
-    localStorage.setItem('hareporting_zabbix_url', zabbixConfig.url);
-    localStorage.setItem('hareporting_zabbix_token', zabbixConfig.token);
-    setSavedZabbixUrl(zabbixConfig.url);
+    setZabbixConfig(draftZabbixConfig);
+    localStorage.setItem('hareporting_zabbix_url', draftZabbixConfig.url);
+    localStorage.setItem('hareporting_zabbix_token', draftZabbixConfig.token);
+    setSavedZabbixUrl(draftZabbixConfig.url);
     
     setDiscoveryStatus({ type: 'success', message: "Configuration saved." });
+  };
+  
+  const handleSimulatedMode = () => {
+    const simConfig = { url: '', token: '', isPreconfigured: false };
+    setDraftZabbixConfig(simConfig);
+    setZabbixConfig(simConfig);
+    localStorage.setItem('hareporting_zabbix_url', '');
+    localStorage.setItem('hareporting_zabbix_token', '');
+    setSavedZabbixUrl('');
+    setDiscoveryStatus({ type: 'success', message: "Reverted to Simulated Mode." });
+    setAvailableHosts(['srv-prod-01', 'sql-db-primary', 'gateway-02', 'all']);
+    setAvailableMetrics(['cpu', 'memory', 'traffic', 'latency', 'disk']);
   };
 
   const [showRangeMenu, setShowRangeMenu] = useState(false);
@@ -716,8 +739,8 @@ export default function App() {
                   <label className="text-sm font-semibold text-slate-600 block mb-2">Endpoint URL</label>
                   <input 
                     type="text" 
-                    value={zabbixConfig.url} 
-                    onChange={e => setZabbixConfig({...zabbixConfig, url: e.target.value})}
+                    value={draftZabbixConfig.url} 
+                    onChange={e => setDraftZabbixConfig({...draftZabbixConfig, url: e.target.value})}
                     placeholder="https://your-zabbix.com/zabbix/api_jsonrpc.php"
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
                   />
@@ -725,14 +748,14 @@ export default function App() {
                     <label className="text-sm font-semibold text-slate-600 block mb-2">API Token</label>
                     <input 
                       type="password" 
-                      value={zabbixConfig.token} 
-                      onChange={e => setZabbixConfig({...zabbixConfig, token: e.target.value})}
+                      value={draftZabbixConfig.token} 
+                      onChange={e => setDraftZabbixConfig({...draftZabbixConfig, token: e.target.value})}
                       placeholder="Your Zabbix API Token..."
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className={cn("grid gap-4", !isSimulated ? "grid-cols-3" : "grid-cols-2")}>
                   <button 
                     onClick={handleSaveZabbixConfig}
                     className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-blue-500 transition-all active:scale-95"
@@ -741,13 +764,22 @@ export default function App() {
                   </button>
                   <button 
                     onClick={async () => {
-                      await discoverZabbixAssets(true);
+                      setZabbixConfig(draftZabbixConfig);
+                      await discoverZabbixAssets(true, draftZabbixConfig);
                     }}
                     className="w-full py-3 bg-slate-800 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!zabbixConfig.url || !zabbixConfig.token || isDiscovering}
+                    disabled={!draftZabbixConfig.url || !draftZabbixConfig.token || isDiscovering}
                   >
                     <RefreshCw className={cn("w-4 h-4", isDiscovering && "animate-spin")} /> {isDiscovering ? 'Discovering...' : 'Trigger Discovery'}
                   </button>
+                  {!isSimulated && (
+                    <button 
+                      onClick={handleSimulatedMode}
+                      className="w-full py-3 bg-rose-100 text-rose-700 rounded-xl font-semibold text-sm shadow-md hover:bg-rose-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      Revert to Simulated
+                    </button>
+                  )}
                 </div>
                 {discoveryStatus && (
                   <div className={cn(
