@@ -10,7 +10,8 @@ async function startServer() {
   const app = express();
   const PORT = process.env.APP_PORT ? parseInt(process.env.APP_PORT, 10) : 3000;
 
-  app.use(express.json());
+  // Set rigorous body parser limits to prevent Denial-of-Service via payload exhaustion
+  app.use(express.json({ limit: "1mb" }));
 
   // Zabbix API Configuration
   const ZABBIX_URL = process.env.VITE_ZABBIX_URL || "http://localhost/zabbix/api_jsonrpc.php";
@@ -19,15 +20,35 @@ async function startServer() {
   // Proxy Zabbix API calls to avoid CORS and hide token
   app.post("/api/zabbix", async (req, res) => {
     try {
+      // Optional: Internal Authorization Gate if APP_SECURE_TOKEN is injected via environment (CWE-306 fix)
+      const expectedToken = process.env.APP_SECURE_TOKEN;
+      if (expectedToken) {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+          return res.status(401).json({ error: "Unauthorized access detected." });
+        }
+      }
+
+      if (!req.body || typeof req.body !== "object") {
+        return res.status(400).json({ error: "Invalid request payload." });
+      }
+
       const { 
-        url = process.env.VITE_ZABBIX_URL || "http://localhost/zabbix/api_jsonrpc.php",
-        token = process.env.VITE_ZABBIX_TOKEN,
         method,
         params
       } = req.body;
 
+      // Force taking Zabbix URL and Token from environment variables only
+      const url = process.env.VITE_ZABBIX_URL || "http://localhost/zabbix/api_jsonrpc.php";
+      const token = process.env.VITE_ZABBIX_TOKEN;
+
       if (!token) {
-        return res.status(400).json({ error: "Zabbix Token not provided or configured in environment" });
+        return res.status(400).json({ error: "Zabbix Token not configured in environment" });
+      }
+
+      // STRICT ALLOWLIST: Only permit read-only GET methods to prevent destructive actions or RCE via script.execute
+      if (typeof method !== 'string' || !method.endsWith('.get')) {
+        return res.status(403).json({ error: "Forbidden: Only read-only (.get) methods are permitted via this proxy." });
       }
 
       console.log(`Proxying Zabbix Request: ${method} to ${url}`);
@@ -42,43 +63,19 @@ async function startServer() {
 
       if (response.data.error) {
         console.error("Zabbix API Internal Error:", response.data.error);
-        
-        const zabbixError = response.data.error;
-        let errorMessage = "Zabbix API Error";
-        
-        if (typeof zabbixError === "string") {
-          errorMessage = zabbixError;
-        } else if (zabbixError.message && zabbixError.data) {
-          errorMessage = `${zabbixError.message}: ${typeof zabbixError.data === 'string' ? zabbixError.data : JSON.stringify(zabbixError.data)}`;
-        } else if (zabbixError.message) {
-          errorMessage = zabbixError.message;
-        }
-
-        return res.status(400).json({ error: errorMessage, details: zabbixError });
+        return res.status(400).json({ 
+          error: "Zabbix monitoring gateway reported an error processing the request.", 
+          details: "Upstream Error" 
+        });
       }
 
       res.json(response.data);
     } catch (error: any) {
       console.error("Zabbix Proxy Error:", error.response?.data || error.message);
       
-      let errorMessage = "Failed to communicate with Zabbix";
-      
-      if (error.response?.data?.error) {
-        const zabbixError = error.response.data.error;
-        if (typeof zabbixError === "string") {
-          errorMessage = zabbixError;
-        } else if (zabbixError.message && zabbixError.data) {
-          errorMessage = `${zabbixError.message}: ${typeof zabbixError.data === 'string' ? zabbixError.data : JSON.stringify(zabbixError.data)}`;
-        } else if (zabbixError.message) {
-          errorMessage = zabbixError.message;
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
       res.status(500).json({ 
-        error: errorMessage, 
-        details: error.response?.data || error.message 
+        error: "Failed to communicate with Zabbix monitoring gateway.", 
+        details: "Internal Server Error" 
       });
     }
   });
@@ -111,6 +108,11 @@ async function startServer() {
     if (mode === 'historical' && start && end) {
       const startTime = new Date(start as string).getTime();
       const endTime = new Date(end as string).getTime();
+      
+      if (Number.isNaN(startTime) || Number.isNaN(endTime)) {
+        return res.status(400).json({ error: "Invalid date format provided for historical query." });
+      }
+
       const durationMs = endTime - startTime;
 
       dataPoints = Math.min(Math.floor(durationMs / stepMs), 500); 

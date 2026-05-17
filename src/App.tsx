@@ -817,9 +817,10 @@ export default function App() {
                     </button>
                     <button 
                       onClick={() => handleRemoveWidget(w.id)}
-                      className="p-1.5 bg-white/90 border border-rose-100/50 text-rose-500 rounded-lg hover:bg-rose-50 hover:text-rose-600 shadow-sm transition-all backdrop-blur-md h-[26px] flex items-center justify-center"
+                      className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded-lg hover:bg-rose-600 shadow-sm transition-all backdrop-blur-md h-[26px] flex items-center justify-center opacity-60 hover:opacity-100"
+                      title="Remove Widget"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                 </div>
 

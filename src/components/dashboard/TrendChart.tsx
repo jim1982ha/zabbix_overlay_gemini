@@ -181,13 +181,12 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               data={pieData}
               cx="50%"
               cy="50%"
-              innerRadius={60}
+              innerRadius={0}
               outerRadius={80}
-              paddingAngle={2}
               dataKey="value"
             >
               {pieData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />
+                <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" strokeWidth={0} />
               ))}
             </Pie>
             <Tooltip content={<CustomTooltip />} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />

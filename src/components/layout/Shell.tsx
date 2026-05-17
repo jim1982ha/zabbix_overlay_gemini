@@ -14,7 +14,9 @@ import {
   Search,
   Zap,
   X,
-  Trash2
+  Trash2,
+  Moon,
+  Sun
 } from "lucide-react";
 import React, { ReactNode } from "react";
 import { cn } from "../../lib/utils";
@@ -55,6 +57,31 @@ export function Shell({
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [theme, setTheme] = React.useState<'light' | 'dark'>('light');
+
+  React.useEffect(() => {
+    // Default to light. If local storage is set, respect it.
+    const savedTheme = localStorage.getItem('theme');
+    const isDark = savedTheme === 'dark';
+    setTheme(isDark ? 'dark' : 'light');
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    if (nextTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+      localStorage.theme = 'dark';
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.theme = 'light';
+    }
+  };
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
@@ -261,6 +288,13 @@ export function Shell({
         </nav>
         
         <div className="shrink-0 border-t border-slate-200 bg-slate-50/50 py-2">
+          <NavItem 
+            icon={theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />} 
+            label={theme === 'dark' ? 'Dark Mode' : 'Light Mode'} 
+            active={false} 
+            isCollapsed={isCollapsed} 
+            onClick={toggleTheme} 
+          />
           <NavItem icon={<Settings className="w-4 h-4" />} label="Zabbix API Settings" active={currentView === 'config'} isCollapsed={isCollapsed} onClick={() => { onNavigate('config'); closeMobileMenu(); }} />
           <NavItem 
             icon={
