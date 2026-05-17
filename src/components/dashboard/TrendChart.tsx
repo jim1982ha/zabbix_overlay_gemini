@@ -270,12 +270,15 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
         return (
           <AreaChart data={displayedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} {...dragProps}>
             <defs>
-              {series.map((s, i) => (
-                <linearGradient key={s.key} id={`gradient-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+              {series.map((s, i) => {
+                const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
+                return (
+                <linearGradient key={s.key} id={safeId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={0.15}/>
                   <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0}/>
                 </linearGradient>
-              ))}
+                );
+              })}
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
             <XAxis 
@@ -289,7 +292,9 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }} onClick={(e: any) => onLegendClick?.(e.dataKey)} />
-            {series.map((s, i) => (
+            {series.map((s, i) => {
+              const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
+              return (
               <Area 
                 key={s.key} 
                 hide={hiddenSeries?.has(s.key)} 
@@ -300,11 +305,12 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
                 stackId={stacked ? "1" : undefined} 
                 strokeWidth={2.5} 
                 fillOpacity={1} 
-                fill={`url(#gradient-${s.key})`} 
+                fill={`url(#${safeId})`} 
                 unit={unit} 
                 animationDuration={1000} 
               />
-            ))}
+              );
+            })}
             {refAreaLeft && refAreaRight ? (
               <ReferenceArea x1={refAreaLeft} x2={refAreaRight} strokeOpacity={0.3} fill="#0ea5e9" fillOpacity={0.1} />
             ) : null}

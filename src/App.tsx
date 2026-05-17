@@ -1558,6 +1558,11 @@ export default function App() {
 
 function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { options: string[], selected: string[], onChange: (val: string[]) => void, label: string, metricUnitsMap: Record<string, string> }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const sortedOptions = [...options].sort((a, b) => a.localeCompare(b));
+  const filteredOptions = sortedOptions.filter(opt => opt.toLowerCase().includes(searchTerm.toLowerCase()));
+
   return (
     <div className="relative">
       <label className="text-xs font-semibold text-slate-400 block mb-2">{label}</label>
@@ -1580,8 +1585,18 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute z-50 w-full mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 scrollbar-hide">
-            {options.map((opt, i) => {
+          <div className="absolute z-50 w-full mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 scrollbar-hide flex flex-col">
+            <div className="sticky top-0 bg-slate-900 pb-2 z-10 p-1">
+              <input 
+                type="text" 
+                placeholder="Search..." 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:border-sky-500 transition-colors placeholder:text-slate-500"
+              />
+            </div>
+            {filteredOptions.length === 0 && <div className="text-xs text-slate-500 text-center py-4">No results</div>}
+            {filteredOptions.map((opt, i) => {
               const unit = metricUnitsMap?.[opt];
               return (
                 <label 
@@ -1604,7 +1619,7 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
                     {selected.includes(opt) && <Check className="absolute w-3 h-3 text-white pointer-events-none" />}
                   </div>
                   <span className={cn(
-                    "text-sm font-medium transition-colors",
+                    "text-sm font-medium transition-colors text-left",
                     selected.includes(opt) ? "text-sky-400" : "text-slate-300 group-hover:text-slate-100"
                   )}>
                     {opt} {unit && <span className="opacity-50 text-xs ml-1">({unit})</span>}
