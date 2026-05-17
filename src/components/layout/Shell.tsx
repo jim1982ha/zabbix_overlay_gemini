@@ -1,9 +1,7 @@
 import { motion } from "motion/react";
 import { 
-  BarChart3, 
   Settings, 
   Activity, 
-  AlertCircle, 
   LayoutDashboard, 
   Server,
   ChevronRight,
@@ -12,7 +10,6 @@ import {
   Plus,
   Bell,
   Search,
-  Zap,
   X,
   Trash2,
   Moon,
@@ -230,10 +227,9 @@ export function Shell({
               Observability
             </div>
           )}
-          <NavItem icon={<Activity className="w-4 h-4" />} label="Network Topology" active={currentView === 'network'} isCollapsed={isCollapsed} onClick={() => { onNavigate('network'); closeMobileMenu(); }} />
           <NavItem icon={<Server className="w-4 h-4" />} label="Asset Inventory" active={currentView === 'infra'} isCollapsed={isCollapsed} onClick={() => { onNavigate('infra'); closeMobileMenu(); }} />
-          <NavItem icon={<Zap className="w-4 h-4" />} label="Application Events" active={currentView === 'events'} isCollapsed={isCollapsed} onClick={() => { onNavigate('events'); closeMobileMenu(); }} />
-          <NavItem icon={<Bell className="w-4 h-4" />} label="Alert Rules" active={currentView === 'notifications'} isCollapsed={isCollapsed} onClick={() => { onNavigate('notifications'); closeMobileMenu(); }} />
+          <NavItem icon={<Bell className="w-4 h-4" />} label="Current Problems" active={currentView === 'notifications'} isCollapsed={isCollapsed} onClick={() => { onNavigate('notifications'); closeMobileMenu(); }} />
+          <NavItem icon={<Activity className="w-4 h-4" />} label="Network Topology" active={currentView === 'network'} isCollapsed={isCollapsed} onClick={() => { onNavigate('network'); closeMobileMenu(); }} />
 
             {/* Active Filters Context Box */}
           {hiddenSeries && hiddenSeries.size > 0 && (

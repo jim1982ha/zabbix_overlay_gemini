@@ -10,6 +10,7 @@ interface Notification {
   title: string;
   description: string;
   time: string;
+  duration?: string;
   severity: 'critical' | 'warning' | 'success' | 'info';
   itemId?: string;
   host?: string;
@@ -17,13 +18,14 @@ interface Notification {
 
 export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbixConfig }: { globalSearch?: string, zabbixBaseUrl?: string, zabbixConfig?: { url: string, token: string } }) {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info' | 'success'>('all');
   
   const simNotifications = [
-    { id: 1, type: 'alert' as const, title: 'High CPU Latency', description: 'SQL-DB-PRIMARY reporting 92% steal time. Investigating hypervisor load.', time: '2m ago', severity: 'critical' as const, itemId: '10293', host: 'SQL-DB-PRIMARY' },
-    { id: 2, type: 'security' as const, title: 'WAF Signature Update', description: 'Global signatures updated to v4.2.1-stable. 12 new rules applied.', time: '15m ago', severity: 'info' as const, host: 'EDGE-GW-PROXY' },
-    { id: 3, type: 'system' as const, title: 'Backup Completed', description: 'Daily differential backup for NAS-01-BKUP finished successfully.', time: '1h ago', severity: 'success' as const, host: 'NAS-01-BKUP' },
-    { id: 4, type: 'alert' as const, title: 'Port Flap Detected', description: 'GigabitEthernet1/0/12 on SW-01 toggled status 4 times in 60s.', time: '3h ago', severity: 'warning' as const, itemId: '3392', host: 'SW-CORE-01' },
-    { id: 5, type: 'system' as const, title: 'New Dashboard Created', description: 'Executive user "admin" created board "Q3 Hardware Audit".', time: '5h ago', severity: 'info' as const },
+    { id: 1, type: 'alert' as const, title: 'High CPU Latency', description: 'SQL-DB-PRIMARY reporting 92% steal time. Investigating hypervisor load.', time: '2m ago', duration: '2m', severity: 'critical' as const, itemId: '10293', host: 'SQL-DB-PRIMARY' },
+    { id: 2, type: 'security' as const, title: 'WAF Signature Update', description: 'Global signatures updated to v4.2.1-stable. 12 new rules applied.', time: '15m ago', duration: '15m', severity: 'info' as const, host: 'EDGE-GW-PROXY' },
+    { id: 3, type: 'system' as const, title: 'Backup Completed', description: 'Daily differential backup for NAS-01-BKUP finished successfully.', time: '1h ago', duration: '1h', severity: 'success' as const, host: 'NAS-01-BKUP' },
+    { id: 4, type: 'alert' as const, title: 'Port Flap Detected', description: 'GigabitEthernet1/0/12 on SW-01 toggled status 4 times in 60s.', time: '3h ago', duration: '3h 12m', severity: 'warning' as const, itemId: '3392', host: 'SW-CORE-01' },
+    { id: 5, type: 'system' as const, title: 'New Dashboard Created', description: 'Executive user "admin" created board "Q3 Hardware Audit".', time: '5h ago', duration: '5h', severity: 'info' as const },
   ];
 
   const [zabbixNotifications, setZabbixNotifications] = useState<Notification[]>([]);
@@ -53,12 +55,20 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
           if (t.priority > 3) severity = 'critical';
           else if (t.priority > 1) severity = 'warning';
           
+          const durationSeconds = Math.floor(Date.now() / 1000) - parseInt(t.lastchange, 10);
+          let durationStr = '';
+          if (durationSeconds < 60) durationStr = `${durationSeconds}s`;
+          else if (durationSeconds < 3600) durationStr = `${Math.floor(durationSeconds / 60)}m`;
+          else if (durationSeconds < 86400) durationStr = `${Math.floor(durationSeconds / 3600)}h ${Math.floor((durationSeconds % 3600) / 60)}m`;
+          else durationStr = `${Math.floor(durationSeconds / 86400)}d ${Math.floor((durationSeconds % 86400) / 3600)}h`;
+
           return {
              id: parseInt(t.triggerid, 10),
              type: 'alert',
              title: t.description,
              description: `Trigger active on host: ${t.hosts?.[0]?.host}`,
              time: new Date(parseInt(t.lastchange, 10) * 1000).toLocaleTimeString(),
+             duration: durationStr,
              severity,
              itemId: t.triggerid,
              host: t.hosts?.[0]?.host
@@ -84,15 +94,13 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
   const filteredNotifications = useMemo(() => {
     return notificationsList.filter(n => {
       const search = (globalSearch || "").toLowerCase();
-      return n.title.toLowerCase().includes(search) || 
+      const matchSearch = n.title.toLowerCase().includes(search) || 
              n.description.toLowerCase().includes(search) ||
              n.host?.toLowerCase().includes(search);
+      const matchSeverity = severityFilter === 'all' || n.severity === severityFilter;
+      return matchSearch && matchSeverity;
     });
-  }, [globalSearch, notificationsList]);
-
-  const handleClearAll = () => {
-      setNotificationsList([]);
-  };
+  }, [globalSearch, notificationsList, severityFilter]);
 
   const handleDismiss = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -110,19 +118,29 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-end mb-6">
+      <div className="flex items-center justify-between mb-6 border-b border-slate-200 pb-4">
+        <div className="flex gap-2">
+            {['all', 'critical', 'warning', 'info', 'success'].map(sev => (
+                <button
+                    key={sev}
+                    onClick={() => setSeverityFilter(sev as any)}
+                    className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all border",
+                        severityFilter === sev 
+                            ? "bg-slate-800 text-white border-slate-800 shadow-sm" 
+                            : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                    )}
+                >
+                    {sev}
+                </button>
+            ))}
+        </div>
         <div className="flex items-center gap-3">
             {globalSearch && (
                 <span className="text-xs text-blue-600 font-medium bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
-                    Filter: {globalSearch}
+                    Search: {globalSearch}
                 </span>
             )}
-            <button 
-                onClick={handleClearAll}
-                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
-            >
-                Clear All
-            </button>
         </div>
       </div>
 
@@ -162,13 +180,18 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                 </div>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-1">{n.description}</p>
-              {n.host && (
-                  <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex items-center gap-2">
+                  {n.host && (
                       <span className="text-xs font-medium text-blue-600 border border-blue-200 px-2 py-1 rounded-md bg-blue-50">
                         Source: {n.host}
                       </span>
-                  </div>
-              )}
+                  )}
+                  {n.duration && (
+                      <span className="text-xs font-medium text-slate-600 border border-slate-200 px-2 py-1 rounded-md bg-slate-50 flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> Duration: {n.duration}
+                      </span>
+                  )}
+              </div>
             </div>
             <div className="flex flex-col justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                <button 

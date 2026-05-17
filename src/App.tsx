@@ -12,7 +12,6 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Shell } from "./components/layout/Shell";
 import { StatCard } from "./components/dashboard/StatCard";
 import { TrendChart } from "./components/dashboard/TrendChart";
-import { AlertTable } from "./components/dashboard/AlertTable";
 import { RangePicker } from "./components/dashboard/RangePicker";
 import { NetworkTopology } from "./components/dashboard/NetworkTopology";
 import { InfraInventory } from "./components/dashboard/InfraInventory";
@@ -43,7 +42,6 @@ import {
   Search,
   X,
   Calendar,
-  Zap,
   ZoomOut
 } from "lucide-react";
 import axios from "axios";
@@ -68,7 +66,7 @@ interface Dashboard {
   widgets: Widget[];
 }
 
-type View = "dashboard" | "network" | "infra" | "config" | "notifications" | "events";
+type View = "dashboard" | "network" | "infra" | "config" | "notifications";
 
 export default function App() {
   const [data, setData] = useState<any[]>([]);
@@ -690,10 +688,6 @@ export default function App() {
   const [showGranMenu, setShowGranMenu] = useState(false);
 
   const renderContent = () => {
-    if (view === "events") {
-      return <AlertTable mode={filters.mode} globalSearch={globalSearch} zabbixConfig={zabbixConfig} />;
-    }
-
     if (view === "network") {
       return <NetworkTopology filters={filters} globalSearch={globalSearch} zabbixConfig={zabbixConfig} />;
     }
@@ -1269,8 +1263,6 @@ export default function App() {
                   <LayoutDashboard className="w-4 h-4 text-blue-600" />
                 ) : view === 'network' ? (
                   <Activity className="w-4 h-4 text-blue-600" />
-                ) : view === 'events' ? (
-                  <Zap className="w-4 h-4 text-blue-600" />
                 ) : view === 'infra' ? (
                   <Server className="w-4 h-4 text-blue-600" />
                 ) : view === 'notifications' ? (
@@ -1307,9 +1299,8 @@ export default function App() {
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight truncate">
                       {view === 'dashboard' ? dashboardName : 
                       view === 'network' ? 'Network Topology' : 
-                      view === 'events' ? 'Application Events' :
                       view === 'infra' ? 'Asset Inventory' : 
-                      view === 'notifications' ? 'Alert Rules' : 'Zabbix API Settings'}
+                      view === 'notifications' ? 'Current Problems' : 'Zabbix API Settings'}
                     </h1>
                     {view === 'dashboard' && (
                       <button 
@@ -1345,7 +1336,7 @@ export default function App() {
                 />
               </div>
             )}
-            {['dashboard', 'network', 'infra', 'events'].includes(view) && (
+            {['dashboard', 'network', 'infra'].includes(view) && (
               <div className="flex bg-white border border-slate-200 p-1 rounded-lg shadow-sm shrink-0 h-[36px] items-center">
                   <button 
                     onClick={() => setFilters({...filters, mode: 'live'})}
@@ -1373,7 +1364,7 @@ export default function App() {
 
 
         {/* Telemetry Controls & Designer Bar */}
-        {['dashboard', 'network', 'infra', 'events'].includes(view) && (
+        {['dashboard', 'network', 'infra'].includes(view) && (
           <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm shrink-0 lg:h-[40px] gap-2 sm:gap-4">
               {filters.mode === 'live' ? (
