@@ -9,6 +9,7 @@
  */
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Shell } from "./components/layout/Shell";
 import { StatCard } from "./components/dashboard/StatCard";
 import { TrendChart } from "./components/dashboard/TrendChart";
@@ -299,6 +300,7 @@ export default function App() {
   const isSimulated = !zabbixConfig.url || (!zabbixConfig.token && !zabbixConfig.isPreconfigured);
   const [availableHosts, setAvailableHosts] = useState<string[]>(['srv-prod-01', 'sql-db-primary', 'gateway-02']);
   const [availableMetrics, setAvailableMetrics] = useState<string[]>(['cpu', 'memory', 'traffic', 'latency', 'disk']);
+  const [hostMetricsMap, setHostMetricsMap] = useState<Record<string, string[]>>({});
   const [metricUnitsMap, setMetricUnitsMap] = useState<Record<string, string>>({
     'cpu': '%',
     'memory': '%',
@@ -611,16 +613,29 @@ export default function App() {
         url: urlToUse,
         token: tokenToUse,
         method: "item.get",
-        params: { output: ["name", "key_", "units"] }
+        params: { output: ["name", "key_", "units"], selectHosts: ["name", "host"] }
       });
 
       if (itemRes.data.result) {
         const units: Record<string, string> = {};
+        const mapping: Record<string, string[]> = {};
         itemRes.data.result.forEach((i: any) => {
           const base = i.name;
           if (i.units) units[base] = i.units;
+          if (i.hosts && i.hosts.length > 0) {
+            i.hosts.forEach((h: any) => {
+              const hostName = h.name || h.host;
+              if (!mapping[hostName]) mapping[hostName] = [];
+              mapping[hostName].push(base);
+            });
+          }
         });
         setMetricUnitsMap(prev => ({ ...prev, ...units }));
+
+        for (const host in mapping) {
+          mapping[host] = Array.from(new Set(mapping[host]));
+        }
+        setHostMetricsMap(mapping);
         
         const metrics = Array.from(new Set(itemRes.data.result.map((i: any) => i.name)));
         setAvailableMetrics(metrics as string[]);
@@ -929,7 +944,7 @@ export default function App() {
                 </div>
               </div>
 
-              {editingWidgetId === w.id ? (
+              {editingWidgetId === w.id ? createPortal(
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                   <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={handleCancelEdit} />
                   <div className="relative w-full max-w-4xl bg-white border border-slate-200 p-6 sm:p-10 rounded-[28px] sm:rounded-[40px] shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
@@ -1026,13 +1041,30 @@ export default function App() {
                             metricUnitsMap={{}}
                           />
 
-                          <MultiSelect 
-                            label="Telemetry Metric Stream" 
-                            options={availableMetrics} 
-                            selected={w.metrics} 
-                            onChange={(m) => handleUpdateWidget(w.id, { metrics: m })} 
-                            metricUnitsMap={metricUnitsMap}
-                          />
+                          {(() => {
+                            let optionsForWidget = isSimulated ? availableMetrics : [];
+                            if (!isSimulated) {
+                              if (w.hosts.length === 0) {
+                                optionsForWidget = availableMetrics;
+                              } else {
+                                const metricItems = new Set<string>();
+                                w.hosts.forEach(h => {
+                                  const m = hostMetricsMap[h];
+                                  if (m) m.forEach(x => metricItems.add(x));
+                                });
+                                optionsForWidget = Array.from(metricItems);
+                              }
+                            }
+                            return (
+                              <MultiSelect 
+                                label="Telemetry Metric Stream" 
+                                options={optionsForWidget.length > 0 ? optionsForWidget : availableMetrics} 
+                                selected={w.metrics} 
+                                onChange={(m) => handleUpdateWidget(w.id, { metrics: m })} 
+                                metricUnitsMap={metricUnitsMap}
+                              />
+                            );
+                          })()}
                         </div>
                       </div>
 
@@ -1062,7 +1094,7 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </div>, document.body
               ) : (
                 w.type === 'kpi' ? (
                   <StatCard 
