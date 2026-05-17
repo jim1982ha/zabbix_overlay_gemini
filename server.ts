@@ -73,7 +73,6 @@ async function startServer() {
         jsonrpc: "2.0",
         method,
         params,
-        auth: token,
         id: Date.now(),
       }, {
         headers: {

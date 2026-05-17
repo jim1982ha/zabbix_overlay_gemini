@@ -652,8 +652,8 @@ export default function App() {
       console.log("Zabbix Assets Discovered Successfully");
       if (manual) {
         setDiscoveryStatus({ 
-          type: 'success', 
-          message: `Discovered ${hostRes.data.result.length} hosts and ${itemRes.data.result.length} metrics.` 
+          type: hostRes.data.result.length === 0 ? 'error' : 'success', 
+          message: `Discovered ${hostRes.data.result.length} hosts and ${itemRes.data.result.length} metrics.${hostRes.data.result.length === 0 ? ' (Hint: Ensure your Zabbix API User has explicit Read permissions for Host Groups in Zabbix under Users -> User Groups)' : ''}` 
         });
       }
     } catch (e: any) {
