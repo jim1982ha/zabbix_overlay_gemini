@@ -103,7 +103,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
     if (!zabbixBaseUrl) return null;
     if (n.type === 'alert' && n.itemId) {
         // Assume it's a trigger ID for alerts
-        return `${zabbixBaseUrl}/tr_events.php?triggerid=${n.itemId}`;
+        return `${zabbixBaseUrl}/zabbix.php?action=problem.view&filter_triggerids[]=${n.itemId}&filter_set=1`;
     }
     return zabbixBaseUrl;
   };
