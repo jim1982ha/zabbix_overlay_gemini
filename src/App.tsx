@@ -386,9 +386,24 @@ export default function App() {
     }
   }, [dashboardStorageKey]);
 
+  const activeMetricsStr = useMemo(() => {
+    const s = new Set<string>();
+    widgets.forEach(w => w.metrics.forEach(m => s.add(m)));
+    return Array.from(s).sort().join(',');
+  }, [widgets]);
+
+  const activeHostsStr = useMemo(() => {
+    const s = new Set<string>();
+    widgets.forEach(w => w.hosts.forEach(h => s.add(h)));
+    return Array.from(s).sort().join(',');
+  }, [widgets]);
+
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
+      const activeMetrics = activeMetricsStr ? activeMetricsStr.split(',') : (availableMetrics.length > 0 ? [availableMetrics[0]] : ['cpu']);
+      const activeHosts = activeHostsStr ? activeHostsStr.split(',') : (availableHosts.length > 0 ? [availableHosts[0]] : ['srv-prod-01']);
+
       const response = await axios.post("/api/timeseries", {
         granularity: filters.mode === 'live' ? filters.granularity : filters.granularity,
         range: filters.range,
@@ -397,8 +412,8 @@ export default function App() {
         end: filters.end,
         url: zabbixConfig.url,
         token: zabbixConfig.token,
-        metrics: availableMetrics,
-        hosts: availableHosts
+        metrics: activeMetrics,
+        hosts: activeHosts
       });
       setData(response.data);
       setLastSync(new Date());
@@ -409,7 +424,7 @@ export default function App() {
     } finally {
       setTimeout(() => setLoading(false), 500);
     }
-  }, [filters.range, filters.mode, filters.start, filters.end, filters.granularity, zabbixConfig, availableMetrics, availableHosts]);
+  }, [filters.range, filters.mode, filters.start, filters.end, filters.granularity, zabbixConfig, activeMetricsStr, activeHostsStr, availableMetrics, availableHosts]);
 
   const handleSync = () => {
     fetchStats();
@@ -613,7 +628,12 @@ export default function App() {
         url: urlToUse,
         token: tokenToUse,
         method: "item.get",
-        params: { output: ["name", "key_", "units"], selectHosts: ["name", "host"] }
+        params: { 
+          output: ["name", "key_", "units"], 
+          selectHosts: ["name", "host"],
+          monitored: true,
+          limit: 5000
+        }
       });
 
       if (itemRes.data.result) {
@@ -1625,7 +1645,7 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
               </button>
             </div>
             {filteredOptions.length === 0 && <div className="text-xs text-slate-500 text-center py-4">No results</div>}
-            {filteredOptions.map((opt, i) => {
+            {filteredOptions.slice(0, 100).map((opt, i) => {
               const unit = metricUnitsMap?.[opt];
               return (
                 <label 
@@ -1656,6 +1676,11 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
                 </label>
               );
             })}
+            {filteredOptions.length > 100 && (
+              <div className="text-xs text-slate-500 text-center py-2 mt-1 border-t border-slate-800">
+                Showing 100 of {filteredOptions.length} results. Use search to refine.
+              </div>
+            )}
           </div>
         </>
       )}

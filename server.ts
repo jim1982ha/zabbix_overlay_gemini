@@ -215,6 +215,8 @@ async function startServer() {
           params: {
             output: ["itemid", "name", "lastvalue"],
             selectHosts: ["host"],
+            search: { name: metrics },
+            searchByAny: true,
             monitored: true,
           },
           auth: token,
