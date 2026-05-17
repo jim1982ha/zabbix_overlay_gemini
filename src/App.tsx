@@ -248,24 +248,37 @@ export default function App() {
     }
   };
 
-  const [zabbixConfig, setZabbixConfig] = useState<{url: string, token: string, discoveryInterval: number, isPreconfigured: boolean}>({
+  const [zabbixConfig, setZabbixConfig] = useState<{url: string, token: string, isPreconfigured: boolean}>({
     url: localStorage.getItem('hareporting_zabbix_url') || '',
     token: localStorage.getItem('hareporting_zabbix_token') || '',
-    discoveryInterval: parseInt(localStorage.getItem('hareporting_zabbix_interval') || '3600', 10),
     isPreconfigured: false
   });
 
   useEffect(() => {
+    let configuredFromApi = false;
     const fetchConfig = async () => {
       try {
         const res = await axios.get("/api/config");
         if (res.data) {
-          setZabbixConfig(prev => ({
-            ...prev,
-            url: prev.url || res.data.url,
-            token: prev.token || res.data.token,
-            isPreconfigured: res.data.hasEnvToken
-          }));
+          setZabbixConfig(prev => {
+             const newConfig = {
+              ...prev,
+              url: prev.url || res.data.url,
+              token: prev.token || res.data.token,
+              isPreconfigured: res.data.hasEnvToken
+            };
+            if (newConfig.url && (newConfig.token || newConfig.isPreconfigured)) {
+               configuredFromApi = true;
+            }
+            return newConfig;
+          });
+          
+          if (res.data.url && res.data.hasEnvToken) {
+             // Let it render first, then trigger discovery
+             setTimeout(() => {
+               setInitialDiscoveryTriggered(false); // To force a re-evaluation
+             }, 100);
+          }
         }
       } catch (err) {
         console.error("Failed to load server configuration:", err);
@@ -637,35 +650,30 @@ export default function App() {
     }
   }, [zabbixConfig]);
 
-  const [initialDiscoveryDone, setInitialDiscoveryDone] = useState(false);
+  const [initialDiscoveryTriggered, setInitialDiscoveryTriggered] = useState(false);
   useEffect(() => {
-    if (zabbixConfig.token && zabbixConfig.url && !initialDiscoveryDone) {
-      discoverZabbixAssets();
-      setInitialDiscoveryDone(true);
+    // Only attempt automatic discovery if configuration was loaded from env or local storage.
+    // If not, we just mark it as triggered so we don't fire while the user explicitly types.
+    if (!initialDiscoveryTriggered) {
+      const hasValidConfig = zabbixConfig.url && (zabbixConfig.token || zabbixConfig.isPreconfigured);
+      if (hasValidConfig) {
+        discoverZabbixAssets(false);
+      }
+      // Always set to true after first evaluation to prevent auto-triggering on keystrokes.
+      setInitialDiscoveryTriggered(true);
     }
-  }, [zabbixConfig.token, zabbixConfig.url, initialDiscoveryDone, discoverZabbixAssets]);
+  }, [zabbixConfig, initialDiscoveryTriggered, discoverZabbixAssets]);
 
   const handleSaveZabbixConfig = () => {
     localStorage.setItem('hareporting_zabbix_url', zabbixConfig.url);
     localStorage.setItem('hareporting_zabbix_token', zabbixConfig.token);
-    localStorage.setItem('hareporting_zabbix_interval', zabbixConfig.discoveryInterval.toString());
     
-    setDiscoveryStatus({ type: 'success', message: "Configuration saved. Initializing discovery..." });
-    discoverZabbixAssets(true);
+    setDiscoveryStatus({ type: 'success', message: "Configuration saved." });
     
     if (widgets.length === defaultWidgets.length) {
       setWidgets([]); // Clear default template to start fresh with real data
     }
   };
-
-  useEffect(() => {
-    if (zabbixConfig.discoveryInterval > 0) {
-      const intervalId = setInterval(() => {
-        discoverZabbixAssets();
-      }, zabbixConfig.discoveryInterval * 1000);
-      return () => clearInterval(intervalId);
-    }
-  }, [zabbixConfig.discoveryInterval, discoverZabbixAssets]);
 
   const [showRangeMenu, setShowRangeMenu] = useState(false);
   const [showGranMenu, setShowGranMenu] = useState(false);
@@ -711,17 +719,6 @@ export default function App() {
                       value={zabbixConfig.token} 
                       onChange={e => setZabbixConfig({...zabbixConfig, token: e.target.value})}
                       placeholder="Your Zabbix API Token..."
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
-                    />
-                  </div>
-                  <div className="mt-4">
-                    <label className="text-sm font-semibold text-slate-600 block mb-2">Discovery Interval (seconds)</label>
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={zabbixConfig.discoveryInterval} 
-                      onChange={e => setZabbixConfig({...zabbixConfig, discoveryInterval: parseInt(e.target.value) || 0})}
-                      placeholder="e.g. 3600 for 1 hour, 0 to disable"
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
                     />
                   </div>

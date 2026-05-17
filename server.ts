@@ -80,17 +80,24 @@ async function startServer() {
       if (response.data.error) {
         console.error("Zabbix API Internal Error:", response.data.error);
         return res.status(400).json({ 
-          error: "Zabbix monitoring gateway reported an error processing the request.", 
-          details: "Upstream Error" 
+          error: "Zabbix reported an error: " + (response.data.error.data || response.data.error.message || "Unknown error"), 
+          details: response.data.error 
         });
       }
 
       res.json(response.data);
     } catch (error: any) {
-      console.error("Zabbix Proxy Error:", error.response?.data || error.message);
+      console.error("Zabbix Proxy Error:", error.message);
       
+      let upstreamErr = error.message;
+      if (error.response?.data) {
+        upstreamErr = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
+      } else if (error.code) {
+        upstreamErr = error.code;
+      }
+
       res.status(500).json({ 
-        error: "Failed to communicate with Zabbix monitoring gateway.", 
+        error: `Failed to communicate with Zabbix monitoring gateway: ${upstreamErr}`, 
         details: "Internal Server Error" 
       });
     }
