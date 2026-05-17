@@ -100,8 +100,21 @@ async function startServer() {
           response.data.error.message?.includes("Not authorized")
         )
       ) {
-        console.log("Modern Zabbix auth failed, falling back to legacy body auth (Zabbix < 6.4)...");
-        response = await doRequest(false);
+        console.log("Modern Zabbix auth failed. Attempting legacy body auth (Zabbix < 6.4)...");
+        const fallbackResponse = await doRequest(false);
+        
+        // If the fallback gives us an "unexpected parameter 'auth'" or similar parameter error,
+        // it means the server is actually modern (>= 6.4) and the original token was simply invalid.
+        // In that case, we should return the original authentication error, not the fallback parameter error.
+        if (
+            fallbackResponse.data.error && 
+            fallbackResponse.data.error.data?.includes('unexpected parameter "auth"')
+        ) {
+            console.log("Server is modern (rejected 'auth' param). The token was likely invalid.");
+        } else {
+            // Otherwise, use the fallback response (it either succeeded, or failed with a different error)
+            response = fallbackResponse;
+        }
       }
 
       if (response.data.error) {
