@@ -1078,7 +1078,7 @@ export default function App() {
                             return (
                               <MultiSelect 
                                 label="Telemetry Metric Stream" 
-                                options={optionsForWidget.length > 0 ? optionsForWidget : availableMetrics} 
+                                options={(!isSimulated && w.hosts.length > 0) ? optionsForWidget : availableMetrics} 
                                 selected={w.metrics} 
                                 onChange={(m) => handleUpdateWidget(w.id, { metrics: m })} 
                                 metricUnitsMap={metricUnitsMap}
