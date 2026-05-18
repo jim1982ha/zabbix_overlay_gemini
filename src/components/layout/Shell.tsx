@@ -291,7 +291,6 @@ export function Shell({
             isCollapsed={isCollapsed} 
             onClick={toggleTheme} 
           />
-          <NavItem icon={<Settings className="w-4 h-4" />} label="Zabbix API Settings" active={currentView === 'config'} isCollapsed={isCollapsed} onClick={() => { onNavigate('config'); closeMobileMenu(); }} />
           <NavItem 
             icon={
               <span className="relative flex h-2 w-2 m-1">
@@ -313,9 +312,9 @@ export function Shell({
                 )}
               </div>
             }
-            active={false}
+            active={currentView === 'config'}
             isCollapsed={isCollapsed}
-            className="mb-1 !bg-transparent !cursor-default !text-slate-600 hover:!bg-transparent pt-0 pb-2"
+            onClick={() => { onNavigate('config'); closeMobileMenu(); }}
           />
         </div>
       </aside>
