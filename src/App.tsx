@@ -310,6 +310,16 @@ export default function App() {
     'disk': '%'
   });
 
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 640;
+
   const defaultWidgets: Widget[] = [
     { id: 'kpi-1', title: 'Average Cluster CPU', type: 'kpi', chartType: 'area', metrics: ['cpu'], hosts: ['all'], aggregation: 'avg', stacked: false, cols: 6, rows: 4 },
     { id: 'kpi-2', title: 'Total Network Flow', type: 'kpi', chartType: 'area', metrics: ['traffic'], hosts: ['all'], aggregation: 'sum', stacked: false, cols: 6, rows: 4 },
@@ -818,8 +828,11 @@ export default function App() {
       <>
         {/* Dashboard Grid */}
         <div 
-          className="grid gap-4 auto-rows-[25px] sm:auto-rows-[30px] lg:auto-rows-[25px]"
-          style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}
+          className={cn(
+            "grid auto-rows-[25px] sm:auto-rows-[30px] lg:auto-rows-[25px]",
+            isMobile ? "grid-cols-1 gap-6" : "gap-4"
+          )}
+          style={!isMobile ? { gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' } : {}}
         >
           {widgets.filter(w => 
             w.title.toLowerCase().includes(globalSearch.toLowerCase()) ||
@@ -833,14 +846,13 @@ export default function App() {
               className={cn(
                 "relative transition-all duration-300 group rounded-xl",
                 editingWidgetId === w.id ? "z-[100]" : "hover:z-50",
-                "max-sm:!col-[span_24/_span_24]", // Full width on mobile screens
                 hasFilter && "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-50"
               )}
               style={Object.assign(
                 {}, 
                 { 
-                  gridRowEnd: `span ${w.rows || 10}`,
-                  gridColumn: w.forceNewline ? `1 / span ${w.cols || 24}` : `span ${w.cols || 24} / span ${w.cols || 24}`
+                  gridRowEnd: isMobile ? (w.type === 'kpi' ? 'span 6' : 'span 12') : `span ${w.rows || 10}`,
+                  gridColumn: isMobile ? 'span 1' : (w.forceNewline ? `1 / span ${w.cols || 24}` : `span ${w.cols || 24} / span ${w.cols || 24}`)
                 }
               )}
             >

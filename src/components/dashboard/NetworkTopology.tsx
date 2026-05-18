@@ -32,16 +32,17 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
         const gateway = { id: 'gw-real-01', type: 'gateway', x: 50, y: 15, status: 'online', label: 'Zabbix Gateway' };
         
         const generatedNodes = hosts.map((h: any, i: number) => {
-           // Position them in a semi-circle or grid below the gateway
-           const cols = 4;
+           // Position them in a grid below the gateway
+           const cols = 5;
            const row = Math.floor(i / cols);
            const col = i % cols;
-           
+           // Distribute evenly, e.g. 5 columns: 10, 30, 50, 70, 90 
+           // formula: x = 10 + (col * 20)
            return {
               id: h.host,
               type: 'server',
-              x: 15 + (col * 22),
-              y: 100 + (row * 60),
+              x: 10 + (col * 20),
+              y: 150 + (row * 90),
               status: h.status === '0' ? 'online' : 'offline',
               label: h.name || h.host
            };
@@ -130,9 +131,19 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
         </div>
       )}
       <div className="flex flex-col gap-6">
-        <div className="bg-white border border-slate-100 rounded-2xl p-8 relative overflow-hidden h-[450px] shadow-sm">
+        <div className="bg-white border border-slate-100 rounded-2xl p-4 relative overflow-y-auto h-[450px] shadow-sm custom-scrollbar block">
           {/* SVG Topology Graph */}
-          <svg className="w-full h-full" viewBox="0 0 100 260">
+          {(() => {
+            const maxY = nodes.length > 0 ? Math.max(...nodes.map(n => n.y)) : 300;
+            const vbHeight = maxY + 80;
+            // Assuming container width is around 1000px, width '100' scales to 1000 roughly, so ratio is ~10.
+            return (
+              <svg 
+                className="w-full" 
+                style={{ height: `${Math.max(450, vbHeight * 2)}px` }} 
+                viewBox={`0 0 100 ${vbHeight}`} 
+                preserveAspectRatio="xMidYMin meet"
+              >
             <defs>
               <linearGradient id="linkGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#0284c7" stopOpacity="0.15" />
@@ -269,6 +280,8 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
               );
             })}
           </svg>
+            );
+          })()}
 
 
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(2,132,199,0.02),transparent)] pointer-events-none" />

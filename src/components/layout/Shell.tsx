@@ -323,7 +323,7 @@ export function Shell({
       {/* Main Content */}
       <main className="flex-1 flex flex-col relative overflow-hidden pt-14 lg:pt-0 bg-slate-50 h-screen w-full lg:w-auto">
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-4 md:py-6 custom-scrollbar w-full relative">
-          <div className="max-w-[100vw] lg:max-w-none w-full">
+          <div className="max-w-full lg:max-w-none w-full">
             {children}
           </div>
         </div>
