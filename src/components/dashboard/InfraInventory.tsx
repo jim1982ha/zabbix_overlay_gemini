@@ -31,13 +31,14 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
         token: zabbixConfig.token,
         method: "host.get",
         params: {
-          output: ["host", "name", "status", "description"],
+          output: ["hostid", "host", "name", "status", "description"],
           selectHostGroups: ["name"]
         }
       });
       if (response.data.result) {
         const mapped = response.data.result.map((h: any) => ({
           id: h.name || h.host,
+          hostid: h.hostid,
           hostGroup: h.hostgroups && h.hostgroups.length > 0 ? h.hostgroups[0].name : 'Uncategorized',
           type: 'Zabbix Host',
           status: h.status === '0' ? 'optimal' : 'offline',
@@ -130,13 +131,22 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
   ];
 
   const allAssets = isSimulated ? simAssets : (zabbixAssets.length > 0 ? zabbixAssets : simAssets);
-  const uniqueHostGroups = React.useMemo(() => Array.from(new Set(allAssets.map(a => a.hostGroup))), [allAssets]);
+  
+  const hostGroupsWithCounts = React.useMemo(() => {
+    const groups: Record<string, number> = {};
+    allAssets.forEach(asset => {
+      groups[asset.hostGroup] = (groups[asset.hostGroup] || 0) + 1;
+    });
+    return Object.entries(groups)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [allAssets]);
 
   useEffect(() => {
     checkScroll();
     window.addEventListener('resize', checkScroll);
     return () => window.removeEventListener('resize', checkScroll);
-  }, [checkScroll, uniqueHostGroups]);
+  }, [checkScroll, hostGroupsWithCounts]);
 
   const filteredAssets = allAssets.filter(asset => {
     const combinedSearch = (globalSearch || "").toLowerCase().trim();
@@ -198,22 +208,34 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
             <button 
               onClick={() => setActiveHostGroup('all')}
               className={cn(
-                "px-4 py-2 text-sm font-semibold transition-all rounded-lg whitespace-nowrap",
+                "px-4 py-2 text-sm font-semibold transition-all rounded-lg whitespace-nowrap flex items-center gap-2",
                 activeHostGroup === 'all' ? "bg-slate-100 text-slate-800" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
               )}
             >
               All
+              <span className={cn(
+                "px-1.5 py-0.5 rounded-md text-[10px] font-bold",
+                activeHostGroup === 'all' ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500"
+              )}>
+                {allAssets.length}
+              </span>
             </button>
-            {uniqueHostGroups.map(group => (
+            {hostGroupsWithCounts.map(group => (
               <button 
-                key={group}
-                onClick={() => setActiveHostGroup(group)}
+                key={group.name}
+                onClick={() => setActiveHostGroup(group.name)}
                 className={cn(
-                  "px-4 py-2 text-sm font-semibold transition-all rounded-lg whitespace-nowrap",
-                  activeHostGroup === group ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                  "px-4 py-2 text-sm font-semibold transition-all rounded-lg whitespace-nowrap flex items-center gap-2",
+                  activeHostGroup === group.name ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
                 )}
               >
-                {group}
+                {group.name}
+                <span className={cn(
+                  "px-1.5 py-0.5 rounded-md text-[10px] font-bold",
+                  activeHostGroup === group.name ? "bg-blue-400 text-white" : "bg-slate-100 text-slate-500"
+                )}>
+                  {group.count}
+                </span>
               </button>
             ))}
           </div>
@@ -243,7 +265,19 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white border border-slate-100 rounded-2xl p-6 group hover:border-blue-200 transition-all relative overflow-hidden shadow-sm hover:shadow-md"
+              onClick={() => {
+                if (isSimulated || !asset.hostid || !zabbixConfig?.url) {
+                  const errorMsg = asset.hostid 
+                    ? "Cannot open Zabbix: Configure API settings in ha-reporting first." 
+                    : "Cannot open Zabbix: This is a simulated test asset.";
+                  alert(errorMsg);
+                  return;
+                }
+                const baseUrl = zabbixConfig.url.endsWith('/') ? zabbixConfig.url.slice(0, -1) : zabbixConfig.url;
+                const zBase = baseUrl.includes('api_jsonrpc.php') ? baseUrl.replace('/api_jsonrpc.php', '') : baseUrl;
+                window.open(`${zBase}/zabbix.php?action=latest.view&hostids[]=${asset.hostid}`, '_blank', 'noopener,noreferrer');
+              }}
+              className="bg-white border border-slate-100 rounded-2xl p-6 group hover:border-blue-200 cursor-pointer transition-all relative overflow-hidden shadow-sm hover:shadow-md"
             >
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">

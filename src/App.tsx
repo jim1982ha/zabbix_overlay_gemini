@@ -43,10 +43,12 @@ import {
   Search,
   X,
   Calendar,
-  ZoomOut
+  ZoomOut,
+  GripVertical
 } from "lucide-react";
 import axios from "axios";
 import { cn } from "./lib/utils";
+import { motion, AnimatePresence } from "motion/react";
 
 interface Widget {
   id: string;
@@ -90,6 +92,7 @@ export default function App() {
   const [dashboardName, setDashboardName] = useState<string>('Executive Overview');
   const [lastSync, setLastSync] = useState<Date>(new Date());
   const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
+  const [draggingWidgetId, setDraggingWidgetId] = useState<string | null>(null);
   const [widgetZoomDomains, setWidgetZoomDomains] = useState<Record<string, [number, number] | null>>({});
 
   const handleUpdateWidgetZoom = (id: string, domain: [number, number] | null) => {
@@ -109,6 +112,34 @@ export default function App() {
   const [isRenaming, setIsRenaming] = useState(false);
   const [tempDashboardName, setTempDashboardName] = useState('');
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+
+  const handleDiscardChanges = () => {
+    if (activeDashboardId) {
+      const original = savedDashboards.find(d => d.id === activeDashboardId);
+      if (original) {
+        setWidgets(original.widgets);
+        setDashboardName(original.name);
+      }
+    } else {
+      setWidgets([]);
+    }
+    setEditingWidgetId(null);
+  };
+
+  const handleSaveAll = () => {
+    if (activeDashboardId) {
+      const next = savedDashboards.map(d => d.id === activeDashboardId ? { ...d, name: dashboardName, widgets } : d);
+      setSavedDashboards(next);
+      localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
+    } else {
+      const newId = `db-${Date.now()}`;
+      const newBoard = { id: newId, name: dashboardName, widgets };
+      const next = [...savedDashboards, newBoard];
+      setSavedDashboards(next);
+      setActiveDashboardId(newId);
+      localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
+    }
+  };
 
   const toggleSeriesVisibility = useCallback((key: string | string[]) => {
     setHiddenSeries(prev => {
@@ -130,14 +161,6 @@ export default function App() {
       return next;
     });
   }, []);
-
-  // Detect unsaved changes
-  const hasUnsavedChanges = useMemo(() => {
-    if (!activeDashboardId) return widgets.length > 0;
-    const currentBoard = savedDashboards.find(d => d.id === activeDashboardId);
-    if (!currentBoard) return true;
-    return JSON.stringify(currentBoard.widgets) !== JSON.stringify(widgets) || currentBoard.name !== dashboardName;
-  }, [widgets, dashboardName, activeDashboardId, savedDashboards]);
 
   const globalColorMap = useMemo(() => {
     const palette = [
@@ -192,33 +215,6 @@ export default function App() {
     return colorMap;
   }, [widgets]);
 
-  const handleSaveAll = () => {
-    if (activeDashboardId) {
-      const next = savedDashboards.map(d => d.id === activeDashboardId ? { ...d, name: dashboardName, widgets } : d);
-      setSavedDashboards(next);
-      localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
-    } else {
-      const newId = `db-${Date.now()}`;
-      const newBoard = { id: newId, name: dashboardName, widgets };
-      const next = [...savedDashboards, newBoard];
-      setSavedDashboards(next);
-      setActiveDashboardId(newId);
-      localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
-    }
-  };
-
-  const handleDiscardChanges = () => {
-    if (activeDashboardId) {
-      const original = savedDashboards.find(d => d.id === activeDashboardId);
-      if (original) {
-        setWidgets(original.widgets);
-        setDashboardName(original.name);
-      }
-    } else {
-      setWidgets([]);
-    }
-    setEditingWidgetId(null);
-  };
   const handleCancelEdit = useCallback(() => {
     if (!editingWidgetId) return;
 
@@ -263,6 +259,39 @@ export default function App() {
       ? `hareporting_dashboards_${btoa(savedZabbixUrl).replace(/=/g, '')}` 
       : 'hareporting_dashboards_v1_sim';
   }, [savedZabbixUrl]);
+
+  // Consolidated Tracker for unsaved changes (moved here to have access to dashboardStorageKey)
+  const hasUnsavedChanges = useMemo(() => {
+    if (!activeDashboardId) return widgets.length > 0;
+    const currentSaved = savedDashboards.find(d => d.id === activeDashboardId);
+    if (!currentSaved) return true;
+    
+    // Deep comparison of widgets and name
+    const widgetsEqual = JSON.stringify(currentSaved.widgets) === JSON.stringify(widgets);
+    const nameEqual = currentSaved.name === dashboardName;
+    
+    return !widgetsEqual || !nameEqual;
+  }, [widgets, dashboardName, savedDashboards, activeDashboardId]);
+
+  // Consolidated Handle auto-save (moved here to have access to dashboardStorageKey)
+  useEffect(() => {
+    if (!activeDashboardId || !hasUnsavedChanges) return;
+
+    const timer = setTimeout(() => {
+      setSavedDashboards(prev => {
+        const updated = prev.map(d => 
+          d.id === activeDashboardId 
+            ? { ...d, widgets, name: dashboardName } 
+            : d
+        );
+        localStorage.setItem(dashboardStorageKey, JSON.stringify(updated));
+        return updated;
+      });
+      console.log('Dashboard auto-saved');
+    }, 5000); // 5-second debounce for auto-save
+
+    return () => clearTimeout(timer);
+  }, [widgets, dashboardName, activeDashboardId, hasUnsavedChanges, dashboardStorageKey]);
 
   useEffect(() => {
     let configuredFromApi = false;
@@ -831,32 +860,117 @@ export default function App() {
             "grid auto-rows-[25px] sm:auto-rows-[30px] lg:auto-rows-[25px]",
             isMobile ? "grid-cols-1 gap-6" : "gap-4"
           )}
-          style={!isMobile ? { gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' } : {}}
+          style={!isMobile ? { gridTemplateColumns: 'repeat(24, minmax(0, 1fr))', gridAutoFlow: 'dense' } : {}}
         >
-          {widgets.filter(w => 
-            w.title.toLowerCase().includes(globalSearch.toLowerCase()) ||
-            w.metrics.some(m => m.toLowerCase().includes(globalSearch.toLowerCase())) ||
-            w.hosts.some(h => h.toLowerCase().includes(globalSearch.toLowerCase()))
-          ).map((w, index) => {
-            const hasFilter = w.metrics.some(m => w.hosts.some(h => hiddenSeries.has(`${m}_${h}`)));
-            
-            return (
-            <div key={w.id} 
-              className={cn(
-                "relative transition-all duration-300 group rounded-xl",
-                editingWidgetId === w.id ? "z-[100]" : "hover:z-50",
-                hasFilter && "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-50"
-              )}
-              style={Object.assign(
-                {}, 
-                { 
-                  gridRowEnd: isMobile ? (w.type === 'kpi' ? 'span 6' : 'span 12') : `span ${w.rows || 10}`,
-                  gridColumn: isMobile ? 'span 1' : (w.forceNewline ? `1 / span ${w.cols || 24}` : `span ${w.cols || 24} / span ${w.cols || 24}`)
-                }
-              )}
-            >
-              {/* Widget Actions */}
-              <div className="absolute inset-0 z-20 pointer-events-none opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <AnimatePresence mode="popLayout">
+            {widgets.filter(w => 
+              w.title.toLowerCase().includes(globalSearch.toLowerCase()) ||
+              w.metrics.some(m => m.toLowerCase().includes(globalSearch.toLowerCase())) ||
+              w.hosts.some(h => h.toLowerCase().includes(globalSearch.toLowerCase()))
+            ).map((w, index) => {
+              const hasFilter = w.metrics.some(m => w.hosts.some(h => hiddenSeries.has(`${m}_${h}`)));
+              
+              return (
+              <motion.div 
+                key={w.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ 
+                  opacity: 1, 
+                  scale: 1,
+                  zIndex: draggingWidgetId === w.id ? 100 : editingWidgetId === w.id ? 100 : 1
+                }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{
+                  layout: { type: "spring", stiffness: 300, damping: 30 },
+                  opacity: { duration: 0.2 }
+                }}
+                className={cn(
+                  "relative group rounded-xl",
+                  draggingWidgetId === w.id && "shadow-2xl ring-2 ring-blue-500/50 bg-white cursor-grabbing",
+                  editingWidgetId === w.id ? "z-[100]" : "hover:z-50",
+                  hasFilter && "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-50"
+                )}
+                style={Object.assign(
+                  {}, 
+                  { 
+                    gridRowEnd: isMobile ? (w.type === 'kpi' ? 'span 6' : 'span 12') : `span ${w.rows || 10}`,
+                    gridColumn: isMobile ? 'span 1' : (w.forceNewline ? `1 / span ${w.cols || 24}` : `span ${w.cols || 24} / span ${w.cols || 24}`)
+                  }
+                )}
+              >
+                {/* Drag Handle (Full Overlay) */}
+                {!isMobile && (
+                  <div 
+                    className="absolute top-0 left-0 right-0 h-10 cursor-grab active:cursor-grabbing z-30 flex items-center px-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onMouseDown={(e) => {
+                      // Only trigger drag if we are not clicking a button
+                      if ((e.target as HTMLElement).closest('button')) return;
+                      
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      let isDragging = false;
+                      const dragThreshold = 5;
+
+                      const handleGlobalMouseMove = (moveEvent: MouseEvent) => {
+                        const dist = Math.sqrt(Math.pow(moveEvent.clientX - startX, 2) + Math.pow(moveEvent.clientY - startY, 2));
+                        
+                        if (!isDragging && dist > dragThreshold) {
+                          isDragging = true;
+                          setDraggingWidgetId(w.id);
+                          document.body.style.cursor = 'grabbing';
+                        }
+
+                        if (isDragging) {
+                          // Find element under cursor
+                          const elements = document.elementsFromPoint(moveEvent.clientX, moveEvent.clientY);
+                          const hoveredWidget = elements.find(el => 
+                            el.getAttribute('data-widget-id') && el.getAttribute('data-widget-id') !== w.id
+                          );
+
+                          if (hoveredWidget) {
+                            const targetId = hoveredWidget.getAttribute('data-widget-id');
+                            const fromIndex = widgets.findIndex(item => item.id === w.id);
+                            const toIndex = widgets.findIndex(item => item.id === targetId);
+                            
+                            if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+                              const newWidgets = [...widgets];
+                              const [movedItem] = newWidgets.splice(fromIndex, 1);
+                              newWidgets.splice(toIndex, 0, movedItem);
+                              setWidgets(newWidgets);
+                            }
+                          }
+                        }
+                      };
+
+                      const handleGlobalMouseUp = () => {
+                        window.removeEventListener('mousemove', handleGlobalMouseMove);
+                        window.removeEventListener('mouseup', handleGlobalMouseUp);
+                        setDraggingWidgetId(null);
+                        document.body.style.cursor = 'default';
+                      };
+
+                      window.addEventListener('mousemove', handleGlobalMouseMove);
+                      window.addEventListener('mouseup', handleGlobalMouseUp);
+                    }}
+                  >
+                    <div className="p-1 bg-white/80 rounded-md shadow-sm border border-slate-200 text-slate-400">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Data attribute for hit testing */}
+                <div 
+                  className="absolute inset-0 pointer-events-none" 
+                  data-widget-id={w.id} 
+                />
+
+                {/* Widget Actions */}
+                <div className={cn(
+                  "absolute inset-0 z-20 pointer-events-none opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+                  draggingWidgetId === w.id && "opacity-0"
+                )}>
                 <div className="absolute top-3 right-3 flex gap-1.5 items-center pointer-events-auto">
                     {widgetZoomDomains[w.id] && (
                       <button 
@@ -1294,8 +1408,9 @@ export default function App() {
                   })()
                 )
               )}
-            </div>
-          )})}
+              </motion.div>
+            )})}
+          </AnimatePresence>
         </div>
       </>
     );
@@ -1378,6 +1493,18 @@ export default function App() {
                       view === 'infra' ? 'Asset Inventory' : 
                       view === 'notifications' ? 'Current Problems' : 'Zabbix API Settings'}
                     </h1>
+                    {view === 'dashboard' && hasUnsavedChanges && (
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-100 rounded-full animate-pulse shrink-0 transition-all">
+                        <div className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
+                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Unsaved Changes</span>
+                      </div>
+                    )}
+                    {view === 'dashboard' && !hasUnsavedChanges && (
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 border border-emerald-100 rounded-full shrink-0">
+                        <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Saved</span>
+                      </div>
+                    )}
                     {view === 'dashboard' && (
                       <button 
                         type="button"
