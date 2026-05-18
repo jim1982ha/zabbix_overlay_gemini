@@ -14,6 +14,20 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
   const [zabbixNodes, setZabbixNodes] = useState<any[]>([]);
   const [zabbixLinks, setZabbixLinks] = useState<any[]>([]);
 
+  const [containerWidth, setContainerWidth] = useState(1000);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      if (entries[0]) {
+        setContainerWidth(entries[0].contentRect.width);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const fetchZabbixTopology = useCallback(async () => {
     if (isSimulated) return;
     try {
@@ -28,37 +42,10 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
       if (response.data.result) {
         const hosts = response.data.result;
         
-        // Generate a simple star topology around a central pseudo-gateway
-        const gateway = { id: 'gw-real-01', type: 'gateway', x: 50, y: 15, status: 'online', label: 'Zabbix Gateway' };
-        
-        const generatedNodes = hosts.map((h: any, i: number) => {
-           // Position them in a grid below the gateway
-           const cols = 5;
-           const row = Math.floor(i / cols);
-           const col = i % cols;
-           // Distribute evenly, e.g. 5 columns: 10, 30, 50, 70, 90 
-           // formula: x = 10 + (col * 20)
-           return {
-              id: h.host,
-              type: 'server',
-              x: 10 + (col * 20),
-              y: 150 + (row * 90),
-              status: h.status === '0' ? 'online' : 'offline',
-              label: h.name || h.host
-           };
-        });
-        
-        setZabbixNodes([gateway, ...generatedNodes]);
-
-        // Links from gateway to all
-        const generatedLinks = generatedNodes.map((n: any) => ({
-           from: gateway.id,
-           to: n.id,
-           load: Math.floor(Math.random() * 40) + 10 // pseudo random load
-        }));
-        
-        setZabbixLinks(generatedLinks);
-      }
+        // Let's postpone generating nodes until render so they depend on containerWidth
+        setZabbixNodes(hosts); // just store raw hosts
+        // To be safe we'll keep Gateway here or generate it later
+       }
     } catch (e) {
       console.error("Failed to fetch topology from Zabbix", e);
     }
@@ -81,29 +68,69 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
 
   const periodKey = isHistorical ? `${filters.start}-${filters.end}` : filters.range;
   
-  const simNodes = [
-    { id: 'gw-01', type: 'gateway', x: 50, y: 15, status: 'online', label: 'Primary Gateway' },
-    { id: 'sw-01', type: 'switch', x: 35, y: 100, status: 'online', label: 'Core Switch 01' },
-    { id: 'sw-02', type: 'switch', x: 65, y: 100, status: 'online', label: 'Core Switch 02' },
-    { id: 'srv-01', type: 'server', x: 10, y: 220, status: 'online', label: 'App Server 01' },
-    { id: 'srv-02', type: 'server', x: 30, y: 220, status: 'online', label: 'App Server 02' },
-    { id: 'srv-03', type: 'server', x: 50, y: 220, status: 'online', label: 'App Server 03' },
-    { id: 'db-01', type: 'server', x: 70, y: 220, status: 'online', label: 'DB Cluster A' },
-    { id: 'db-02', type: 'server', x: 90, y: 220, status: 'online', label: 'DB Cluster B' },
-  ];
+  const layoutNodes = useMemo(() => {
+    const width = Math.max(containerWidth, 800);
+    
+    if (isSimulated) {
+      return [
+        { id: 'gw-01', type: 'gateway', x: width * 0.50, y: 30, status: 'online', label: 'Primary Gateway' },
+        { id: 'sw-01', type: 'switch', x: width * 0.35, y: 150, status: 'online', label: 'Core Switch 01' },
+        { id: 'sw-02', type: 'switch', x: width * 0.65, y: 150, status: 'online', label: 'Core Switch 02' },
+        { id: 'srv-01', type: 'server', x: width * 0.15, y: 300, status: 'online', label: 'App Server 01' },
+        { id: 'srv-02', type: 'server', x: width * 0.35, y: 300, status: 'online', label: 'App Server 02' },
+        { id: 'srv-03', type: 'server', x: width * 0.55, y: 300, status: 'online', label: 'App Server 03' },
+        { id: 'db-01', type: 'server', x: width * 0.75, y: 300, status: 'online', label: 'DB Cluster A' },
+        { id: 'db-02', type: 'server', x: width * 0.90, y: 300, status: 'online', label: 'DB Cluster B' },
+      ];
+    } else {
+      const gateway = { id: 'gw-real-01', type: 'gateway', x: width / 2, y: 30, status: 'online', label: 'Zabbix Gateway' };
+      const hosts = zabbixNodes.filter(n => n.host); // ensure we have actual hosts
+      const nodeSpacing = 160; // ensure enough width for text
+      const cols = Math.max(3, Math.floor(width / nodeSpacing));
+      const rowSpacing = 120;
+      
+      const generatedNodes = hosts.map((h: any, i: number) => {
+         const row = Math.floor(i / cols);
+         const col = i % cols;
+         const itemsInRow = Math.min(cols, hosts.length - row * cols);
+         const rowWidth = itemsInRow * nodeSpacing;
+         const startX = (width - rowWidth) / 2;
+         return {
+            id: h.host,
+            type: 'server',
+            x: startX + (col * nodeSpacing) + (nodeSpacing / 2),
+            y: 180 + (row * rowSpacing),
+            status: h.status === '0' ? 'online' : 'offline',
+            label: h.name || h.host
+         };
+      });
+      return [gateway, ...generatedNodes];
+    }
+  }, [containerWidth, isSimulated, zabbixNodes]);
 
-  const simLinks = [
-    { from: 'gw-01', to: 'sw-01', load: getSeedMetric(10, 60, periodKey + 'l1') },
-    { from: 'gw-01', to: 'sw-02', load: getSeedMetric(10, 40, periodKey + 'l2') },
-    { from: 'sw-01', to: 'srv-01', load: getSeedMetric(5, 20, periodKey + 'l3') },
-    { from: 'sw-01', to: 'srv-02', load: getSeedMetric(5, 20, periodKey + 'l4') },
-    { from: 'sw-01', to: 'srv-03', load: getSeedMetric(5, 20, periodKey + 'l5') },
-    { from: 'sw-02', to: 'db-01', load: getSeedMetric(15, 30, periodKey + 'l6') },
-    { from: 'sw-02', to: 'db-02', load: getSeedMetric(15, 30, periodKey + 'l7') },
-  ];
+  const layoutLinks = useMemo(() => {
+    if (isSimulated) {
+      return [
+        { from: 'gw-01', to: 'sw-01', load: getSeedMetric(10, 60, periodKey + 'l1') },
+        { from: 'gw-01', to: 'sw-02', load: getSeedMetric(10, 40, periodKey + 'l2') },
+        { from: 'sw-01', to: 'srv-01', load: getSeedMetric(5, 20, periodKey + 'l3') },
+        { from: 'sw-01', to: 'srv-02', load: getSeedMetric(5, 20, periodKey + 'l4') },
+        { from: 'sw-01', to: 'srv-03', load: getSeedMetric(5, 20, periodKey + 'l5') },
+        { from: 'sw-02', to: 'db-01', load: getSeedMetric(15, 30, periodKey + 'l6') },
+        { from: 'sw-02', to: 'db-02', load: getSeedMetric(15, 30, periodKey + 'l7') },
+      ];
+    } else {
+      const generatedNodes = layoutNodes.filter(n => n.type !== 'gateway');
+      return generatedNodes.map((n: any) => ({
+         from: 'gw-real-01',
+         to: n.id,
+         load: Math.floor(Math.random() * 40) + 10 // pseudo random load
+      }));
+    }
+  }, [isSimulated, layoutNodes, periodKey]);
 
-  const nodes = isSimulated ? simNodes : (zabbixNodes.length > 0 ? zabbixNodes : simNodes);
-  const links = isSimulated ? simLinks : (zabbixLinks.length > 0 ? zabbixLinks : simLinks);
+  const nodes = layoutNodes;
+  const links = layoutLinks;
 
   return (
     <div className="space-y-6">
@@ -131,17 +158,17 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
         </div>
       )}
       <div className="flex flex-col gap-6">
-        <div className="bg-white border border-slate-100 rounded-2xl p-4 relative overflow-y-auto h-[450px] shadow-sm custom-scrollbar block">
+        <div ref={containerRef} className="bg-white border border-slate-100 rounded-2xl p-4 relative overflow-auto h-[450px] shadow-sm custom-scrollbar block">
           {/* SVG Topology Graph */}
           {(() => {
             const maxY = nodes.length > 0 ? Math.max(...nodes.map(n => n.y)) : 300;
             const vbHeight = maxY + 80;
-            // Assuming container width is around 1000px, width '100' scales to 1000 roughly, so ratio is ~10.
+            const vbWidth = Math.max(containerWidth, 800);
             return (
               <svg 
-                className="w-full" 
-                style={{ height: `${Math.max(450, vbHeight * 2)}px` }} 
-                viewBox={`0 0 100 ${vbHeight}`} 
+                className="block" 
+                style={{ minWidth: `${vbWidth}px`, height: `${Math.max(450, vbHeight)}px` }} 
+                viewBox={`0 0 ${vbWidth} ${Math.max(450, vbHeight)}`} 
                 preserveAspectRatio="xMidYMin meet"
               >
             <defs>
@@ -178,24 +205,24 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
                   onMouseLeave={() => setHoveredLink(null)}
                 >
                   <line 
-                    x1={`${fromNode.x}%`} 
+                    x1={fromNode.x} 
                     y1={fromNode.y} 
-                    x2={`${toNode.x}%`} 
+                    x2={toNode.x} 
                     y2={toNode.y} 
                     stroke={isHighlighted ? "#0284c7" : "url(#linkGradient)"} 
                     strokeWidth={isHighlighted ? "2" : "1"} 
                   />
                   {/* Invisible wider line for easier hover targeting */}
                   <line 
-                    x1={`${fromNode.x}%`} 
+                    x1={fromNode.x} 
                     y1={fromNode.y} 
-                    x2={`${toNode.x}%`} 
+                    x2={toNode.x} 
                     y2={toNode.y} 
                     stroke="transparent" 
                     strokeWidth="15" 
                   />
                   <motion.circle
-                    r={isHighlighted ? "1.5" : "0.5"}
+                    r={isHighlighted ? "2" : "1"}
                     fill={isHighlighted ? (link.load > 80 ? "#ef4444" : "#0284c7") : "#0284c7"}
                     initial={{ offsetDistance: "0%" }}
                     animate={{ offsetDistance: "100%" }}
@@ -233,45 +260,45 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
                   }}
                   onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
                   onMouseLeave={() => setHoveredNode(null)}
+                  style={{ transformOrigin: `${node.x}px ${node.y}px` }}
                 >
                   <circle 
-                    cx={`${node.x}%`} 
+                    cx={node.x} 
                     cy={node.y} 
-                    r={isHighlighted ? "12" : "8"} 
+                    r={isHighlighted ? "14" : "10"} 
                     className={cn(
                       "fill-white transition-all",
-                      isHighlighted ? "stroke-blue-600 stroke-2" : (node.type === 'gateway' ? "stroke-blue-500" : "stroke-slate-100")
+                      isHighlighted ? "stroke-blue-600 stroke-2" : (node.type === 'gateway' ? "stroke-blue-500 stroke-2" : "stroke-slate-200 stroke-1")
                     )}
-                    strokeWidth="1"
                   />
                   {/* Invisible wider circle for easier hover targeting */}
                   <circle 
-                    cx={`${node.x}%`} 
+                    cx={node.x} 
                     cy={node.y} 
-                    r="20" 
+                    r="24" 
                     fill="transparent"
                   />
                   {isHighlighted && (
                     <circle 
-                      cx={`${node.x}%`} 
+                      cx={node.x} 
                       cy={node.y} 
-                      r="16" 
+                      r="18" 
                       className="fill-none stroke-blue-500/20 stroke-1 animate-ping"
                     />
                   )}
                   <circle 
-                    cx={`${node.x}%`} 
+                    cx={node.x} 
                     cy={node.y} 
-                    r="2.5" 
+                    r="3.5" 
                     className={node.status === 'online' ? "fill-emerald-500" : "fill-rose-500"}
                   />
                   <text 
-                    x={`${node.x}%`} 
-                    y={node.y + (isHighlighted ? 20 : 15)} 
+                    x={node.x} 
+                    y={node.y + (isHighlighted ? 24 : 20)} 
                     textAnchor="middle" 
                     className={cn(
                       "transition-all string capitalize pointer-events-none",
-                      isHighlighted ? "fill-blue-600 text-[10px] font-bold" : "fill-slate-500 text-[9px] font-medium"
+                      isHighlighted ? "fill-blue-700 text-[11px] font-bold" : "fill-slate-600 text-[10px] font-medium"
                     )}
                   >
                     {node.label}

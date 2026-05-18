@@ -442,7 +442,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    setData([]);
     fetchStats();
     if (filters.mode === 'live') {
       let intervalTime = 60000;
