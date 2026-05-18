@@ -190,14 +190,6 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               ))}
             </Pie>
             <Tooltip content={<CustomTooltip />} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
-            <Legend 
-              layout="vertical" 
-              align="right" 
-              verticalAlign="middle" 
-              iconType="circle"
-              wrapperStyle={{ paddingLeft: '20px', fontSize: '9px', fontWeight: 600, color: '#64748b', cursor: 'pointer' }} 
-              onClick={(e: any) => onLegendClick?.(e.payload?.dataKey || e.payload?.payload?.dataKey || e.dataKey)}
-            />
           </PieChart>
         );
       case 'line':
@@ -214,7 +206,6 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
-            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }} onClick={(e: any) => onLegendClick?.(e.dataKey)} />
             {series.map((s, i) => (
               <Line 
                 key={s.key} 
@@ -248,7 +239,6 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
-            <Legend verticalAlign="bottom" height={36} iconType="rect" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }} onClick={(e: any) => onLegendClick?.(e.dataKey)} />
             {series.map((s, i) => (
               <Bar 
                 key={s.key} 
@@ -291,7 +281,6 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             />
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
-            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '10px', fontSize: '10px', fontWeight: 600, cursor: 'pointer' }} onClick={(e: any) => onLegendClick?.(e.dataKey)} />
             {series.map((s, i) => {
               const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
               return (
@@ -364,13 +353,39 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
       </div>
 
       <div className="flex-1 w-full relative min-h-0 flex flex-col">
-        <div className={`flex-1 w-full relative ${chartType !== 'pie' ? 'cursor-crosshair' : ''} select-none`}>
+        <div className={`flex-1 w-full relative select-none cursor-crosshair`}>
           <div className="absolute inset-0">
             <ResponsiveContainer width="100%" height="100%">
               {renderChart()}
             </ResponsiveContainer>
           </div>
         </div>
+        
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 max-h-[80px] overflow-y-auto custom-scrollbar px-1 shrink-0 bg-white relative z-10 w-full mb-1">
+            {series.map((s, i) => {
+              const isHidden = hiddenSeries?.has(s.key);
+              return (
+                <div 
+                  key={s.key} 
+                  onClick={() => onLegendClick?.(s.key)} 
+                  className={cn(
+                    "flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold transition-opacity duration-200 select-none",
+                    isHidden ? "opacity-40 hover:opacity-70" : "opacity-100 hover:opacity-80"
+                  )}
+                  title={s.name}
+                >
+                  <div 
+                    className="w-2.5 h-2.5 rounded-sm flex-shrink-0" 
+                    style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s, i) }} 
+                  />
+                  <span className={cn("truncate max-w-[150px] @[400px]:max-w-[200px]", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
+                    {s.name}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
         {zoomDomain && data && data.length > 0 && (
           <div className="flex items-center gap-2 mt-2 px-2 text-[10px] sm:text-xs">
             <span className="shrink-0 text-slate-500 font-medium hidden sm:inline text-[10px]">Zoom:</span>
