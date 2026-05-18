@@ -21,7 +21,16 @@ The **HA Reporting Dashboard** is a high-performance telemetry visualization sys
 ### Quick Start with Docker
 You can easily deploy the HA Reporting Dashboard using Docker, which is completely isolated and runs on a Node server serving Vite assets.
 
-#### Option A: Docker Compose (Recommended)
+#### 1. Build the Docker Image
+Before running the container, you need to build the Docker image locally from the project root:
+
+```bash
+docker build -t ha-reporting:latest .
+```
+
+#### 2. Run the Container
+
+**Option A: Docker Compose (Recommended)**
 This approach is great for managing your deployment alongside other tools (like Portainer, Nginx Proxy Manager, etc.).
 
 1. Create a `docker-compose.yml` file:
@@ -56,9 +65,8 @@ If you are using MacVlan or a specific network interface to expose port 80 direc
       - APP_PORT=80
       - VITE_ZABBIX_URL=http://your-zabbix-host/zabbix/api_jsonrpc.php
       - VITE_ZABBIX_TOKEN=your_zabbix_api_token
-    networks:
-      jw_admin:
-        ipv4_address: 192.168.20.38
+    ports:
+      - "3000:3000"
     restart: unless-stopped
 ```
 
@@ -66,9 +74,9 @@ If you are using MacVlan or a specific network interface to expose port 80 direc
 ```bash
 docker compose up -d
 ```
-3. Access the dashboard at `http://your-server-ip:3000` (or `http://192.168.20.38` if using port 80 on a routed network).
+3. Access the dashboard at `http://your-server-ip:3000`.
 
-#### Option B: Docker CLI
+**Option B: Docker CLI**
 If you prefer running the container directly via the command line, simply execute:
 
 ```bash
