@@ -3,8 +3,44 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import axios from "axios";
 import dotenv from "dotenv";
+import net from "net";
 
 dotenv.config();
+
+// Robust SSRF Protection Function (CWE-918)
+// Note: We permit RFC1918 (192.168.x.x, 10.x.x.x) as Zabbix is often hosted locally.
+function isSafeTargetUrl(reqUrl: string): boolean {
+  try {
+    const parsedUrl = new URL(reqUrl);
+    const hostname = parsedUrl.hostname.toLowerCase();
+
+    // Block protocols other than http/https
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      return false;
+    }
+
+    // Block clear loopback hostnames
+    if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+      return false;
+    }
+
+    // WHATWG URL parser normalizes octal/hex IPs, so checking decimal is sufficient
+    if (net.isIPv4(hostname)) {
+      const parts = hostname.split('.');
+      if (parts[0] === '127') return false; // Loopback
+      if (parts[0] === '169' && parts[1] === '254') return false; // AWS Metadata / Link-local
+      if (parts[0] === '0') return false; // 0.0.0.0
+    } else if (net.isIPv6(hostname)) {
+      if (hostname === '::1' || hostname === '::') return false;
+      if (hostname.includes('::ffff:127.')) return false;
+      if (hostname.toLowerCase().startsWith('fe80:')) return false; // Link-local
+    }
+    
+    return true;
+  } catch(e) {
+    return false; // Invalid URL format
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -49,8 +85,16 @@ async function startServer() {
         token: reqToken
       } = req.body;
 
+      // Basic SSRF protection (CWE-918): Reject loopback and AWS Metadata IPs
+      if (reqUrl && !isSafeTargetUrl(reqUrl)) {
+        return res.status(403).json({ error: "Forbidden: Unsafe target URL provided." });
+      }
+
       // Prefer user-provided values from the frontend configuration, fallback to environment variables
       const url = reqUrl || process.env.VITE_ZABBIX_URL || "http://localhost/zabbix/api_jsonrpc.php";
+      if (!isSafeTargetUrl(url)) {
+        return res.status(403).json({ error: "Forbidden: Configured URL is unsafe." });
+      }
       
       // If client sends the obfuscated token placeholder, fall back to the actual environment variable token
       let token = reqToken;
@@ -154,8 +198,20 @@ async function startServer() {
 
   // Dynamic Timeseries API for Dashboard
   app.post("/api/timeseries", async (req, res) => {
-    const { start, end, granularity = '5m', range = '24h', mode = 'live', url, token, metrics = [], hosts = [] } = req.body;
+    let { start, end, granularity = '5m', range = '24h', mode = 'live', url, token, metrics = [], hosts = [] } = req.body;
     
+    // Type checking for arrays to prevent DoS via TypeError Exceptions
+    if (!Array.isArray(metrics)) metrics = [];
+    if (!Array.isArray(hosts)) hosts = [];
+    // Ensure array elements are strings to prevent NoSQL / Prototype pollution issues downstream
+    metrics = metrics.filter((m: any) => typeof m === 'string');
+    hosts = hosts.filter((h: any) => typeof h === 'string');
+
+    // Basic SSRF protection (CWE-918): Reject loopback and AWS Metadata IPs
+    if (url && !isSafeTargetUrl(url)) {
+      return res.status(403).json({ error: "Forbidden: Unsafe target URL provided." });
+    }
+
     let timeLabels: string[] = [];
     let dataPoints = 12;
 
