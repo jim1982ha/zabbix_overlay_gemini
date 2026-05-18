@@ -125,20 +125,52 @@ export default function App() {
   const [requiresSecureToken, setRequiresSecureToken] = useState(false);
 
   useEffect(() => {
+    let isRefreshing = false;
+    let failedQueue: { resolve: (value?: any) => void, reject: (reason?: any) => void }[] = [];
+
+    const processQueue = (error: any, token: string | null = null) => {
+      failedQueue.forEach(prom => {
+        if (error) {
+          prom.reject(error);
+        } else {
+          prom.resolve(token);
+        }
+      });
+      failedQueue = [];
+    };
+
     const resInterceptor = axios.interceptors.response.use(
       response => response,
       error => {
         const originalRequest = error.config;
         if (error.response && error.response.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
+
+          if (isRefreshing) {
+            return new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
+            }).then(token => {
+              originalRequest.headers['Authorization'] = `Bearer ${token}`;
+              return axios(originalRequest);
+            }).catch(err => {
+              return Promise.reject(err);
+            });
+          }
+
+          isRefreshing = true;
           setSecureTokenPrompt(true);
           
           return new Promise((resolve, reject) => {
             window._resolveToken = () => {
-                originalRequest.headers['Authorization'] = `Bearer ${localStorage.getItem("hareporting_app_secure_token")}`;
+                const token = localStorage.getItem("hareporting_app_secure_token");
+                processQueue(null, token);
+                isRefreshing = false;
+                originalRequest.headers['Authorization'] = `Bearer ${token}`;
                 resolve(axios(originalRequest));
             };
             window._rejectToken = (reason) => {
+                processQueue(reason, null);
+                isRefreshing = false;
                 reject(reason || error);
             };
           });
@@ -890,24 +922,13 @@ export default function App() {
                   </div>
                 )}
                 
-                <div className={cn("grid gap-4", !isSimulated ? "grid-cols-3" : "grid-cols-2")}>
+                <div className={cn("grid gap-4", (!isSimulated && !zabbixConfig.isPreconfigured) ? "grid-cols-3" : "grid-cols-2")}>
                   {!zabbixConfig.isPreconfigured && (
                     <button 
                       onClick={handleSaveZabbixConfig}
                       className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-blue-500 transition-all active:scale-95"
                     >
                       Save Configuration
-                    </button>
-                  )}
-                  {zabbixConfig.isPreconfigured && (
-                    <button 
-                      onClick={() => {
-                        // Empty action, configuration is managed by the server
-                        setDiscoveryStatus({ type: 'success', message: "Configuration is managed by the server environment." });
-                      }}
-                      className="w-full py-3 bg-slate-300 text-slate-500 rounded-xl font-semibold text-sm shadow-sm cursor-not-allowed hidden"
-                    >
-                      Configuration Managed by Server
                     </button>
                   )}
                   <button 
@@ -920,17 +941,18 @@ export default function App() {
                       }
                     }}
                     className={cn(
-                      "w-full py-3 bg-slate-800 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed",
-                       zabbixConfig.isPreconfigured ? "col-span-2" : ""
+                      "w-full py-3 bg-slate-800 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     )}
                     disabled={(!zabbixConfig.isPreconfigured && (!draftZabbixConfig.url || !draftZabbixConfig.token)) || isDiscovering}
                   >
                     <RefreshCw className={cn("w-4 h-4", isDiscovering && "animate-spin")} /> {isDiscovering ? 'Discovering...' : 'Trigger Discovery'}
                   </button>
-                  {!isSimulated && !zabbixConfig.isPreconfigured && (
+                  {!isSimulated && (
                     <button 
                       onClick={handleSimulatedMode}
-                      className="w-full py-3 bg-rose-100 text-rose-700 rounded-xl font-semibold text-sm shadow-md hover:bg-rose-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                      className={cn(
+                        "w-full py-3 bg-rose-100 text-rose-700 rounded-xl font-semibold text-sm shadow-md hover:bg-rose-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                      )}
                     >
                       Revert to Simulated
                     </button>
