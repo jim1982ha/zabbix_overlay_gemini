@@ -59,6 +59,7 @@ interface Widget {
   stacked: boolean;
   cols: number;
   rows: number;
+  forceNewline?: boolean;
 }
 
 interface Dashboard {
@@ -839,7 +840,7 @@ export default function App() {
                 {}, 
                 { 
                   gridRowEnd: `span ${w.rows || 10}`,
-                  gridColumn: `span ${w.cols || 24} / span ${w.cols || 24}`
+                  gridColumn: w.forceNewline ? `1 / span ${w.cols || 24}` : `span ${w.cols || 24} / span ${w.cols || 24}`
                 }
               )}
             >
@@ -987,7 +988,18 @@ export default function App() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12">
                         <div className="space-y-6">
                           <div>
-                            <label className="text-sm font-semibold text-slate-400 block mb-2">Title</label>
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="text-sm font-semibold text-slate-400 block">Title</label>
+                              <label className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-300 cursor-pointer select-none transition-colors">
+                                <input 
+                                  type="checkbox" 
+                                  checked={!!w.forceNewline} 
+                                  onChange={e => handleUpdateWidget(w.id, { forceNewline: e.target.checked })} 
+                                  className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-sky-500 focus:ring-sky-500/20" 
+                                /> 
+                                Force New Line
+                              </label>
+                            </div>
                             <input 
                               type="text" 
                               value={w.title} 
