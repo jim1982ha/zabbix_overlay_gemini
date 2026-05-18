@@ -885,6 +885,7 @@ export default function App() {
                   layout: { type: "spring", stiffness: 300, damping: 30 },
                   opacity: { duration: 0.2 }
                 }}
+                data-widget-id={w.id}
                 className={cn(
                   "relative group rounded-xl",
                   draggingWidgetId === w.id && "shadow-2xl ring-2 ring-blue-500/50 bg-white cursor-grabbing",
@@ -899,88 +900,73 @@ export default function App() {
                   }
                 )}
               >
-                {/* Drag Handle (Full Overlay) */}
-                {!isMobile && (
-                  <div 
-                    className="absolute top-0 left-0 right-0 h-10 cursor-grab active:cursor-grabbing z-30 flex items-center px-4 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onMouseDown={(e) => {
-                      // Only trigger drag if we are not clicking a button
-                      if ((e.target as HTMLElement).closest('button')) return;
-                      
-                      const startX = e.clientX;
-                      const startY = e.clientY;
-                      let isDragging = false;
-                      const dragThreshold = 5;
-
-                      const handleGlobalMouseMove = (moveEvent: MouseEvent) => {
-                        const dist = Math.sqrt(Math.pow(moveEvent.clientX - startX, 2) + Math.pow(moveEvent.clientY - startY, 2));
-                        
-                        if (!isDragging && dist > dragThreshold) {
-                          isDragging = true;
-                          setDraggingWidgetId(w.id);
-                          document.body.style.cursor = 'grabbing';
-                        }
-
-                        if (isDragging) {
-                          // Find element under cursor
-                          const elements = document.elementsFromPoint(moveEvent.clientX, moveEvent.clientY);
-                          const hoveredWidget = elements.find(el => 
-                            el.getAttribute('data-widget-id') && el.getAttribute('data-widget-id') !== w.id
-                          );
-
-                          if (hoveredWidget) {
-                            const targetId = hoveredWidget.getAttribute('data-widget-id');
-                            const fromIndex = widgets.findIndex(item => item.id === w.id);
-                            const toIndex = widgets.findIndex(item => item.id === targetId);
-                            
-                            if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
-                              const newWidgets = [...widgets];
-                              const [movedItem] = newWidgets.splice(fromIndex, 1);
-                              newWidgets.splice(toIndex, 0, movedItem);
-                              setWidgets(newWidgets);
-                            }
-                          }
-                        }
-                      };
-
-                      const handleGlobalMouseUp = () => {
-                        window.removeEventListener('mousemove', handleGlobalMouseMove);
-                        window.removeEventListener('mouseup', handleGlobalMouseUp);
-                        setDraggingWidgetId(null);
-                        document.body.style.cursor = 'default';
-                      };
-
-                      window.addEventListener('mousemove', handleGlobalMouseMove);
-                      window.addEventListener('mouseup', handleGlobalMouseUp);
-                    }}
-                  >
-                    <div className="p-1 bg-white/80 rounded-md shadow-sm border border-slate-200 text-slate-400">
-                      <GripVertical className="w-4 h-4" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Data attribute for hit testing */}
-                <div 
-                  className="absolute inset-0 pointer-events-none" 
-                  data-widget-id={w.id} 
-                />
-
-                {/* Widget Actions */}
+                {/* Drag Handle & Left-Right Move Actions (Top Left) */}
                 <div className={cn(
-                  "absolute inset-0 z-20 pointer-events-none opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200",
+                  "absolute inset-0 z-30 pointer-events-none opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200",
                   draggingWidgetId === w.id && "opacity-0"
                 )}>
-                <div className="absolute top-3 right-3 flex gap-1.5 items-center pointer-events-auto">
-                    {widgetZoomDomains[w.id] && (
-                      <button 
-                        onClick={() => handleZoomOut(w.id)}
-                        className="flex items-center gap-1.5 px-2 py-1.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 hover:text-sky-700 hover:border-sky-300 rounded-lg shadow-sm transition-all backdrop-blur-md text-[10px] font-bold uppercase tracking-wider h-[26px]"
-                        title="Zoom Out"
+                  <div className="absolute top-3 left-3 flex gap-1.5 items-center pointer-events-auto">
+                    {!isMobile && (
+                      <div 
+                        className="flex items-center justify-center p-1.5 bg-white/90 backdrop-blur-md rounded-lg shadow-sm border border-slate-200/50 text-slate-400 cursor-grab active:cursor-grabbing hover:bg-slate-50 hover:text-slate-600 transition-colors h-[26px] w-[26px]"
+                        onMouseDown={(e) => {
+                          // Only trigger drag if we are not clicking a button
+                          if ((e.target as HTMLElement).closest('button')) return;
+                          
+                          const startX = e.clientX;
+                          const startY = e.clientY;
+                          let isDragging = false;
+                          const dragThreshold = 5;
+
+                          const handleGlobalMouseMove = (moveEvent: MouseEvent) => {
+                            const dist = Math.sqrt(Math.pow(moveEvent.clientX - startX, 2) + Math.pow(moveEvent.clientY - startY, 2));
+                            
+                            if (!isDragging && dist > dragThreshold) {
+                              isDragging = true;
+                              setDraggingWidgetId(w.id);
+                              document.body.style.cursor = 'grabbing';
+                            }
+
+                            if (isDragging) {
+                              // Find element under cursor
+                              const elements = document.elementsFromPoint(moveEvent.clientX, moveEvent.clientY);
+                              const hoveredWidget = elements.find(el => 
+                                el.getAttribute('data-widget-id') && el.getAttribute('data-widget-id') !== w.id
+                              );
+
+                              if (hoveredWidget) {
+                                const targetId = hoveredWidget.getAttribute('data-widget-id');
+                                if (targetId) {
+                                  setWidgets(currentWidgets => {
+                                    const fromIndex = currentWidgets.findIndex(item => item.id === w.id);
+                                    const toIndex = currentWidgets.findIndex(item => item.id === targetId);
+                                    
+                                    if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+                                      const newWidgets = [...currentWidgets];
+                                      const [movedItem] = newWidgets.splice(fromIndex, 1);
+                                      newWidgets.splice(toIndex, 0, movedItem);
+                                      return newWidgets;
+                                    }
+                                    return currentWidgets;
+                                  });
+                                }
+                              }
+                            }
+                          };
+
+                          const handleGlobalMouseUp = () => {
+                            window.removeEventListener('mousemove', handleGlobalMouseMove);
+                            window.removeEventListener('mouseup', handleGlobalMouseUp);
+                            setDraggingWidgetId(null);
+                            document.body.style.cursor = 'default';
+                          };
+
+                          window.addEventListener('mousemove', handleGlobalMouseMove);
+                          window.addEventListener('mouseup', handleGlobalMouseUp);
+                        }}
                       >
-                        <ZoomOut className="w-3 h-3" />
-                        Reset Zoom
-                      </button>
+                        <GripVertical className="w-4 h-4" />
+                      </div>
                     )}
                     <div className="flex bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-lg overflow-hidden shadow-sm h-[26px]">
                       <button 
@@ -1004,23 +990,37 @@ export default function App() {
                         <ChevronRight className="w-3 h-3" />
                       </button>
                     </div>
-                    <button 
-                      onClick={() => setEditingWidgetId(editingWidgetId === w.id ? null : w.id)}
-                      className={cn(
-                        "p-1.5 rounded-lg border transition-all shadow-sm backdrop-blur-md h-[26px] flex items-center justify-center",
-                        editingWidgetId === w.id ? "bg-blue-600 border-blue-500 text-white" : "bg-white/90 border-slate-200/50 text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                  </div>
+
+                  {/* Widget Actions (Top Right) */}
+                  <div className="absolute top-3 right-3 flex gap-1.5 items-center pointer-events-auto">
+                      {widgetZoomDomains[w.id] && (
+                        <button 
+                          onClick={() => handleZoomOut(w.id)}
+                          className="flex items-center gap-1.5 px-2 py-1.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 hover:text-sky-700 hover:border-sky-300 rounded-lg shadow-sm transition-all backdrop-blur-md text-[10px] font-bold uppercase tracking-wider h-[26px]"
+                          title="Zoom Out"
+                        >
+                          <ZoomOut className="w-3 h-3" />
+                          Reset Zoom
+                        </button>
                       )}
-                    >
-                      <Settings2 className="w-3 h-3" />
-                    </button>
-                    <button 
-                      onClick={() => handleRemoveWidget(w.id)}
-                      className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded-lg hover:bg-rose-600 shadow-sm transition-all backdrop-blur-md h-[26px] flex items-center justify-center opacity-60 hover:opacity-100"
-                      title="Remove Widget"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                </div>
+                      <button 
+                        onClick={() => setEditingWidgetId(editingWidgetId === w.id ? null : w.id)}
+                        className={cn(
+                          "p-1.5 rounded-lg border transition-all shadow-sm backdrop-blur-md h-[26px] flex items-center justify-center",
+                          editingWidgetId === w.id ? "bg-blue-600 border-blue-500 text-white" : "bg-white/90 border-slate-200/50 text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                        )}
+                      >
+                        <Settings2 className="w-3 h-3" />
+                      </button>
+                      <button 
+                        onClick={() => handleRemoveWidget(w.id)}
+                        className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded-lg hover:bg-rose-600 shadow-sm transition-all backdrop-blur-md h-[26px] flex items-center justify-center opacity-60 hover:opacity-100"
+                        title="Remove Widget"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                  </div>
 
                 {/* Resize Handles (Hidden on small screens) */}
                 <div 
