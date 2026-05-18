@@ -41,6 +41,7 @@ services:
       - APP_PORT=3000
       - VITE_ZABBIX_URL=http://your-zabbix-host/zabbix/api_jsonrpc.php
       - VITE_ZABBIX_TOKEN=your_zabbix_api_token
+      - APP_SECURE_TOKEN=your_secure_passphrase_here
     restart: unless-stopped
 ```
 
@@ -55,6 +56,7 @@ If you are using MacVlan or a specific network interface to expose port 80 direc
       - APP_PORT=80
       - VITE_ZABBIX_URL=http://your-zabbix-host/zabbix/api_jsonrpc.php
       - VITE_ZABBIX_TOKEN=your_zabbix_api_token
+      - APP_SECURE_TOKEN=your_secure_passphrase_here
     ports:
       - "3000:3000"
     restart: unless-stopped
