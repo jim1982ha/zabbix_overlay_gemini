@@ -201,7 +201,11 @@ async function startServer() {
   app.post("/api/timeseries", async (req, res) => {
     let { start, end, granularity = '5m', range = '24h', mode = 'live', url, token, metrics = [], hosts = [] } = req.body;
     
-    const isSimulating = !url || !token;
+    // Use env vars if missing or using masked token
+    const urlToUse = url || process.env.VITE_ZABBIX_URL;
+    const tokenToUse = (!token || token.includes('*')) ? process.env.VITE_ZABBIX_TOKEN : token;
+
+    const isSimulating = !urlToUse || !tokenToUse;
 
     // Optional: Internal Authorization Gate if APP_SECURE_TOKEN is injected via environment (CWE-306 fix)
     const expectedToken = process.env.APP_SECURE_TOKEN;
@@ -220,7 +224,7 @@ async function startServer() {
     hosts = hosts.filter((h: any) => typeof h === 'string');
 
     // Basic SSRF protection (CWE-918): Reject loopback and AWS Metadata IPs
-    if (url && !isSafeTargetUrl(url)) {
+    if (urlToUse && !isSafeTargetUrl(urlToUse)) {
       return res.status(403).json({ error: "Forbidden: Unsafe target URL provided." });
     }
 
@@ -275,9 +279,9 @@ async function startServer() {
 
     let itemValueMap: Record<string, string> = {};
 
-    if (url && token && metrics.length > 0 && hosts.length > 0) {
+    if (urlToUse && tokenToUse && metrics.length > 0 && hosts.length > 0) {
       try {
-        const itemRes = await axios.post(url, {
+        const itemRes = await axios.post(urlToUse, {
           jsonrpc: "2.0",
           method: "item.get",
           params: {
@@ -287,7 +291,7 @@ async function startServer() {
             searchByAny: true,
             monitored: true,
           },
-          auth: token,
+          auth: tokenToUse,
           id: Date.now()
         }, { timeout: 10000 });
 
