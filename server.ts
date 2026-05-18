@@ -58,7 +58,8 @@ async function startServer() {
     res.json({
       url: process.env.VITE_ZABBIX_URL || "",
       token: process.env.VITE_ZABBIX_TOKEN ? '********************************' : "", // Obfuscate token for security, handle specially in frontend
-      hasEnvToken: !!process.env.VITE_ZABBIX_TOKEN
+      hasEnvToken: !!process.env.VITE_ZABBIX_TOKEN,
+      requiresSecureToken: !!process.env.APP_SECURE_TOKEN
     });
   });
 
@@ -198,6 +199,15 @@ async function startServer() {
 
   // Dynamic Timeseries API for Dashboard
   app.post("/api/timeseries", async (req, res) => {
+    // Optional: Internal Authorization Gate if APP_SECURE_TOKEN is injected via environment (CWE-306 fix)
+    const expectedToken = process.env.APP_SECURE_TOKEN;
+    if (expectedToken) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+        return res.status(401).json({ error: "Unauthorized access detected." });
+      }
+    }
+
     let { start, end, granularity = '5m', range = '24h', mode = 'live', url, token, metrics = [], hosts = [] } = req.body;
     
     // Type checking for arrays to prevent DoS via TypeError Exceptions

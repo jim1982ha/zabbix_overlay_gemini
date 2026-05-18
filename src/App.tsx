@@ -112,6 +112,34 @@ export default function App() {
   const [isRenaming, setIsRenaming] = useState(false);
   const [tempDashboardName, setTempDashboardName] = useState('');
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
+  
+  const [secureTokenPrompt, setSecureTokenPrompt] = useState(false);
+  const [secureTokenInput, setSecureTokenInput] = useState("");
+
+  useEffect(() => {
+    const resInterceptor = axios.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response && error.response.status === 401) {
+          setSecureTokenPrompt(true);
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    const reqInterceptor = axios.interceptors.request.use(config => {
+      const token = localStorage.getItem("hareporting_app_secure_token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+
+    return () => {
+      axios.interceptors.response.eject(resInterceptor);
+      axios.interceptors.request.eject(reqInterceptor);
+    };
+  }, []);
 
   const handleDiscardChanges = () => {
     if (activeDashboardId) {
@@ -299,6 +327,9 @@ export default function App() {
       try {
         const res = await axios.get("/api/config");
         if (res.data) {
+          if (res.data.requiresSecureToken && !localStorage.getItem("hareporting_app_secure_token")) {
+             setSecureTokenPrompt(true);
+          }
           setZabbixConfig(prev => {
              const newConfig = {
               ...prev,
@@ -1430,6 +1461,7 @@ export default function App() {
   }, [hiddenSeries, widgets, view]);
 
   return (
+    <>
     <Shell 
       savedDashboards={savedDashboards} 
       onSelectDashboard={handleSelectDashboard}
@@ -1747,6 +1779,45 @@ export default function App() {
         {renderContent()}
       </div>
     </Shell>
+    {secureTokenPrompt && (
+      <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-white max-w-md w-full rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+          <div className="p-6">
+            <div className="w-12 h-12 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-center shadow-sm mb-4">
+               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-shield text-indigo-600"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Authentication Required</h3>
+            <p className="text-sm text-slate-500 mb-6">
+              This dashboard is protected by a secure token to prevent unauthorized access.
+            </p>
+            <form onSubmit={e => {
+              e.preventDefault();
+              localStorage.setItem("hareporting_app_secure_token", secureTokenInput);
+              setSecureTokenPrompt(false);
+              window.location.reload();
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Access Token</label>
+                  <input 
+                    type="password" 
+                    value={secureTokenInput}
+                    onChange={e => setSecureTokenInput(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-sm leading-tight" 
+                    placeholder="Enter APP_SECURE_TOKEN..." 
+                    autoFocus
+                  />
+                </div>
+                <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-lg shadow-sm transition-colors mt-2">
+                  Verify Access
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
