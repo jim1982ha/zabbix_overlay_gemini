@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Shell } from "./components/layout/Shell";
 import { StatCard } from "./components/dashboard/StatCard";
@@ -1627,15 +1627,31 @@ export default function App() {
 function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { options: string[], selected: string[], onChange: (val: string[]) => void, label: string, metricUnitsMap: Record<string, string> }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const sortedOptions = [...options].sort((a, b) => a.localeCompare(b));
   const filteredOptions = sortedOptions.filter(opt => opt.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  const toggleOpen = () => {
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const fitsBelow = window.innerHeight - rect.bottom > 250;
+      setDropdownPos({
+        top: fitsBelow ? rect.bottom + 8 : rect.top - 232, // approximately menu height + gap
+        left: rect.left,
+        width: rect.width
+      });
+    }
+    setIsOpen(!isOpen);
+  };
 
   return (
     <div className="relative">
       <label className="text-sm font-semibold text-slate-400 block mb-2">{label}</label>
       <button 
-        onClick={() => setIsOpen(!isOpen)}
+        ref={buttonRef}
+        onClick={toggleOpen}
         className={cn(
           "w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border focus:border-sky-500 outline-none transition-all flex justify-between items-center group",
           isOpen ? "border-sky-500 ring-1 ring-sky-500/50" : "border-slate-700 hover:border-slate-600"
@@ -1649,10 +1665,17 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
         </span>
         <ChevronDown className={cn("w-4 h-4 transition-all duration-300 ml-2 shrink-0", isOpen ? "rotate-180 text-sky-500" : "opacity-30 group-hover:opacity-60 text-slate-400")} />
       </button>
-      {isOpen && (
+      {isOpen && typeof window !== 'undefined' && createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div className="absolute z-50 w-full mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 scrollbar-hide flex flex-col">
+          <div className="fixed inset-0 z-[120]" onClick={() => setIsOpen(false)} />
+          <div 
+            className="fixed z-[130] bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in duration-200 scrollbar-hide flex flex-col"
+            style={{
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              width: dropdownPos.width,
+            }}
+          >
             <div className="sticky top-0 bg-slate-900 pb-2 z-10 p-1 flex gap-2">
               <input 
                 type="text" 
@@ -1706,7 +1729,8 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
               </div>
             )}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

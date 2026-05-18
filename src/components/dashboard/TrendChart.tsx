@@ -109,7 +109,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
       color: isHidden ? '#e2e8f0' : getSeriesColor(s, i),
       dataKey: s.key // pass dataKey so we know which one was clicked
     };
-  }) : [];
+  }).sort((a, b) => b.value - a.value) : [];
 
   const formatXAxis = (tickItem: string) => {
     try {
