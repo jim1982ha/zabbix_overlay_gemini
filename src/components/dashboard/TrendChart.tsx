@@ -369,7 +369,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
                   key={s.key} 
                   onClick={() => onLegendClick?.(s.key)} 
                   className={cn(
-                    "flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold transition-opacity duration-200 select-none",
+                    "flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold transition-opacity duration-200 select-none max-w-full",
                     isHidden ? "opacity-40 hover:opacity-70" : "opacity-100 hover:opacity-80"
                   )}
                   title={s.name}
@@ -378,7 +378,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
                     className="w-2.5 h-2.5 rounded-sm flex-shrink-0" 
                     style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s, i) }} 
                   />
-                  <span className={cn("truncate max-w-[150px] @[400px]:max-w-[200px]", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
+                  <span className={cn("truncate max-w-full", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
                     {s.name}
                   </span>
                 </div>
