@@ -122,6 +122,7 @@ export default function App() {
   
   const [secureTokenPrompt, setSecureTokenPrompt] = useState(false);
   const [secureTokenInput, setSecureTokenInput] = useState("");
+  const [requiresSecureToken, setRequiresSecureToken] = useState(false);
 
   useEffect(() => {
     const resInterceptor = axios.interceptors.response.use(
@@ -346,6 +347,7 @@ export default function App() {
       try {
         const res = await axios.get("/api/config");
         if (res.data) {
+          setRequiresSecureToken(res.data.requiresSecureToken);
           if (res.data.requiresSecureToken && !localStorage.getItem("hareporting_app_secure_token")) {
              setSecureTokenPrompt(true);
           }
@@ -509,7 +511,7 @@ export default function App() {
       setLastSync(new Date());
     } catch (error: any) {
       console.error("Failed to fetch statistics", error);
-      if (error.response?.status !== 401) {
+      if (error.response?.status !== 401 && error.message !== "Switched to Simulator Mode") {
         const msg = error.response?.data?.error || "Failed to fetch statistics from Zabbix";
         alert(msg);
       }
@@ -834,44 +836,98 @@ export default function App() {
             <div className="max-w-2xl mx-auto w-full text-left">
               <h2 className="text-2xl font-bold text-slate-900 mb-6">Zabbix Gateway Configuration</h2>
               <div className="space-y-6">
-                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                  <label className="text-sm font-semibold text-slate-600 block mb-2">Endpoint URL</label>
-                  <input 
-                    type="text" 
-                    value={draftZabbixConfig.url} 
-                    onChange={e => setDraftZabbixConfig({...draftZabbixConfig, url: e.target.value})}
-                    placeholder="https://your-zabbix.com/zabbix/api_jsonrpc.php"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
-                  />
-                  <div className="mt-4">
-                    <label className="text-sm font-semibold text-slate-600 block mb-2">API Token</label>
+                
+                {zabbixConfig.isPreconfigured ? (
+                   <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-800">
+                     <p className="font-semibold mb-2 flex items-center gap-2">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-check"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                       Connected via Server Environment
+                     </p>
+                     <p className="text-sm opacity-90">
+                       This instance is securely configured via server environment variables. You cannot override the endpoint URL or API token from the UI.
+                     </p>
+                   </div>
+                ) : (
+                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                    <label className="text-sm font-semibold text-slate-600 block mb-2">Endpoint URL</label>
                     <input 
-                      type="password" 
-                      value={draftZabbixConfig.token} 
-                      onChange={e => setDraftZabbixConfig({...draftZabbixConfig, token: e.target.value})}
-                      placeholder="Your Zabbix API Token..."
+                      type="text" 
+                      value={draftZabbixConfig.url} 
+                      onChange={e => setDraftZabbixConfig({...draftZabbixConfig, url: e.target.value})}
+                      placeholder="https://your-zabbix.com/zabbix/api_jsonrpc.php"
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
                     />
+                    <div className="mt-4">
+                      <label className="text-sm font-semibold text-slate-600 block mb-2">API Token</label>
+                      <input 
+                        type="password" 
+                        value={draftZabbixConfig.token} 
+                        onChange={e => setDraftZabbixConfig({...draftZabbixConfig, token: e.target.value})}
+                        placeholder="Your Zabbix API Token..."
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
+                
+                {requiresSecureToken && (
+                  <div className="p-6 bg-indigo-50 rounded-2xl border border-indigo-200">
+                    <p className="text-sm font-semibold text-indigo-800 mb-2 flex items-center gap-2">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                       Secure Application Access
+                    </p>
+                    <p className="text-xs text-indigo-700 opacity-90 mb-4">
+                       This application requires an access token. Ensure this is configured if you intend to trigger a discovery or save your options.
+                    </p>
+                    <label className="text-sm font-semibold text-slate-600 block mb-2">Access Token</label>
+                    <input 
+                      type="password" 
+                      defaultValue={localStorage.getItem('hareporting_app_secure_token') || ''} 
+                      onChange={e => localStorage.setItem('hareporting_app_secure_token', e.target.value)}
+                      placeholder="Your APP_SECURE_TOKEN..."
+                      className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm" 
+                    />
+                  </div>
+                )}
+                
                 <div className={cn("grid gap-4", !isSimulated ? "grid-cols-3" : "grid-cols-2")}>
-                  <button 
-                    onClick={handleSaveZabbixConfig}
-                    className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-blue-500 transition-all active:scale-95"
-                  >
-                    Save Configuration
-                  </button>
+                  {!zabbixConfig.isPreconfigured && (
+                    <button 
+                      onClick={handleSaveZabbixConfig}
+                      className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-blue-500 transition-all active:scale-95"
+                    >
+                      Save Configuration
+                    </button>
+                  )}
+                  {zabbixConfig.isPreconfigured && (
+                    <button 
+                      onClick={() => {
+                        // Empty action, configuration is managed by the server
+                        setDiscoveryStatus({ type: 'success', message: "Configuration is managed by the server environment." });
+                      }}
+                      className="w-full py-3 bg-slate-300 text-slate-500 rounded-xl font-semibold text-sm shadow-sm cursor-not-allowed hidden"
+                    >
+                      Configuration Managed by Server
+                    </button>
+                  )}
                   <button 
                     onClick={async () => {
-                      setZabbixConfig(draftZabbixConfig);
-                      await discoverZabbixAssets(true, draftZabbixConfig);
+                      if (!zabbixConfig.isPreconfigured) {
+                        setZabbixConfig(draftZabbixConfig);
+                        await discoverZabbixAssets(true, draftZabbixConfig);
+                      } else {
+                        await discoverZabbixAssets(true);
+                      }
                     }}
-                    className="w-full py-3 bg-slate-800 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!draftZabbixConfig.url || !draftZabbixConfig.token || isDiscovering}
+                    className={cn(
+                      "w-full py-3 bg-slate-800 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed",
+                       zabbixConfig.isPreconfigured ? "col-span-2" : ""
+                    )}
+                    disabled={(!zabbixConfig.isPreconfigured && (!draftZabbixConfig.url || !draftZabbixConfig.token)) || isDiscovering}
                   >
                     <RefreshCw className={cn("w-4 h-4", isDiscovering && "animate-spin")} /> {isDiscovering ? 'Discovering...' : 'Trigger Discovery'}
                   </button>
-                  {!isSimulated && (
+                  {!isSimulated && !zabbixConfig.isPreconfigured && (
                     <button 
                       onClick={handleSimulatedMode}
                       className="w-full py-3 bg-rose-100 text-rose-700 rounded-xl font-semibold text-sm shadow-md hover:bg-rose-200 transition-all active:scale-95 flex items-center justify-center gap-2"
