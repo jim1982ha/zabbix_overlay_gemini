@@ -21,33 +21,23 @@ The **HA Reporting Dashboard** is a high-performance telemetry visualization sys
 ### Quick Start with Docker
 You can easily deploy the HA Reporting Dashboard using Docker, which is completely isolated and runs on a Node server serving Vite assets.
 
-#### 1. Build the Docker Image
-Before running the container, you need to build the Docker image locally from the project root:
+#### 1. Quick Deployment with Docker Compose (Recommended)
+This approach automatically builds the image and runs the container. It is great for managing your deployment alongside other tools.
 
-```bash
-docker build -t ha-reporting:latest .
-```
-
-#### 2. Run the Container
-
-**Option A: Docker Compose (Recommended)**
-This approach is great for managing your deployment alongside other tools (like Portainer, Nginx Proxy Manager, etc.).
-
-1. Create a `docker-compose.yml` file:
+1. Create a `docker-compose.yml` file in the project root:
 
 ```yaml
 version: '3.8'
 
 services:
   ha-reporting:
-    image: ha-reporting:latest
+    build: .
     container_name: ha-reporting
     # Exposing the dashboard on port 3000
     ports:
       - "3000:3000"
     environment:
       # Optional APP_PORT variable if you want the internal app to run on a different port.
-      # Useful for macvlan network setups where you want the app to listen directly on port 80.
       - APP_PORT=3000
       - VITE_ZABBIX_URL=http://your-zabbix-host/zabbix/api_jsonrpc.php
       - VITE_ZABBIX_TOKEN=your_zabbix_api_token
@@ -58,8 +48,8 @@ If you are using MacVlan or a specific network interface to expose port 80 direc
 
 ```yaml
   ha-reporting:
+    build: .
     container_name: ha-reporting
-    image: ha-reporting:latest
     environment:
       - NODE_ENV=production
       - APP_PORT=80
@@ -70,14 +60,22 @@ If you are using MacVlan or a specific network interface to expose port 80 direc
     restart: unless-stopped
 ```
 
-2. Run the deployment:
+2. Run the deployment (this will build the image and start the container):
 ```bash
 docker compose up -d
 ```
 3. Access the dashboard at `http://your-server-ip:3000`.
 
-**Option B: Docker CLI**
-If you prefer running the container directly via the command line, simply execute:
+#### 2. Manual Docker CLI Deployment
+If you prefer running the container directly via the command line instead of using Docker Compose, you can build and run it manually.
+
+1. Build the Docker Image (this saves the image to your local Docker registry):
+
+```bash
+docker build -t ha-reporting:latest .
+```
+
+2. Run the Container:
 
 ```bash
 docker run -d \
