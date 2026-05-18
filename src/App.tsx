@@ -72,6 +72,13 @@ interface Dashboard {
 
 type View = "dashboard" | "network" | "infra" | "config" | "notifications";
 
+declare global {
+  interface Window {
+    _resolveToken?: () => void;
+    _rejectToken?: (reason?: any) => void;
+  }
+}
+
 export default function App() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,8 +127,20 @@ export default function App() {
     const resInterceptor = axios.interceptors.response.use(
       response => response,
       error => {
-        if (error.response && error.response.status === 401) {
+        const originalRequest = error.config;
+        if (error.response && error.response.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
           setSecureTokenPrompt(true);
+          
+          return new Promise((resolve, reject) => {
+            window._resolveToken = () => {
+                originalRequest.headers['Authorization'] = `Bearer ${localStorage.getItem("hareporting_app_secure_token")}`;
+                resolve(axios(originalRequest));
+            };
+            window._rejectToken = (reason) => {
+                reject(reason || error);
+            };
+          });
         }
         return Promise.reject(error);
       }
@@ -490,8 +509,10 @@ export default function App() {
       setLastSync(new Date());
     } catch (error: any) {
       console.error("Failed to fetch statistics", error);
-      const msg = error.response?.data?.error || "Failed to fetch statistics from Zabbix";
-      alert(msg);
+      if (error.response?.status !== 401) {
+        const msg = error.response?.data?.error || "Failed to fetch statistics from Zabbix";
+        alert(msg);
+      }
     } finally {
       setTimeout(() => setLoading(false), 500);
     }
@@ -1794,7 +1815,14 @@ export default function App() {
               e.preventDefault();
               localStorage.setItem("hareporting_app_secure_token", secureTokenInput);
               setSecureTokenPrompt(false);
-              window.location.reload();
+              if (window._resolveToken) {
+                 window._resolveToken();
+                 window._resolveToken = undefined;
+                 window._rejectToken = undefined;
+              } else {
+                 setDiscoveryStatus({ type: 'success', message: 'Token saved, trying again...' });
+                 discoverZabbixAssets(false);
+              }
             }}>
               <div className="space-y-4">
                 <div>
@@ -1810,6 +1838,20 @@ export default function App() {
                 </div>
                 <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-lg shadow-sm transition-colors mt-2">
                   Verify Access
+                </button>
+                <button type="button" onClick={() => {
+                  setSecureTokenPrompt(false);
+                  setZabbixConfig({url: '', token: '', isPreconfigured: false});
+                  setDraftZabbixConfig({url: '', token: '', isPreconfigured: false});
+                  localStorage.setItem('hareporting_zabbix_url', '');
+                  localStorage.setItem('hareporting_zabbix_token', '');
+                  if (window._rejectToken) {
+                     window._rejectToken(new Error("Switched to Simulator Mode"));
+                     window._resolveToken = undefined;
+                     window._rejectToken = undefined;
+                  }
+                }} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-lg shadow-sm transition-colors mt-2">
+                  Execute in Simulated Mode
                 </button>
               </div>
             </form>
