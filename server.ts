@@ -201,11 +201,7 @@ async function startServer() {
   app.post("/api/timeseries", async (req, res) => {
     let { start, end, granularity = '5m', range = '24h', mode = 'live', url, token, metrics = [], hosts = [] } = req.body;
     
-    // Use env vars if missing or using masked token
-    const urlToUse = url || process.env.VITE_ZABBIX_URL;
-    const tokenToUse = (!token || token.includes('*')) ? process.env.VITE_ZABBIX_TOKEN : token;
-
-    const isSimulating = !urlToUse || !tokenToUse;
+    const isSimulating = !url || !token;
 
     // Optional: Internal Authorization Gate if APP_SECURE_TOKEN is injected via environment (CWE-306 fix)
     const expectedToken = process.env.APP_SECURE_TOKEN;
@@ -224,7 +220,7 @@ async function startServer() {
     hosts = hosts.filter((h: any) => typeof h === 'string');
 
     // Basic SSRF protection (CWE-918): Reject loopback and AWS Metadata IPs
-    if (urlToUse && !isSafeTargetUrl(urlToUse)) {
+    if (url && !isSafeTargetUrl(url)) {
       return res.status(403).json({ error: "Forbidden: Unsafe target URL provided." });
     }
 
@@ -279,94 +275,34 @@ async function startServer() {
 
     let itemValueMap: Record<string, string> = {};
 
-    if (urlToUse && tokenToUse && metrics.length > 0 && hosts.length > 0) {
+    if (url && token && metrics.length > 0 && hosts.length > 0) {
       try {
-        const itemRes = await axios.post(urlToUse, {
+        const itemRes = await axios.post(url, {
           jsonrpc: "2.0",
           method: "item.get",
           params: {
-            output: ["itemid", "name", "value_type"],
-            selectHosts: ["host", "name"],
-            filter: { name: metrics },
+            output: ["itemid", "name", "lastvalue"],
+            selectHosts: ["host"],
+            search: { name: metrics },
+            searchByAny: true,
             monitored: true,
           },
-          auth: tokenToUse,
+          auth: token,
           id: Date.now()
         }, { timeout: 10000 });
 
         if (itemRes.data && itemRes.data.result) {
-          const itemIds: string[] = [];
-          const itemMapById: Record<string, any> = {};
-
           itemRes.data.result.forEach((item: any) => {
-             itemIds.push(item.itemid);
-             itemMapById[item.itemid] = item;
-          });
-
-          // Fetch historical data for float (0) and unsigned (3) types. (Ignore text strings for chart plotting)
-          const historyRes = await axios.post(urlToUse, {
-            jsonrpc: "2.0",
-            method: "history.get",
-            params: {
-              output: ["itemid", "value"],
-              history: 0, // 0 = numeric float
-              itemids: itemIds,
-              sortfield: "clock",
-              sortorder: "DESC",
-              limit: itemIds.length
-            },
-            auth: tokenToUse,
-            id: Date.now()
-          }, { timeout: 10000 });
-          
-          const historyResUnsigned = await axios.post(urlToUse, {
-            jsonrpc: "2.0",
-            method: "history.get",
-            params: {
-              output: ["itemid", "value"],
-              history: 3, // 3 = numeric unsigned
-              itemids: itemIds,
-              sortfield: "clock",
-              sortorder: "DESC",
-              limit: itemIds.length
-            },
-            auth: tokenToUse,
-            id: Date.now()
-          }, { timeout: 10000 });
-
-          const allHistory = [...(historyRes.data?.result || []), ...(historyResUnsigned.data?.result || [])];
-          
-          allHistory.forEach((hist: any) => {
-             const originalItem = itemMapById[hist.itemid];
-             if (originalItem) {
-               const hHost = originalItem.hosts?.[0]?.host;
-               const hName = originalItem.hosts?.[0]?.name;
-               const m = originalItem.name;
-               if (m) {
-                  // Keep the most recent value (first encountered due to DESC)
-                  if (hHost && itemValueMap[`${m}_${hHost}`] === undefined) itemValueMap[`${m}_${hHost}`] = hist.value;
-                  if (hName && itemValueMap[`${m}_${hName}`] === undefined) itemValueMap[`${m}_${hName}`] = hist.value;
-               }
-             }
-          });
-
-          // Optional edge case for text/string values or no history found
-          // (Zabbix won't return history if item hasn't updated recently or is text. Let's just fallback zero if still empty)
-          itemRes.data.result.forEach((item: any) => {
-             const hHost = item.hosts?.[0]?.host;
-             const hName = item.hosts?.[0]?.name;
+             const h = item.hosts?.[0]?.host;
              const m = item.name;
-             if (m) {
-                if (hHost && itemValueMap[`${m}_${hHost}`] === undefined) itemValueMap[`${m}_${hHost}`] = "0";
-                if (hName && itemValueMap[`${m}_${hName}`] === undefined) itemValueMap[`${m}_${hName}`] = "0";
+             if (h && m) {
+                // Keep the exact last value
+                itemValueMap[`${m}_${h}`] = item.lastvalue;
              }
           });
-          
-          console.log("Found Zabbix Items count:", itemRes.data.result.length);
-          console.log("Requested metrics length:", metrics.length);
         }
       } catch (e) {
-        console.error("Failed to fetch real data for timeseries", e.message || e);
+        console.error("Failed to fetch real data for timeseries", e);
       }
     }
     
@@ -387,7 +323,7 @@ async function startServer() {
               // Add tiny jitter backwards to simulate history so it's not a flat line
               const jitter = baseNum * 0.05 * Math.sin(i + h.charCodeAt(0));
               point[key] = parseFloat((baseNum + jitter).toFixed(2));
-           } else if (isSimulating) {
+           } else {
              // Mock values based on metric name heuristics
              const timeValue = new Date(timeLabels[i]).getTime();
              const seedValue = timeValue / 10000; 
@@ -404,8 +340,6 @@ async function startServer() {
              else val = Math.floor(((Math.sin(combined) + 1) / 2) * 100) + 10;
 
              point[key] = val;
-           } else {
-             point[key] = null; // Don't invent data for real configuration
            }
         });
       });

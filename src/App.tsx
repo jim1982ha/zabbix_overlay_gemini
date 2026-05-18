@@ -513,20 +513,20 @@ export default function App() {
   const activeMetricsStr = useMemo(() => {
     const s = new Set<string>();
     widgets.forEach(w => w.metrics.forEach(m => s.add(m)));
-    return Array.from(s).sort().join('|||');
+    return Array.from(s).sort().join(',');
   }, [widgets]);
 
   const activeHostsStr = useMemo(() => {
     const s = new Set<string>();
     widgets.forEach(w => w.hosts.forEach(h => s.add(h)));
-    return Array.from(s).sort().join('|||');
+    return Array.from(s).sort().join(',');
   }, [widgets]);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      const activeMetrics = activeMetricsStr ? activeMetricsStr.split('|||') : (availableMetrics.length > 0 ? [availableMetrics[0]] : ['cpu']);
-      const activeHosts = activeHostsStr ? activeHostsStr.split('|||') : (availableHosts.length > 0 ? [availableHosts[0]] : ['srv-prod-01']);
+      const activeMetrics = activeMetricsStr ? activeMetricsStr.split(',') : (availableMetrics.length > 0 ? [availableMetrics[0]] : ['cpu']);
+      const activeHosts = activeHostsStr ? activeHostsStr.split(',') : (availableHosts.length > 0 ? [availableHosts[0]] : ['srv-prod-01']);
 
       const response = await axios.post("/api/timeseries", {
         granularity: filters.mode === 'live' ? filters.granularity : filters.granularity,
@@ -681,8 +681,7 @@ export default function App() {
     const exportData = {
       name: dashboardName,
       widgets: widgets,
-      v: '1.0',
-      mode: isSimulated ? 'simulated' : 'live'
+      v: '1.0'
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -704,15 +703,6 @@ export default function App() {
       try {
         const json = JSON.parse(event.target?.result as string);
         if (json.widgets && Array.isArray(json.widgets)) {
-          // Strict check: only allow importing dashboard if their exported mode matches current mode.
-          const importedMode = json.mode || 'simulated'; // Fallback for old v1 sim files
-          const currentMode = isSimulated ? 'simulated' : 'live';
-          
-          if (importedMode !== currentMode) {
-            alert(`Incompatible mode: Cannot import a ${importedMode} dashboard into ${currentMode} mode.`);
-            return;
-          }
-
           // If we have a successful parse, we update the current state
           // We don't auto-save to localStorage yet, allowing user to review
           setWidgets(json.widgets);
