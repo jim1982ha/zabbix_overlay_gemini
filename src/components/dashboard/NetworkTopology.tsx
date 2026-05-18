@@ -230,33 +230,9 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
             Status
           </button>
         </div>
-        
-        {(isHistorical || globalSearch) && (
-        <div className={cn(
-          "border p-4 rounded-xl flex items-center justify-between mb-2 shadow-sm animate-in fade-in duration-300",
-          isHistorical ? "bg-amber-50 border-amber-100" : "bg-blue-50 border-blue-100"
-        )}>
-          <div className="flex items-center gap-3">
-             <div className={cn(
-               "w-8 h-8 rounded-lg flex items-center justify-center",
-               isHistorical ? "bg-amber-100/50" : "bg-blue-100/50"
-             )}>
-                <Search className={cn("w-4 h-4", isHistorical ? "text-amber-600" : "text-blue-600")} />
-             </div>
-             <div>
-                <p className={cn("text-sm font-semibold", isHistorical ? "text-amber-800" : "text-blue-800")}>
-                  {isHistorical ? "Historical Topology Snapshot" : `Topology Search Active: "${globalSearch}"`}
-                </p>
-                <p className={cn("text-xs mt-0.5 font-medium", isHistorical ? "text-amber-700/70" : "text-blue-700/70")}>
-                  {isHistorical ? `Reference Period: ${filters.start} to ${filters.end}` : "Matching nodes are highlighted in the mesh"}
-                </p>
-             </div>
-          </div>
-        </div>
-      )}
       </div>
       <div className="flex flex-col gap-6">
-        <div ref={containerRef} className="bg-white border border-slate-100 rounded-2xl p-4 relative overflow-auto h-[450px] shadow-sm custom-scrollbar block">
+        <div ref={containerRef} className="bg-white border border-slate-100 rounded-2xl p-4 relative min-h-[450px] overflow-x-auto shadow-sm custom-scrollbar block">
           {/* SVG Topology Graph */}
           {(() => {
             const maxY = nodes.length > 0 ? Math.max(...nodes.map(n => n.y)) : 300;

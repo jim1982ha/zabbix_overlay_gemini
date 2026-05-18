@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Activity, Shield, AlertTriangle, CheckCircle, Clock, X, ExternalLink, Zap, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import axios from 'axios';

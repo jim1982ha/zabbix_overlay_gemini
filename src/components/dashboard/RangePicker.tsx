@@ -5,7 +5,7 @@ import 'react-day-picker/dist/style.css';
 import { format, subDays, subHours, startOfToday, endOfToday } from 'date-fns';
 import { Calendar as CalendarIcon, ChevronDown, Clock, Zap, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface RangePickerProps {
   range: { start: string; end: string };

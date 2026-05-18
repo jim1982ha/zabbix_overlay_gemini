@@ -159,22 +159,6 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
 
   return (
     <div className="space-y-6">
-      {isHistorical && (
-        <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex items-center justify-between animate-in slide-in-from-top-4 duration-500 shadow-sm">
-          <div className="flex items-center gap-3">
-             <div className="w-8 h-8 rounded-lg bg-amber-100/50 flex items-center justify-center">
-                <Search className="w-4 h-4 text-amber-600" />
-             </div>
-             <div>
-                <p className="text-sm font-semibold text-amber-800 leading-none">Historical Audit Mode</p>
-                <p className="text-xs text-amber-700/70 font-medium mt-1">
-                  Viewing Hardware State for: {filters.start} to {filters.end}
-                </p>
-             </div>
-          </div>
-          <div className="text-[10px] font-semibold text-amber-600/60 uppercase tracking-widest">Data Snapshot</div>
-        </div>
-      )}
       {/* Filter Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white border border-slate-200 p-2 rounded-xl shadow-sm relative overflow-hidden">
         {globalSearch && (
