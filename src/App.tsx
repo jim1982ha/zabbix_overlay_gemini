@@ -513,20 +513,20 @@ export default function App() {
   const activeMetricsStr = useMemo(() => {
     const s = new Set<string>();
     widgets.forEach(w => w.metrics.forEach(m => s.add(m)));
-    return Array.from(s).sort().join(',');
+    return Array.from(s).sort().join('|||');
   }, [widgets]);
 
   const activeHostsStr = useMemo(() => {
     const s = new Set<string>();
     widgets.forEach(w => w.hosts.forEach(h => s.add(h)));
-    return Array.from(s).sort().join(',');
+    return Array.from(s).sort().join('|||');
   }, [widgets]);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      const activeMetrics = activeMetricsStr ? activeMetricsStr.split(',') : (availableMetrics.length > 0 ? [availableMetrics[0]] : ['cpu']);
-      const activeHosts = activeHostsStr ? activeHostsStr.split(',') : (availableHosts.length > 0 ? [availableHosts[0]] : ['srv-prod-01']);
+      const activeMetrics = activeMetricsStr ? activeMetricsStr.split('|||') : (availableMetrics.length > 0 ? [availableMetrics[0]] : ['cpu']);
+      const activeHosts = activeHostsStr ? activeHostsStr.split('|||') : (availableHosts.length > 0 ? [availableHosts[0]] : ['srv-prod-01']);
 
       const response = await axios.post("/api/timeseries", {
         granularity: filters.mode === 'live' ? filters.granularity : filters.granularity,

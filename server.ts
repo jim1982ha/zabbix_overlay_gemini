@@ -285,10 +285,9 @@ async function startServer() {
           jsonrpc: "2.0",
           method: "item.get",
           params: {
-            output: ["itemid", "name", "lastvalue"],
-            selectHosts: ["host"],
-            search: { name: metrics },
-            searchByAny: true,
+            output: ["itemid", "name", "value_type"],
+            selectHosts: ["host", "name"],
+            filter: { name: metrics },
             monitored: true,
           },
           auth: tokenToUse,
@@ -296,17 +295,78 @@ async function startServer() {
         }, { timeout: 10000 });
 
         if (itemRes.data && itemRes.data.result) {
+          const itemIds: string[] = [];
+          const itemMapById: Record<string, any> = {};
+
           itemRes.data.result.forEach((item: any) => {
-             const h = item.hosts?.[0]?.host;
-             const m = item.name;
-             if (h && m) {
-                // Keep the exact last value
-                itemValueMap[`${m}_${h}`] = item.lastvalue;
+             itemIds.push(item.itemid);
+             itemMapById[item.itemid] = item;
+          });
+
+          // Fetch historical data for float (0) and unsigned (3) types. (Ignore text strings for chart plotting)
+          const historyRes = await axios.post(urlToUse, {
+            jsonrpc: "2.0",
+            method: "history.get",
+            params: {
+              output: ["itemid", "value"],
+              history: 0, // 0 = numeric float
+              itemids: itemIds,
+              sortfield: "clock",
+              sortorder: "DESC",
+              limit: itemIds.length
+            },
+            auth: tokenToUse,
+            id: Date.now()
+          }, { timeout: 10000 });
+          
+          const historyResUnsigned = await axios.post(urlToUse, {
+            jsonrpc: "2.0",
+            method: "history.get",
+            params: {
+              output: ["itemid", "value"],
+              history: 3, // 3 = numeric unsigned
+              itemids: itemIds,
+              sortfield: "clock",
+              sortorder: "DESC",
+              limit: itemIds.length
+            },
+            auth: tokenToUse,
+            id: Date.now()
+          }, { timeout: 10000 });
+
+          const allHistory = [...(historyRes.data?.result || []), ...(historyResUnsigned.data?.result || [])];
+          
+          allHistory.forEach((hist: any) => {
+             const originalItem = itemMapById[hist.itemid];
+             if (originalItem) {
+               const hHost = originalItem.hosts?.[0]?.host;
+               const hName = originalItem.hosts?.[0]?.name;
+               const m = originalItem.name;
+               if (m) {
+                  // Keep the most recent value (first encountered due to DESC)
+                  if (hHost && itemValueMap[`${m}_${hHost}`] === undefined) itemValueMap[`${m}_${hHost}`] = hist.value;
+                  if (hName && itemValueMap[`${m}_${hName}`] === undefined) itemValueMap[`${m}_${hName}`] = hist.value;
+               }
              }
           });
+
+          // Optional edge case for text/string values or no history found
+          // (Zabbix won't return history if item hasn't updated recently or is text. Let's just fallback zero if still empty)
+          itemRes.data.result.forEach((item: any) => {
+             const hHost = item.hosts?.[0]?.host;
+             const hName = item.hosts?.[0]?.name;
+             const m = item.name;
+             if (m) {
+                if (hHost && itemValueMap[`${m}_${hHost}`] === undefined) itemValueMap[`${m}_${hHost}`] = "0";
+                if (hName && itemValueMap[`${m}_${hName}`] === undefined) itemValueMap[`${m}_${hName}`] = "0";
+             }
+          });
+          
+          console.log("Found Zabbix Items count:", itemRes.data.result.length);
+          console.log("Requested metrics length:", metrics.length);
         }
       } catch (e) {
-        console.error("Failed to fetch real data for timeseries", e);
+        console.error("Failed to fetch real data for timeseries", e.message || e);
       }
     }
     
