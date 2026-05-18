@@ -681,7 +681,8 @@ export default function App() {
     const exportData = {
       name: dashboardName,
       widgets: widgets,
-      v: '1.0'
+      v: '1.0',
+      mode: isSimulated ? 'simulated' : 'live'
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -703,6 +704,15 @@ export default function App() {
       try {
         const json = JSON.parse(event.target?.result as string);
         if (json.widgets && Array.isArray(json.widgets)) {
+          // Strict check: only allow importing dashboard if their exported mode matches current mode.
+          const importedMode = json.mode || 'simulated'; // Fallback for old v1 sim files
+          const currentMode = isSimulated ? 'simulated' : 'live';
+          
+          if (importedMode !== currentMode) {
+            alert(`Incompatible mode: Cannot import a ${importedMode} dashboard into ${currentMode} mode.`);
+            return;
+          }
+
           // If we have a successful parse, we update the current state
           // We don't auto-save to localStorage yet, allowing user to review
           setWidgets(json.widgets);

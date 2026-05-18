@@ -323,7 +323,7 @@ async function startServer() {
               // Add tiny jitter backwards to simulate history so it's not a flat line
               const jitter = baseNum * 0.05 * Math.sin(i + h.charCodeAt(0));
               point[key] = parseFloat((baseNum + jitter).toFixed(2));
-           } else {
+           } else if (isSimulating) {
              // Mock values based on metric name heuristics
              const timeValue = new Date(timeLabels[i]).getTime();
              const seedValue = timeValue / 10000; 
@@ -340,6 +340,8 @@ async function startServer() {
              else val = Math.floor(((Math.sin(combined) + 1) / 2) * 100) + 10;
 
              point[key] = val;
+           } else {
+             point[key] = null; // Don't invent data for real configuration
            }
         });
       });
