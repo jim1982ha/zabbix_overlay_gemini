@@ -7,6 +7,7 @@ import {
   Line,
   BarChart,
   Bar,
+  ComposedChart,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -31,6 +32,8 @@ interface LegendItem {
   key: string;
   name: string;
   color?: string;
+  metric?: string; // added to identify parent metric for mixed config
+  unit?: string;
 }
 
 interface TrendChartProps {
@@ -38,9 +41,17 @@ interface TrendChartProps {
   data: DataPoint[];
   series: LegendItem[];
   hosts: string[];
-  chartType?: 'area' | 'line' | 'bar' | 'pie';
+  chartType?: 'area' | 'line' | 'bar' | 'pie' | 'mixed';
+  seriesConfig?: Record<string, {
+    yAxis: 'left' | 'right';
+    chartType: 'area' | 'line' | 'bar';
+    aggregation: 'none' | 'sum' | 'avg';
+    stacked: boolean;
+  }>;
   stacked?: boolean;
   unit?: string;
+  leftUnit?: string;
+  rightUnit?: string;
   mode?: 'live' | 'historical';
   granularity?: string;
   aggregation?: 'none' | 'sum' | 'avg';
@@ -52,7 +63,7 @@ interface TrendChartProps {
   onZoomDomainChange?: (domain: [number, number] | null) => void;
 }
 
-export function TrendChart({ title, data, series, hosts, chartType = 'area', stacked = false, unit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onHostClick, zoomDomain, onZoomDomainChange }: TrendChartProps) {
+export function TrendChart({ title, data, series, hosts, chartType = 'area', seriesConfig, stacked = false, unit, leftUnit, rightUnit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onHostClick, zoomDomain, onZoomDomainChange }: TrendChartProps) {
   const defaultColors = ['#0284c7', '#4f46e5', '#7c3aed', '#db2777', '#d97706', '#059669', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#06b6d4'];
   const chartColors = color ? [color, ...defaultColors.filter(c => c !== color)] : defaultColors;
 
@@ -151,7 +162,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
                   </span>
                 </div>
                 <span className="text-[10px] font-bold text-slate-900 whitespace-nowrap ml-2">
-                  {entry.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{unit || ''}
+                  {entry.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{entry.payload?.unit || series.find((s) => s.key === entry.dataKey)?.unit || unit || ''}
                 </span>
               </div>
             ))}
@@ -182,7 +193,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               cx="50%"
               cy="50%"
               innerRadius={0}
-              outerRadius={80}
+              outerRadius="80%"
               dataKey="value"
             >
               {pieData.map((entry, index) => (
@@ -194,7 +205,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
         );
       case 'line':
         return (
-          <LineChart data={displayedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} {...dragProps}>
+          <LineChart data={displayedData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }} {...dragProps}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
             <XAxis 
               dataKey="time" 
@@ -204,7 +215,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Line 
@@ -225,9 +236,32 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
             ) : null}
           </LineChart>
         );
-      case 'bar':
+      case 'mixed':
+        const hasRight = series.some(s => {
+          const metric = s.metric || s.key.split('_')[0];
+          return seriesConfig?.[metric]?.yAxis === 'right';
+        });
+        const hasLeft = series.some(s => {
+          const metric = s.metric || s.key.split('_')[0];
+          return (seriesConfig?.[metric]?.yAxis || 'left') === 'left';
+        });
+
         return (
-          <BarChart data={displayedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} {...dragProps}>
+          <ComposedChart data={displayedData} margin={{ top: 10, right: hasRight ? 20 : 20, left: 10, bottom: 0 }} {...dragProps}>
+            <defs>
+              {series.map((s, i) => {
+                const metric = s.metric || s.key.split('_')[0];
+                const type = seriesConfig?.[metric]?.chartType || 'line';
+                if (type !== 'area') return null;
+                const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
+                return (
+                <linearGradient key={`mixed-grad-${s.key}`} id={safeId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={0.15}/>
+                  <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0}/>
+                </linearGradient>
+                );
+              })}
+            </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
             <XAxis 
               dataKey="time" 
@@ -237,7 +271,84 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
+            {hasLeft && <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={leftUnit ? { value: leftUnit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />}
+            {hasRight && <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} width={55} label={rightUnit ? { value: rightUnit.trim(), angle: 90, position: 'insideRight', offset: 0, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />}
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            {series.map((s, i) => {
+              const metric = s.metric || s.key.split('_')[0];
+              const conf = seriesConfig?.[metric] || { chartType: 'line', yAxis: 'left', stacked: false };
+              const t = conf.chartType;
+              const yId = conf.yAxis || 'left';
+              
+              if (t === 'bar') {
+                return (
+                  <Bar 
+                    key={s.key} 
+                    hide={hiddenSeries?.has(s.key)} 
+                    name={s.name} 
+                    dataKey={s.key} 
+                    fill={getSeriesColor(s, i)} 
+                    stackId={conf.stacked ? `stack-${metric}` : undefined} 
+                    unit={unit} 
+                    radius={[4, 4, 0, 0]} 
+                    yAxisId={yId}
+                  />
+                );
+              } else if (t === 'area') {
+                const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
+                return (
+                  <Area 
+                    key={s.key} 
+                    hide={hiddenSeries?.has(s.key)} 
+                    name={s.name} 
+                    type="monotone" 
+                    dataKey={s.key} 
+                    stroke={getSeriesColor(s, i)} 
+                    stackId={conf.stacked ? `stack-${metric}` : undefined} 
+                    strokeWidth={2.5} 
+                    fillOpacity={1} 
+                    fill={`url(#${safeId})`} 
+                    unit={unit} 
+                    animationDuration={1000} 
+                    yAxisId={yId}
+                  />
+                );
+              } else {
+                return (
+                  <Line 
+                    key={s.key} 
+                    hide={hiddenSeries?.has(s.key)} 
+                    name={s.name} 
+                    type="monotone" 
+                    dataKey={s.key} 
+                    stroke={getSeriesColor(s, i)} 
+                    strokeWidth={2.5} 
+                    dot={false} 
+                    activeDot={{ r: 4, strokeWidth: 0 }} 
+                    unit={unit} 
+                    yAxisId={yId}
+                  />
+                );
+              }
+            })}
+            {refAreaLeft && refAreaRight ? (
+              <ReferenceArea x1={refAreaLeft} x2={refAreaRight} strokeOpacity={0.3} fill="#0ea5e9" fillOpacity={0.1} />
+            ) : null}
+          </ComposedChart>
+        );
+      case 'bar':
+        return (
+          <BarChart data={displayedData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }} {...dragProps}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+            <XAxis 
+              dataKey="time" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} 
+              tickFormatter={formatXAxis}
+              minTickGap={30}
+            />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Bar 
@@ -258,7 +369,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
         );
       default:
         return (
-          <AreaChart data={displayedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} {...dragProps}>
+          <AreaChart data={displayedData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }} {...dragProps}>
             <defs>
               {series.map((s, i) => {
                 const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
@@ -279,7 +390,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               tickFormatter={formatXAxis}
               minTickGap={30} 
             />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => {
               const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
@@ -352,8 +463,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
         </div>
       </div>
 
-      <div className="flex-1 w-full relative min-h-0 flex flex-col">
-        <div className={`flex-1 w-full relative select-none cursor-crosshair`}>
+      <div className={cn("flex-1 w-full relative min-h-0 flex", chartType === 'pie' ? "flex-row items-center" : "flex-col")}>
+        <div className={`flex-1 w-full h-full relative select-none cursor-crosshair`}>
           <div className="absolute inset-0">
             <ResponsiveContainer width="100%" height="100%">
               {renderChart()}
@@ -361,7 +472,11 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 max-h-[80px] overflow-y-auto custom-scrollbar px-1 shrink-0 bg-white relative z-10 w-full mb-1">
+        {chartType === 'pie' && (
+          <div className={cn(
+            "shrink-0 bg-white relative z-10",
+            "flex flex-col gap-2 w-auto min-w-[120px] max-w-[40%] ml-4 max-h-[160px] overflow-y-auto px-2" 
+          )}>
             {series.map((s, i) => {
               const isHidden = hiddenSeries?.has(s.key);
               return (
@@ -385,6 +500,34 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', sta
               );
             })}
           </div>
+        )}
+        
+        {chartType !== 'pie' && (
+          <div className="shrink-0 bg-white relative z-10 w-full mb-1 flex flex-wrap gap-x-4 gap-y-1.5 mt-3 max-h-[80px] overflow-y-auto custom-scrollbar px-1">
+              {series.map((s, i) => {
+                const isHidden = hiddenSeries?.has(s.key);
+                return (
+                  <div 
+                    key={s.key} 
+                    onClick={() => onLegendClick?.(s.key)} 
+                    className={cn(
+                      "flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold transition-opacity duration-200 select-none max-w-full",
+                      isHidden ? "opacity-40 hover:opacity-70" : "opacity-100 hover:opacity-80"
+                    )}
+                    title={s.name}
+                  >
+                    <div 
+                      className="w-2.5 h-2.5 rounded-sm flex-shrink-0" 
+                      style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s, i) }} 
+                    />
+                    <span className={cn("truncate max-w-full", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
+                      {s.name}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+        )}
 
         {zoomDomain && data && data.length > 0 && (
           <div className="flex items-center gap-2 mt-2 px-2 text-[10px] sm:text-xs">

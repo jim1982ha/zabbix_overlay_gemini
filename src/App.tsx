@@ -55,7 +55,7 @@ interface Widget {
   id: string;
   title: string;
   type: 'kpi' | 'chart';
-  chartType: 'area' | 'line' | 'bar' | 'pie';
+  chartType: 'area' | 'line' | 'bar' | 'pie' | 'mixed';
   metrics: string[];
   hosts: string[];
   aggregation: 'none' | 'sum' | 'avg';
@@ -63,6 +63,14 @@ interface Widget {
   cols: number;
   rows: number;
   forceNewline?: boolean;
+  seriesConfig?: Record<string, {
+    metric?: string;
+    host?: string;
+    yAxis: 'left' | 'right';
+    chartType: 'area' | 'line' | 'bar';
+    aggregation: 'none' | 'sum' | 'avg';
+    stacked: boolean;
+  }>;
 }
 
 interface Dashboard {
@@ -1270,25 +1278,28 @@ export default function App() {
                                   <option value="line">Line Chart</option>
                                   <option value="bar">Bar Chart</option>
                                   <option value="pie">Pie Chart</option>
+                                  <option value="mixed">Mixed (Dual Axis)</option>
                                 </select>
                               </div>
                             )}
 
-                            <div>
-                              <label className="text-sm font-semibold text-slate-400 block mb-2">Aggregation</label>
-                              <select 
-                                value={w.aggregation} 
-                                onChange={e => handleUpdateWidget(w.id, { aggregation: e.target.value as any })} 
-                                className="w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-700 focus:border-sky-500 outline-none transition-all text-white"
-                              >
-                                <option value="none">Detailed Multi-Series</option>
-                                <option value="sum">Sum</option>
-                                <option value="avg">Average</option>
-                              </select>
-                            </div>
+                            {w.chartType !== 'mixed' && (
+                              <div>
+                                <label className="text-sm font-semibold text-slate-400 block mb-2">Aggregation</label>
+                                <select 
+                                  value={w.aggregation} 
+                                  onChange={e => handleUpdateWidget(w.id, { aggregation: e.target.value as any })} 
+                                  className="w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-700 focus:border-sky-500 outline-none transition-all text-white"
+                                >
+                                  <option value="none">Detailed Multi-Series</option>
+                                  <option value="sum">Sum</option>
+                                  <option value="avg">Average</option>
+                                </select>
+                              </div>
+                            )}
                           </div>
 
-                          {w.type === 'chart' && (
+                          {w.type === 'chart' && w.chartType !== 'mixed' && (
                             <div>
                               <label className="text-sm font-semibold text-slate-400 block mb-2">Display Mode</label>
                               <label className="flex items-center gap-3 sm:gap-4 w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-700 hover:border-slate-600 focus-within:border-sky-500 outline-none transition-all text-white cursor-pointer select-none">
@@ -1304,43 +1315,167 @@ export default function App() {
                           )}
                         </div>
 
-                        <div className="space-y-6">
-                          <MultiSelect 
-                            label="Hostname" 
-                            options={availableHosts} 
-                            selected={w.hosts} 
-                            onChange={(h) => handleUpdateWidget(w.id, { hosts: h })} 
-                            metricUnitsMap={{}}
-                          />
+                        {w.chartType !== 'mixed' && (
+                          <div className="space-y-6">
+                            <MultiSelect 
+                              label="Hostname" 
+                              options={availableHosts} 
+                              selected={w.hosts} 
+                              onChange={(h) => handleUpdateWidget(w.id, { hosts: h })} 
+                              metricUnitsMap={{}}
+                            />
 
-                          {(() => {
-                            let optionsForWidget = isDemo ? availableMetrics : [];
-                            if (!isDemo) {
-                              if (w.hosts.length === 0) {
-                                optionsForWidget = availableMetrics;
-                              } else {
-                                const metricItems = new Set<string>();
-                                w.hosts.forEach(h => {
-                                  const m = hostMetricsMap[h];
-                                  if (m) m.forEach(x => metricItems.add(x));
-                                });
-                                optionsForWidget = Array.from(metricItems);
+                            {(() => {
+                              let optionsForWidget = isDemo ? availableMetrics : [];
+                              if (!isDemo) {
+                                if (w.hosts.length === 0) {
+                                  optionsForWidget = availableMetrics;
+                                } else {
+                                  const metricItems = new Set<string>();
+                                  w.hosts.forEach(h => {
+                                    const m = hostMetricsMap[h];
+                                    if (m) m.forEach(x => metricItems.add(x));
+                                  });
+                                  optionsForWidget = Array.from(metricItems);
+                                }
                               }
-                            }
-                            return (
-                              <MultiSelect 
-                                label="Telemetry Metric Stream" 
-                                options={(!isDemo && w.hosts.length > 0) ? optionsForWidget : availableMetrics} 
-                                selected={w.metrics} 
-                                onChange={(m) => handleUpdateWidget(w.id, { metrics: m })} 
-                                metricUnitsMap={metricUnitsMap}
-                              />
-                            );
-                          })()}
-                        </div>
+                              return (
+                                <div className="space-y-6">
+                                  <MultiSelect 
+                                    label="Telemetry Metric Stream" 
+                                    options={(!isDemo && w.hosts.length > 0) ? optionsForWidget : availableMetrics} 
+                                    selected={w.metrics} 
+                                    onChange={(m) => handleUpdateWidget(w.id, { metrics: m })} 
+                                    metricUnitsMap={metricUnitsMap}
+                                  />
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="pt-6 sm:pt-8 border-t border-slate-800 flex flex-col sm:flex-row justify-end gap-3">
+                      {w.chartType === 'mixed' && (
+                        <div className="mt-8 space-y-6">
+                          <h5 className="text-sm font-semibold text-slate-400">Series Configuration (Max 2 metrics for Mixed)</h5>
+                          <div className="bg-slate-900/40 rounded-xl p-6 sm:p-8 space-y-8">
+                            {['series1', 'series2'].map((seriesKey, idx) => {
+                              const sConf = w.seriesConfig?.[seriesKey] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: idx === 0 ? 'left' : 'right', chartType: 'line', aggregation: 'none', stacked: false };
+                              
+                              const generateOption = (val: string, lbl: string) => <option value={val} key={val}>{lbl}</option>;
+                              
+                              return (
+                                <div key={seriesKey} className="space-y-4">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm font-bold text-sky-400 capitalize">Series {idx + 1}</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                                    <div className="col-span-2 md:col-span-3">
+                                      <MultiSelect 
+                                        label="Hosts" 
+                                        options={['all', ...availableHosts]} 
+                                        selected={sConf.hosts || (sConf.host ? [sConf.host] : ['all'])}
+                                        onChange={(hosts) => {
+                                          const selectedHosts = hosts.length === 0 ? ['all'] : hosts;
+                                          const newConf = { ...w.seriesConfig, [seriesKey]: { ...sConf, hosts: selectedHosts, host: undefined } };
+                                          const allMetrics = Array.from(new Set([...(newConf.series1?.metrics || (newConf.series1?.metric ? [newConf.series1.metric] : [])), ...(newConf.series2?.metrics || (newConf.series2?.metric ? [newConf.series2.metric] : []))]));
+                                          const allHosts = Array.from(new Set([...(newConf.series1?.hosts || (newConf.series1?.host ? [newConf.series1.host] : [])), ...(newConf.series2?.hosts || (newConf.series2?.host ? [newConf.series2.host] : []))]));
+                                          handleUpdateWidget(w.id, { seriesConfig: newConf, metrics: allMetrics, hosts: allHosts });
+                                        }}
+                                        metricUnitsMap={metricUnitsMap}
+                                      />
+                                    </div>
+                                    <div className="col-span-2 md:col-span-3">
+                                      <MultiSelect 
+                                        label="Metrics" 
+                                        options={availableMetrics} 
+                                        selected={sConf.metrics || (sConf.metric ? [sConf.metric] : (availableMetrics[0] ? [availableMetrics[0]] : []))}
+                                        onChange={(metrics) => {
+                                          const newConf = { ...w.seriesConfig, [seriesKey]: { ...sConf, metrics: metrics, metric: undefined } };
+                                          const allMetrics = Array.from(new Set([...(newConf.series1?.metrics || (newConf.series1?.metric ? [newConf.series1.metric] : [])), ...(newConf.series2?.metrics || (newConf.series2?.metric ? [newConf.series2.metric] : []))]));
+                                          const allHosts = Array.from(new Set([...(newConf.series1?.hosts || (newConf.series1?.host ? [newConf.series1.host] : [])), ...(newConf.series2?.hosts || (newConf.series2?.host ? [newConf.series2.host] : []))]));
+                                          handleUpdateWidget(w.id, { seriesConfig: newConf, metrics: allMetrics, hosts: allHosts });
+                                        }}
+                                        metricUnitsMap={metricUnitsMap}
+                                      />
+                                    </div>
+                                    <div className="col-span-2 md:col-span-6 flex flex-col sm:flex-row gap-4 mt-2">
+                                      <div className="flex-1">
+                                        <label className="text-xs font-semibold text-slate-500 mb-1 block">Axis</label>
+                                        <div className="relative">
+                                          <select 
+                                            value={sConf.yAxis} 
+                                            onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, yAxis: e.target.value as any } } })}
+                                            className="w-full bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-700 text-white outline-none appearance-none cursor-pointer"
+                                          >
+                                            <option value="left">Primary (Left)</option>
+                                            <option value="right">Secondary (Right)</option>
+                                          </select>
+                                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex-1">
+                                        <label className="text-xs font-semibold text-slate-500 mb-1 block">Visual</label>
+                                        <div className="relative">
+                                          <select 
+                                            value={sConf.chartType} 
+                                            onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, chartType: e.target.value as any } } })}
+                                            className="w-full bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-700 text-white outline-none appearance-none cursor-pointer"
+                                          >
+                                            <option value="line">Line</option>
+                                            <option value="area">Area</option>
+                                            <option value="bar">Bar</option>
+                                          </select>
+                                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex-1">
+                                        <label className="text-xs font-semibold text-slate-500 mb-1 block">Aggregation</label>
+                                        <div className="relative">
+                                          <select 
+                                            value={sConf.aggregation} 
+                                            onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, aggregation: e.target.value as any } } })}
+                                            className="w-full bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-700 text-white outline-none appearance-none cursor-pointer"
+                                          >
+                                            <option value="none">Multi-Series</option>
+                                            <option value="sum">Sum</option>
+                                            <option value="avg">Avg</option>
+                                          </select>
+                                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex-1">
+                                        <label className="text-xs font-semibold text-slate-500 mb-1 block">Stacking</label>
+                                        <div className="relative">
+                                          <select 
+                                            value={sConf.stacked ? 'true' : 'false'} 
+                                            onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, stacked: e.target.value === 'true' } } })}
+                                            className="w-full bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-700 text-white outline-none appearance-none cursor-pointer"
+                                          >
+                                            <option value="false">Off</option>
+                                            <option value="true">On</option>
+                                          </select>
+                                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="pt-6 sm:pt-8 flex flex-col sm:flex-row justify-end gap-3 mt-2">
                         <button 
                           onClick={handleCancelEdit}
                           className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm rounded-lg sm:rounded-xl transition-all"
@@ -1403,7 +1538,8 @@ export default function App() {
                       const getVal = (point: any) => {
                         let values: number[] = [];
                         w.metrics.forEach(m => {
-                          w.hosts.forEach(h => {
+                          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+                          hostsToUse.forEach(h => {
                             const key = `${m}_${h}`;
                             if (!hiddenSeries.has(key) && point[key] !== undefined) {
                               values.push(Number(point[key]));
@@ -1430,7 +1566,8 @@ export default function App() {
                       const getVal = (point: any) => {
                         let values: number[] = [];
                         w.metrics.forEach(m => {
-                          w.hosts.forEach(h => {
+                          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+                          hostsToUse.forEach(h => {
                             const key = `${m}_${h}`;
                             if (!hiddenSeries.has(key) && point[key] !== undefined) {
                               values.push(Number(point[key]));
@@ -1452,18 +1589,75 @@ export default function App() {
                   />
                 ) : (
                   (() => {
-                    const isAggregated = w.aggregation !== 'none';
-                    let chartSeries: { key: string; name: string; color?: string }[] = [];
+                    const isAggregated = w.chartType !== 'mixed' && w.aggregation !== 'none';
+                    let chartSeries: { key: string; name: string; color?: string; metric?: string; unit?: string }[] = [];
                     let chartData = data;
 
-                    if (isAggregated) {
-                      const label = w.aggregation === 'sum' ? 'Aggregate Sum' : 'Aggregate Mean';
-                      chartSeries = [{ key: 'agg_val', name: label, color: globalColorMap['agg_val'] }];
+                    if (w.chartType === 'mixed') {
+                      let mixedData = data.map(point => ({ ...point }));
+                      ['series1', 'series2'].forEach(sKey => {
+                        const sConf = w.seriesConfig?.[sKey];
+                        if (!sConf) return;
+                        
+                        const smetrics = sConf.metrics || (sConf.metric ? [sConf.metric] : []);
+                        const shosts = sConf.hosts || (sConf.host ? [sConf.host] : []);
+                        const axisLabel = sConf.yAxis === 'right' ? ' (Right)' : ' (Left)';
+                        
+                        const aggType = sConf.aggregation || 'none';
+                        
+                        if (aggType !== 'none') {
+                           // Aggregate all selected hosts for each selected metric
+                           smetrics.forEach(m => {
+                             const aggKey = `${sKey}_${m}_agg`;
+                             const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
+                             mixedData = mixedData.map(point => {
+                               let vals: number[] = [];
+                               const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
+                               hostsToUse.forEach(h => {
+                                 const key = `${m}_${h}`;
+                                 if (!hiddenSeries.has(key) && point[key] !== undefined) vals.push(Number(point[key]));
+                               });
+                               const sum = vals.reduce((a,b)=>a+b, 0);
+                               const val = aggType === 'avg' && vals.length > 0 ? sum/vals.length : sum;
+                               return { ...point, [aggKey]: val };
+                             });
+                             chartSeries.push({
+                               key: aggKey,
+                               name: `${m.toUpperCase()} (${aggType === 'sum' ? 'Sum' : 'Avg'})${axisLabel}`,
+                               color: globalColorMap[`${m}_${shosts.includes('all') ? availableHosts[0] : shosts[0]}`] || '#0ea5e9',
+                               metric: sKey,
+                               unit: u
+                             });
+                           });
+                        } else {
+                           smetrics.forEach(m => {
+                             const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
+                             const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
+                             hostsToUse.forEach(h => {
+                               const key = `${m}_${h}`;
+                               chartSeries.push({
+                                 key,
+                                 name: `${m.toUpperCase()} [${h}]${axisLabel}`,
+                                 color: globalColorMap[key],
+                                 metric: sKey,
+                                 unit: u
+                               });
+                             });
+                           });
+                        }
+                      });
+                      chartData = mixedData;
+                    } else if (isAggregated) {
+                       const label = w.aggregation === 'sum' ? 'Aggregate Sum' : 'Aggregate Mean';
+                       const m = w.metrics[0];
+                       const u = m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
+                       chartSeries = [{ key: 'agg_val', name: label, color: globalColorMap['agg_val'], unit: u }];
                       
                       chartData = data.map(point => {
                         let values: number[] = [];
                         w.metrics.forEach(m => {
-                          w.hosts.forEach(h => {
+                          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+                          hostsToUse.forEach(h => {
                             const key = `${m}_${h}`;
                             if (!hiddenSeries.has(key) && point[key] !== undefined) {
                               values.push(Number(point[key]));
@@ -1481,14 +1675,18 @@ export default function App() {
                       });
                     } else {
                       w.metrics.forEach(m => {
-                        w.hosts.forEach(h => {
+                        const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
+                        const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+                        hostsToUse.forEach(h => {
                           const key = `${m}_${h}`;
-                          const hostLabel = h === 'all' ? 'All' : h;
+                          const hostLabel = h;
                           const metricLabel = m.toUpperCase();
                           chartSeries.push({
                             key,
-                            name: (w.hosts.length > 1 || w.metrics.length > 1) ? `${metricLabel} [${hostLabel}]` : metricLabel,
-                            color: globalColorMap[key]
+                            name: (w.hosts.length > 1 || w.hosts.includes('all') || w.metrics.length > 1) ? `${metricLabel} [${hostLabel}]` : metricLabel,
+                            color: globalColorMap[key] || '#0EA5E9',
+                            metric: m,
+                            unit: u
                           });
                         });
                       });
@@ -1502,10 +1700,29 @@ export default function App() {
                         hosts={w.hosts}
                         stacked={w.stacked}
                         chartType={w.chartType}
+                        seriesConfig={w.seriesConfig}
                         unit={metricUnitsMap[w.metrics[0]] ? (metricUnitsMap[w.metrics[0]] === '%' ? '%' : ` ${metricUnitsMap[w.metrics[0]]}`) : ''} 
+                        leftUnit={(() => {
+                           if (w.chartType !== 'mixed' || !w.seriesConfig) return '';
+                           const s1 = w.seriesConfig['series1'];
+                           const s2 = w.seriesConfig['series2'];
+                           const s = s1?.yAxis !== 'right' ? s1 : (s2?.yAxis === 'left' ? s2 : null);
+                           if (!s) return '';
+                           const m = s.metrics?.[0] || s.metric;
+                           return m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
+                        })()}
+                        rightUnit={(() => {
+                           if (w.chartType !== 'mixed' || !w.seriesConfig) return '';
+                           const s1 = w.seriesConfig['series1'];
+                           const s2 = w.seriesConfig['series2'];
+                           const s = s2?.yAxis !== 'left' ? s2 : (s1?.yAxis === 'right' ? s1 : null);
+                           if (!s) return '';
+                           const m = s.metrics?.[0] || s.metric;
+                           return m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
+                        })()}
                         mode={filters.mode as 'live' | 'historical'}
                         granularity={filters.granularity}
-                        aggregation={w.aggregation}
+                        aggregation={w.chartType === 'mixed' ? undefined : w.aggregation}
                         hiddenSeries={hiddenSeries}
                         onLegendClick={(key) => toggleSeriesVisibility(key)}
                         onHostClick={(host) => {
