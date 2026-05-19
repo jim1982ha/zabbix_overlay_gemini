@@ -863,9 +863,10 @@ export default function App() {
 
     if (view === "config") {
       return (
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
-            <div className="space-y-6">
+        <div className="w-full flex-1 flex flex-col items-center justify-center min-h-[400px] py-12">
+          <div className="w-full max-w-3xl space-y-6">
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
+              <div className="space-y-6">
               {zabbixConfig.isPreconfigured ? (
                  <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-800">
                    <p className="font-semibold mb-2 flex items-center gap-2">
@@ -971,6 +972,7 @@ export default function App() {
             </p>
           </div>
         </div>
+        </div>
       );
     }
 
@@ -1008,8 +1010,7 @@ export default function App() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ 
                   opacity: 1, 
-                  scale: 1,
-                  zIndex: draggingWidgetId === w.id ? 100 : editingWidgetId === w.id ? 100 : 1
+                  scale: 1
                 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{
@@ -1019,8 +1020,8 @@ export default function App() {
                 data-widget-id={w.id}
                 className={cn(
                   "relative group rounded-xl",
-                  draggingWidgetId === w.id && "shadow-2xl ring-2 ring-blue-500/50 bg-white cursor-grabbing",
-                  editingWidgetId === w.id ? "z-[100]" : "hover:z-50",
+                  draggingWidgetId === w.id ? "z-[100] shadow-2xl ring-2 ring-blue-500/50 bg-white cursor-grabbing" :
+                  editingWidgetId === w.id ? "z-[100]" : "z-10 hover:z-[60]",
                   hasFilter && "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-50"
                 )}
                 style={Object.assign(
