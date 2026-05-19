@@ -411,7 +411,7 @@ export default function App() {
     fetchConfig();
   }, []);
 
-  const isSimulated = !zabbixConfig.url || (!zabbixConfig.token && !zabbixConfig.isPreconfigured);
+  const isDemo = !zabbixConfig.url || (!zabbixConfig.token && !zabbixConfig.isPreconfigured);
   const [availableHosts, setAvailableHosts] = useState<string[]>(['srv-prod-01', 'sql-db-primary', 'gateway-02']);
   const [availableMetrics, setAvailableMetrics] = useState<string[]>(['cpu', 'memory', 'traffic', 'latency', 'disk']);
   const [hostMetricsMap, setHostMetricsMap] = useState<Record<string, string[]>>({});
@@ -543,7 +543,7 @@ export default function App() {
       setLastSync(new Date());
     } catch (error: any) {
       console.error("Failed to fetch statistics", error);
-      if (error.response?.status !== 401 && error.message !== "Switched to Simulator Mode") {
+      if (error.response?.status !== 401 && error.message !== "Switched to Demo Mode") {
         const msg = error.response?.data?.error || "Failed to fetch statistics from Zabbix";
         alert(msg);
       }
@@ -580,8 +580,8 @@ export default function App() {
       title: 'New Telemetry Probe',
       type,
       chartType: 'area',
-      metrics: isSimulated ? ['cpu'] : (availableMetrics.length > 0 ? [availableMetrics[0]] : []),
-      hosts: isSimulated ? ['srv-prod-01'] : (availableHosts.length > 0 ? [availableHosts[0]] : []),
+      metrics: isDemo ? ['cpu'] : (availableMetrics.length > 0 ? [availableMetrics[0]] : []),
+      hosts: isDemo ? ['srv-prod-01'] : (availableHosts.length > 0 ? [availableHosts[0]] : []),
       aggregation: 'avg',
       stacked: false,
       cols: type === 'kpi' ? 6 : 12,
@@ -832,14 +832,14 @@ export default function App() {
     setDiscoveryStatus({ type: 'success', message: "Configuration saved." });
   };
   
-  const handleSimulatedMode = () => {
+  const handleDemoMode = () => {
     const simConfig = { url: '', token: '', isPreconfigured: false };
     setDraftZabbixConfig(simConfig);
     setZabbixConfig(simConfig);
     localStorage.setItem('hareporting_zabbix_url', '');
     localStorage.setItem('hareporting_zabbix_token', '');
     setSavedZabbixUrl('');
-    setDiscoveryStatus({ type: 'success', message: "Reverted to Simulated Mode." });
+    setDiscoveryStatus({ type: 'success', message: "Reverted to Demo Mode." });
     setAvailableHosts(['srv-prod-01', 'sql-db-primary', 'gateway-02']);
     setAvailableMetrics(['cpu', 'memory', 'traffic', 'latency', 'disk']);
   };
@@ -869,60 +869,64 @@ export default function App() {
               <h2 className="text-2xl font-bold text-slate-900 mb-6">Zabbix Gateway Configuration</h2>
               <div className="space-y-6">
                 
-                {zabbixConfig.isPreconfigured ? (
-                   <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-800">
-                     <p className="font-semibold mb-2 flex items-center gap-2">
-                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-check"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-                       Connected via Server Environment
-                     </p>
-                     <p className="text-sm opacity-90">
-                       This instance is securely configured via server environment variables. You cannot override the endpoint URL or API token from the UI.
-                     </p>
-                   </div>
-                ) : (
-                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                    <label className="text-sm font-semibold text-slate-600 block mb-2">Endpoint URL</label>
-                    <input 
-                      type="text" 
-                      value={draftZabbixConfig.url} 
-                      onChange={e => setDraftZabbixConfig({...draftZabbixConfig, url: e.target.value})}
-                      placeholder="https://your-zabbix.com/zabbix/api_jsonrpc.php"
-                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
-                    />
-                    <div className="mt-4">
-                      <label className="text-sm font-semibold text-slate-600 block mb-2">API Token</label>
+                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                  {zabbixConfig.isPreconfigured ? (
+                     <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-800 mb-6">
+                       <p className="font-semibold mb-2 flex items-center gap-2">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-check"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                         Connected via Server Environment
+                       </p>
+                       <p className="text-sm opacity-90">
+                         This instance is securely configured via server environment variables. You cannot override the endpoint URL or API token from the UI.
+                       </p>
+                     </div>
+                  ) : (
+                    <div className="space-y-4 mb-6">
+                      <div>
+                        <label className="text-sm font-semibold text-slate-600 block mb-2">Zabbix Endpoint</label>
+                        <input 
+                          type="text" 
+                          value={draftZabbixConfig.url} 
+                          onChange={e => setDraftZabbixConfig({...draftZabbixConfig, url: e.target.value})}
+                          placeholder="https://your-zabbix.com/zabbix/api_jsonrpc.php"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-semibold text-slate-600 block mb-2">Zabbix API Token</label>
+                        <input 
+                          type="password" 
+                          value={draftZabbixConfig.token} 
+                          onChange={e => setDraftZabbixConfig({...draftZabbixConfig, token: e.target.value})}
+                          placeholder="Your Zabbix API Token..."
+                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {requiresSecureToken && (
+                    <div className={cn("pt-6 border-t", zabbixConfig.isPreconfigured ? "border-slate-200" : "border-slate-200")}>
+                      <p className="text-sm font-semibold text-indigo-800 mb-2 flex items-center gap-2">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                         Secure Application Access
+                      </p>
+                      <p className="text-xs text-indigo-700 opacity-90 mb-4">
+                         This application requires an access token. Ensure this is configured if you intend to trigger a discovery or save your options.
+                      </p>
+                      <label className="text-sm font-semibold text-slate-600 block mb-2">Access Token</label>
                       <input 
                         type="password" 
-                        value={draftZabbixConfig.token} 
-                        onChange={e => setDraftZabbixConfig({...draftZabbixConfig, token: e.target.value})}
-                        placeholder="Your Zabbix API Token..."
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
+                        defaultValue=""
+                        onChange={e => localStorage.setItem('hareporting_app_secure_token', e.target.value)}
+                        placeholder={localStorage.getItem('hareporting_app_secure_token') ? "Token is set. Enter a new one to update..." : "Your APP_SECURE_TOKEN..."}
+                        className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm" 
                       />
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
                 
-                {requiresSecureToken && (
-                  <div className="p-6 bg-indigo-50 rounded-2xl border border-indigo-200">
-                    <p className="text-sm font-semibold text-indigo-800 mb-2 flex items-center gap-2">
-                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                       Secure Application Access
-                    </p>
-                    <p className="text-xs text-indigo-700 opacity-90 mb-4">
-                       This application requires an access token. Ensure this is configured if you intend to trigger a discovery or save your options.
-                    </p>
-                    <label className="text-sm font-semibold text-slate-600 block mb-2">Access Token</label>
-                    <input 
-                      type="password" 
-                      defaultValue={localStorage.getItem('hareporting_app_secure_token') || ''} 
-                      onChange={e => localStorage.setItem('hareporting_app_secure_token', e.target.value)}
-                      placeholder="Your APP_SECURE_TOKEN..."
-                      className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm" 
-                    />
-                  </div>
-                )}
-                
-                <div className={cn("grid gap-4", (!isSimulated && !zabbixConfig.isPreconfigured) ? "grid-cols-3" : "grid-cols-2")}>
+                <div className={cn("grid gap-4", (!isDemo && !zabbixConfig.isPreconfigured) ? "grid-cols-3" : "grid-cols-2")}>
                   {!zabbixConfig.isPreconfigured && (
                     <button 
                       onClick={handleSaveZabbixConfig}
@@ -947,14 +951,14 @@ export default function App() {
                   >
                     <RefreshCw className={cn("w-4 h-4", isDiscovering && "animate-spin")} /> {isDiscovering ? 'Discovering...' : 'Trigger Discovery'}
                   </button>
-                  {!isSimulated && (
+                  {!isDemo && (
                     <button 
-                      onClick={handleSimulatedMode}
+                      onClick={handleDemoMode}
                       className={cn(
                         "w-full py-3 bg-rose-100 text-rose-700 rounded-xl font-semibold text-sm shadow-md hover:bg-rose-200 transition-all active:scale-95 flex items-center justify-center gap-2"
                       )}
                     >
-                      Revert to Simulated
+                      Switch to DEMO Mode
                     </button>
                   )}
                 </div>
@@ -1329,8 +1333,8 @@ export default function App() {
                           />
 
                           {(() => {
-                            let optionsForWidget = isSimulated ? availableMetrics : [];
-                            if (!isSimulated) {
+                            let optionsForWidget = isDemo ? availableMetrics : [];
+                            if (!isDemo) {
                               if (w.hosts.length === 0) {
                                 optionsForWidget = availableMetrics;
                               } else {
@@ -1345,7 +1349,7 @@ export default function App() {
                             return (
                               <MultiSelect 
                                 label="Telemetry Metric Stream" 
-                                options={(!isSimulated && w.hosts.length > 0) ? optionsForWidget : availableMetrics} 
+                                options={(!isDemo && w.hosts.length > 0) ? optionsForWidget : availableMetrics} 
                                 selected={w.metrics} 
                                 onChange={(m) => handleUpdateWidget(w.id, { metrics: m })} 
                                 metricUnitsMap={metricUnitsMap}
@@ -1571,7 +1575,7 @@ export default function App() {
       onNavigate={(v: View) => setView(v)}
       currentView={view}
       lastSync={lastSync}
-      isSimulated={isSimulated}
+      isDemo={isDemo}
       hiddenSeries={relevantHiddenSeries}
       toggleSeriesVisibility={toggleSeriesVisibility}
     >
@@ -1924,12 +1928,12 @@ export default function App() {
                   localStorage.setItem('hareporting_zabbix_url', '');
                   localStorage.setItem('hareporting_zabbix_token', '');
                   if (window._rejectToken) {
-                     window._rejectToken(new Error("Switched to Simulator Mode"));
+                     window._rejectToken(new Error("Switched to Demo Mode"));
                      window._resolveToken = undefined;
                      window._rejectToken = undefined;
                   }
                 }} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-lg shadow-sm transition-colors mt-2">
-                  Execute in Simulated Mode
+                  Execute in Demo Mode
                 </button>
               </div>
             </form>

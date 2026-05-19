@@ -201,11 +201,11 @@ async function startServer() {
   app.post("/api/timeseries", async (req, res) => {
     let { start, end, granularity = '5m', range = '24h', mode = 'live', url, token, metrics = [], hosts = [] } = req.body;
     
-    const isSimulating = !url || !token;
+    const isDemo = !url || !token;
 
     // Optional: Internal Authorization Gate if APP_SECURE_TOKEN is injected via environment (CWE-306 fix)
     const expectedToken = process.env.APP_SECURE_TOKEN;
-    if (expectedToken && !isSimulating) {
+    if (expectedToken && !isDemo) {
       const authHeader = req.headers.authorization;
       if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
         return res.status(401).json({ error: "Unauthorized access detected." });
@@ -344,7 +344,7 @@ async function startServer() {
         });
       });
 
-      // Legacy global keys for backward compatibility for simulated mode
+      // Legacy global keys for backward compatibility for demo mode
       point.cpu = point.cpu_all || point[`cpu_${hostsArr[0]}`];
       point.memory = point.memory_all || point[`memory_${hostsArr[0]}`];
       point.traffic = point.traffic_all || point[`traffic_${hostsArr[0]}`];

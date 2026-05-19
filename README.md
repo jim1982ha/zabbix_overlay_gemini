@@ -5,7 +5,7 @@ The **HA Reporting Dashboard** is a high-performance telemetry visualization sys
 ## Core Functionality
 
 ### 1. Observability Modes
-*   **LIVE MODE**: Real-time telemetry streaming with rolling windows (1h, 6h, 24h, 7d). Data is refreshed every 5 seconds (simulated) or via Zabbix API polling.
+*   **LIVE MODE**: Real-time telemetry streaming with rolling windows (1h, 6h, 24h, 7d). Data is refreshed every 5 seconds (demo) or via Zabbix API polling.
 *   **HISTORICAL MODE**: Post-mortem analysis and audit mode. Allows users to select specific date ranges and granularities (5m, 1h, 1d) for forensic performance review.
 
 ### 2. Main Dashboards
@@ -129,7 +129,7 @@ The dashboard is fully optimized for all form factors:
 *   **Tablet**: Reflowing 6-column grid and condensed headers.
 *   **Mobile**: Collapsible hamburger menu, stacked telemetry controls, and full-screen widget reflow for readability on small portrait displays.
 
-## Simulated Mode vs Live Mode
-When Zabbix configuration is missing, the dashboard enters **Simulated Mode**.
-*   **Visual Indicator**: A blinking "SIMULATED" badge appears in the sidebar and dashboard headers.
+## Demo Mode vs Live Mode
+When Zabbix configuration is missing, the dashboard enters **Demo Mode**.
+*   **Visual Indicator**: A blinking "DEMO" badge appears in the sidebar and dashboard headers.
 *   **Behavior**: Data is generated via a pseudo-random seed based on the current timestamp and selected range, ensuring visual consistency during UX validation.

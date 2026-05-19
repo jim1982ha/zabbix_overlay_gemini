@@ -11,7 +11,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [groupingMode, setGroupingMode] = useState<'none' | 'hostGroup' | 'status'>('none');
 
-  const isSimulated = !zabbixConfig?.url || !zabbixConfig?.token;
+  const isDemo = !zabbixConfig?.url || !zabbixConfig?.token;
   const [zabbixNodes, setZabbixNodes] = useState<any[]>([]);
   const [zabbixLinks, setZabbixLinks] = useState<any[]>([]);
 
@@ -30,7 +30,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
   }, []);
 
   const fetchZabbixTopology = useCallback(async () => {
-    if (isSimulated) return;
+    if (isDemo) return;
     try {
       const response = await axios.post("/api/zabbix", {
         url: zabbixConfig.url,
@@ -51,7 +51,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
     } catch (e) {
       console.error("Failed to fetch topology from Zabbix", e);
     }
-  }, [zabbixConfig, isSimulated]);
+  }, [zabbixConfig, isDemo]);
 
   useEffect(() => {
     fetchZabbixTopology();
@@ -73,8 +73,8 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
   const layoutNodes = useMemo(() => {
     const width = Math.max(containerWidth, 800);
     
-    if (isSimulated) {
-      // Basic grouping for simulation if status grouping is selected
+    if (isDemo) {
+      // Basic grouping for demo if status grouping is selected
       if (groupingMode === 'status') {
         const gateway = { id: 'gw-01', type: 'gateway', x: width * 0.50, y: 30, status: 'online', label: 'Primary Gateway' };
         const onlineHosts = [
@@ -172,10 +172,10 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
 
       return [gateway, ...generatedNodes];
     }
-  }, [containerWidth, isSimulated, zabbixNodes, groupingMode]);
+  }, [containerWidth, isDemo, zabbixNodes, groupingMode]);
 
   const layoutLinks = useMemo(() => {
-    if (isSimulated) {
+    if (isDemo) {
       return [
         { from: 'gw-01', to: 'sw-01', load: getSeedMetric(10, 60, periodKey + 'l1') },
         { from: 'gw-01', to: 'sw-02', load: getSeedMetric(10, 40, periodKey + 'l2') },
@@ -193,7 +193,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
          load: Math.floor(Math.random() * 40) + 10 // pseudo random load
       }));
     }
-  }, [isSimulated, layoutNodes, periodKey]);
+  }, [isDemo, layoutNodes, periodKey]);
 
   const nodes = layoutNodes;
   const links = layoutLinks;

@@ -8,7 +8,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
   const isHistorical = filters.mode === 'historical';
   const [activeHostGroup, setActiveHostGroup] = React.useState<string>('all');
   
-  const isSimulated = !zabbixConfig?.url || !zabbixConfig?.token;
+  const isDemo = !zabbixConfig?.url || !zabbixConfig?.token;
   const [zabbixAssets, setZabbixAssets] = useState<any[]>([]);
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -24,7 +24,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
   }, []);
 
   const fetchZabbixAssets = useCallback(async () => {
-    if (isSimulated) return;
+    if (isDemo) return;
     try {
       const response = await axios.post("/api/zabbix", {
         url: zabbixConfig.url,
@@ -53,7 +53,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
     } catch (e) {
       console.error("Failed to fetch inventory from Zabbix", e);
     }
-  }, [zabbixConfig, isSimulated]);
+  }, [zabbixConfig, isDemo]);
 
   useEffect(() => {
     fetchZabbixAssets();
@@ -72,7 +72,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
 
   const periodKey = isHistorical ? `${filters.start}-${filters.end}` : filters.range;
   
-  const simAssets = [
+  const demoAssets = [
     { 
       id: 'SRV-PROD-01', 
       hostGroup: 'Linux servers',
@@ -130,7 +130,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
     },
   ];
 
-  const allAssets = isSimulated ? simAssets : (zabbixAssets.length > 0 ? zabbixAssets : simAssets);
+  const allAssets = isDemo ? demoAssets : (zabbixAssets.length > 0 ? zabbixAssets : demoAssets);
   
   const hostGroupsWithCounts = React.useMemo(() => {
     const groups: Record<string, number> = {};
@@ -250,10 +250,10 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.1 }}
               onClick={() => {
-                if (isSimulated || !asset.hostid || !zabbixConfig?.url) {
+                if (isDemo || !asset.hostid || !zabbixConfig?.url) {
                   const errorMsg = asset.hostid 
                     ? "Cannot open Zabbix: Configure API settings in ha-reporting first." 
-                    : "Cannot open Zabbix: This is a simulated test asset.";
+                    : "Cannot open Zabbix: This is a demo test asset.";
                   alert(errorMsg);
                   return;
                 }

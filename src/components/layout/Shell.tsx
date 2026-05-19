@@ -30,7 +30,7 @@ interface ShellProps {
   currentView: string;
   lastSync: Date;
   isDesignerMode?: boolean;
-  isSimulated?: boolean;
+  isDemo?: boolean;
   hiddenSeries?: Set<string>;
   toggleSeriesVisibility?: (key: string | string[]) => void;
 }
@@ -47,7 +47,7 @@ export function Shell({
   currentView, 
   lastSync,
   isDesignerMode = false,
-  isSimulated = true,
+  isDemo = true,
   hiddenSeries,
   toggleSeriesVisibility
 }: ShellProps) {
@@ -294,16 +294,16 @@ export function Shell({
           <NavItem 
             icon={
               <span className="relative flex h-2 w-2 m-1">
-                <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", isSimulated ? "bg-amber-400" : "bg-emerald-400")}></span>
-                <span className={cn("relative inline-flex rounded-full h-2 w-2 z-10", isSimulated ? "bg-amber-500" : "bg-emerald-500")}></span>
+                <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", isDemo ? "bg-amber-400" : "bg-emerald-400")}></span>
+                <span className={cn("relative inline-flex rounded-full h-2 w-2 z-10", isDemo ? "bg-amber-500" : "bg-emerald-500")}></span>
               </span>
             } 
             label={
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Active Node</span>
-                {isSimulated ? (
+                {isDemo ? (
                   <div className="px-1.5 py-0.5 bg-amber-50 border border-amber-200 rounded text-[9px] font-bold text-amber-700 uppercase tracking-wider shadow-sm">
-                    Sim
+                    Demo
                   </div>
                 ) : (
                   <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-bold text-emerald-700 uppercase tracking-wider shadow-sm">

@@ -22,7 +22,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info' | 'success'>('all');
   
-  const simNotifications = [
+  const demoNotifications = [
     { id: 1, type: 'alert' as const, title: 'High CPU Latency', description: 'SQL-DB-PRIMARY reporting 92% steal time. Investigating hypervisor load.', time: '2m ago', duration: '2m', severity: 'critical' as const, itemId: '10293', host: 'SQL-DB-PRIMARY' },
     { id: 2, type: 'security' as const, title: 'WAF Signature Update', description: 'Global signatures updated to v4.2.1-stable. 12 new rules applied.', time: '15m ago', duration: '15m', severity: 'info' as const, host: 'EDGE-GW-PROXY' },
     { id: 3, type: 'system' as const, title: 'Backup Completed', description: 'Daily differential backup for NAS-01-BKUP finished successfully.', time: '1h ago', duration: '1h', severity: 'success' as const, host: 'NAS-01-BKUP' },
@@ -31,10 +31,10 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
   ];
 
   const [zabbixNotifications, setZabbixNotifications] = useState<Notification[]>([]);
-  const isSimulated = !zabbixConfig?.url || !zabbixConfig?.token;
+  const isDemo = !zabbixConfig?.url || !zabbixConfig?.token;
 
   const fetchZabbixTriggers = useCallback(async () => {
-    if (isSimulated) return;
+    if (isDemo) return;
     try {
       const response = await axios.post("/api/zabbix", {
         url: zabbixConfig.url,
@@ -95,7 +95,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
     } catch (e) {
       console.error("Failed to fetch triggers from Zabbix", e);
     }
-  }, [zabbixConfig, isSimulated]);
+  }, [zabbixConfig, isDemo]);
 
   useEffect(() => {
     fetchZabbixTriggers();
@@ -104,8 +104,8 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
 
   useEffect(() => {
-    setNotificationsList(isSimulated ? simNotifications : zabbixNotifications);
-  }, [isSimulated, zabbixNotifications]); // Only recompute on these dependencies
+    setNotificationsList(isDemo ? demoNotifications : zabbixNotifications);
+  }, [isDemo, zabbixNotifications]); // Only recompute on these dependencies
 
   const filteredNotifications = useMemo(() => {
     return notificationsList.filter(n => {
