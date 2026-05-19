@@ -284,7 +284,8 @@ async function startServer() {
           params: {
             output: ["itemid", "name", "value_type", "lastvalue"],
             selectHosts: ["name", "host"],
-            filter: { name: metrics },
+            search: { name: metrics },
+            searchByAny: true,
             monitored: true,
           },
           auth: token,
@@ -311,6 +312,9 @@ async function startServer() {
           });
         }
         
+        const actualStartTime = new Date(timeLabels[0]).getTime();
+        const actualEndTime = new Date(timeLabels[timeLabels.length - 1]).getTime();
+
         // Fetch real history data from Zabbix
         for (const [vtypeStr, itemids] of Object.entries(itemsToFetchHistory)) {
            const vtype = parseInt(vtypeStr, 10);
@@ -321,8 +325,8 @@ async function startServer() {
                output: "extend",
                history: vtype,
                itemids,
-               time_from: Math.floor(startTime / 1000),
-               time_till: Math.floor(endTime / 1000)
+               time_from: Math.floor(actualStartTime / 1000),
+               time_till: Math.floor(actualEndTime / 1000)
              },
              auth: token,
              id: Date.now()
