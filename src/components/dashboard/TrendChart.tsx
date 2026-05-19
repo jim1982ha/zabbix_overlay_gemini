@@ -106,8 +106,10 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
     setRefAreaRight(null);
   };
 
-  const getSeriesColor = (s: LegendItem, i: number) => {
-    return s.color || chartColors[i % chartColors.length];
+  const getSeriesColor = (s: LegendItem) => {
+    const originalIndex = series.findIndex((item) => item.key === s.key);
+    const idx = originalIndex !== -1 ? originalIndex : 0;
+    return s.color || chartColors[idx % chartColors.length];
   };
 
   // For Pie charts, we aggregate the latest values for each series
@@ -117,7 +119,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
     return { 
       name: s.name, 
       value: isHidden ? 0 : (typeof latest === 'number' ? latest : 0), 
-      color: isHidden ? '#e2e8f0' : getSeriesColor(s, i),
+      color: isHidden ? '#e2e8f0' : getSeriesColor(s),
       dataKey: s.key // pass dataKey so we know which one was clicked
     };
   }).sort((a, b) => b.value - a.value) : [];
@@ -228,7 +230,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 name={s.name} 
                 type="monotone" 
                 dataKey={s.key} 
-                stroke={getSeriesColor(s, i)} 
+                stroke={getSeriesColor(s)} 
                 strokeWidth={2.5} 
                 dot={false} 
                 activeDot={{ r: 4, strokeWidth: 0 }} 
@@ -260,8 +262,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
                 return (
                 <linearGradient key={`mixed-grad-${s.key}`} id={safeId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0.05}/>
+                  <stop offset="5%" stopColor={getSeriesColor(s)} stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor={getSeriesColor(s)} stopOpacity={0.05}/>
                 </linearGradient>
                 );
               })}
@@ -295,7 +297,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                     hide={hiddenSeries?.has(s.key)} 
                     name={s.name} 
                     dataKey={s.key} 
-                    fill={getSeriesColor(s, i)} 
+                    fill={getSeriesColor(s)} 
                     fillOpacity={0.85}
                     stackId={conf.stacked ? `stack-${metric}` : undefined} 
                     unit={unit} 
@@ -312,7 +314,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                     name={s.name} 
                     type="monotone" 
                     dataKey={s.key} 
-                    stroke={getSeriesColor(s, i)} 
+                    stroke={getSeriesColor(s)} 
                     stackId={conf.stacked ? `stack-${metric}` : undefined} 
                     strokeWidth={2.5} 
                     fillOpacity={1} 
@@ -330,7 +332,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                     name={s.name} 
                     type="monotone" 
                     dataKey={s.key} 
-                    stroke={getSeriesColor(s, i)} 
+                    stroke={getSeriesColor(s)} 
                     strokeWidth={2.5} 
                     dot={false} 
                     activeDot={{ r: 4, strokeWidth: 0 }} 
@@ -365,7 +367,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 hide={hiddenSeries?.has(s.key)} 
                 name={s.name} 
                 dataKey={s.key} 
-                fill={getSeriesColor(s, i)} 
+                fill={getSeriesColor(s)} 
                 fillOpacity={0.85}
                 stackId={stacked ? "a" : undefined} 
                 unit={unit} 
@@ -385,8 +387,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
                 return (
                 <linearGradient key={s.key} id={safeId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0.05}/>
+                  <stop offset="5%" stopColor={getSeriesColor(s)} stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor={getSeriesColor(s)} stopOpacity={0.05}/>
                 </linearGradient>
                 );
               })}
@@ -411,7 +413,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 name={s.name} 
                 type="monotone" 
                 dataKey={s.key} 
-                stroke={getSeriesColor(s, i)} 
+                stroke={getSeriesColor(s)} 
                 stackId={stacked ? "1" : undefined} 
                 strokeWidth={2.5} 
                 fillOpacity={1} 
@@ -501,7 +503,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 >
                   <div 
                     className="w-2.5 h-2.5 rounded-sm flex-shrink-0" 
-                    style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s, i) }} 
+                    style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s) }} 
                   />
                   <span className={cn("truncate max-w-full", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
                     {s.name}
@@ -528,7 +530,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                   >
                     <div 
                       className="w-2.5 h-2.5 rounded-sm flex-shrink-0" 
-                      style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s, i) }} 
+                      style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s) }} 
                     />
                     <span className={cn("truncate max-w-full", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
                       {s.name}

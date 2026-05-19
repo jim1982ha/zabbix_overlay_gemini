@@ -274,6 +274,7 @@ async function startServer() {
     }
 
     let itemValueMap: Record<string, string> = {};
+    let historyValues: Record<string, [number, number][]> = {};
 
     if (url && token && metrics.length > 0 && hosts.length > 0) {
       try {
@@ -281,25 +282,66 @@ async function startServer() {
           jsonrpc: "2.0",
           method: "item.get",
           params: {
-            output: ["itemid", "name", "lastvalue"],
+            output: ["itemid", "name", "value_type", "lastvalue"],
             selectHosts: ["name", "host"],
-            search: { name: metrics },
-            searchByAny: true,
+            filter: { name: metrics },
             monitored: true,
           },
           auth: token,
           id: Date.now()
         }, { timeout: 10000 });
 
+        const itemsToFetchHistory: Record<number, string[]> = {};
+        const itemIdToKey: Record<string, string> = {};
+
         if (itemRes.data && itemRes.data.result) {
           itemRes.data.result.forEach((item: any) => {
              const h = item.hosts?.[0]?.name || item.hosts?.[0]?.host;
              const m = item.name;
              if (h && m) {
-                // Keep the exact last value
-                itemValueMap[`${m}_${h}`] = item.lastvalue;
+                const key = `${m}_${h}`;
+                itemValueMap[key] = item.lastvalue;
+                const vtype = parseInt(item.value_type, 10);
+                if (!isNaN(vtype)) {
+                   if (!itemsToFetchHistory[vtype]) itemsToFetchHistory[vtype] = [];
+                   itemsToFetchHistory[vtype].push(item.itemid);
+                   itemIdToKey[item.itemid] = key;
+                }
              }
           });
+        }
+        
+        // Fetch real history data from Zabbix
+        for (const [vtypeStr, itemids] of Object.entries(itemsToFetchHistory)) {
+           const vtype = parseInt(vtypeStr, 10);
+           const histRes = await axios.post(url, {
+             jsonrpc: "2.0",
+             method: "history.get",
+             params: {
+               output: "extend",
+               history: vtype,
+               itemids,
+               time_from: Math.floor(startTime / 1000),
+               time_till: Math.floor(endTime / 1000)
+             },
+             auth: token,
+             id: Date.now()
+           }, { maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 30000 });
+           
+           if (histRes.data && histRes.data.result) {
+              histRes.data.result.forEach((pt: any) => {
+                 const key = itemIdToKey[pt.itemid];
+                 if (key) {
+                    if (!historyValues[key]) historyValues[key] = [];
+                    historyValues[key].push([parseInt(pt.clock, 10) * 1000, parseFloat(pt.value)]);
+                 }
+              });
+           }
+        }
+        
+        // Sort history by time map
+        for (const key of Object.keys(historyValues)) {
+           historyValues[key].sort((a,b) => a[0] - b[0]);
         }
       } catch (e) {
         console.error("Failed to fetch real data for timeseries", e);
@@ -314,15 +356,36 @@ async function startServer() {
       const point: any = {
         time: timeLabels[i] || `${i}:00`,
       };
+      const bucketTime = new Date(timeLabels[i]).getTime();
 
       hostsArr.forEach((h: string) => {
         metricsArr.forEach((m: string) => {
            const key = `${m}_${h}`;
-           if (itemValueMap[key] !== undefined) {
-              const baseNum = parseFloat(itemValueMap[key]) || 0;
-              // Add tiny jitter backwards to simulate history so it's not a flat line
-              const jitter = baseNum * 0.05 * Math.sin(i + h.charCodeAt(0));
-              point[key] = parseFloat((baseNum + jitter).toFixed(2));
+           
+           if (historyValues[key] && historyValues[key].length > 0) {
+              const pts = historyValues[key];
+              let sum = 0;
+              let count = 0;
+              let closestVal = pts[0][1];
+              let minDiff = Infinity;
+              
+              for (let p=0; p<pts.length; p++) {
+                 const t = pts[p][0];
+                 const v = pts[p][1];
+                 const diff = Math.abs(t - bucketTime);
+                 if (diff < minDiff) {
+                    minDiff = diff;
+                    closestVal = v;
+                 }
+                 if (t >= bucketTime && t < bucketTime + stepMs) {
+                    sum += v;
+                    count++;
+                 }
+                 if (t > bucketTime + stepMs) break; 
+              }
+              point[key] = count > 0 ? parseFloat((sum/count).toFixed(2)) : parseFloat(closestVal.toFixed(2));
+           } else if (itemValueMap[key] !== undefined) {
+              point[key] = parseFloat(parseFloat(itemValueMap[key]).toFixed(2));
            } else {
              // Mock values based on metric name heuristics
              const timeValue = new Date(timeLabels[i]).getTime();
