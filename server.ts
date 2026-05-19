@@ -277,6 +277,9 @@ async function startServer() {
     let historyValues: Record<string, [number, number][]> = {};
 
     if (url && token && metrics.length > 0 && hosts.length > 0) {
+      console.log(`[timeseries] fetch start. metrics: ${metrics.length}, hosts: ${hosts.length}`);
+      console.log(`metrics array:`, metrics);
+      console.log(`hosts array:`, hosts);
       try {
         const itemRes = await axios.post(url, {
           jsonrpc: "2.0",
@@ -284,13 +287,15 @@ async function startServer() {
           params: {
             output: ["itemid", "name", "value_type", "lastvalue"],
             selectHosts: ["name", "host"],
-            search: { name: metrics },
-            searchByAny: true,
+            filter: { name: metrics },
             monitored: true,
           },
           auth: token,
           id: Date.now()
         }, { timeout: 10000 });
+        
+        console.log(`[timeseries] itemRes payload length: ${itemRes.data?.result?.length || 0}`);
+
 
         const itemsToFetchHistory: Record<number, string[]> = {};
         const itemIdToKey: Record<string, string> = {};
@@ -325,8 +330,8 @@ async function startServer() {
                output: "extend",
                history: vtype,
                itemids,
-               time_from: Math.floor(actualStartTime / 1000),
-               time_till: Math.floor(actualEndTime / 1000)
+               time_from: Math.floor(actualStartTime / 1000) - 43200, // Look back 12h for stable lines
+               time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
              },
              auth: token,
              id: Date.now()
@@ -367,27 +372,46 @@ async function startServer() {
            const key = `${m}_${h}`;
            
            if (historyValues[key] && historyValues[key].length > 0) {
-              const pts = historyValues[key];
+              const pts = historyValues[key]; 
               let sum = 0;
               let count = 0;
-              let closestVal = pts[0][1];
-              let minDiff = Infinity;
+              
+              const rangeStart = bucketTime;
+              const rangeEnd = bucketTime + stepMs;
+
+              let lastSeenBeforeOrAtStart = pts[0][1];
+              // Optimally, we can find the exact value active at rangeStart.
+              // Note: pts is sorted by timestamp asc
+              let bestTBefore = -Infinity;
               
               for (let p=0; p<pts.length; p++) {
                  const t = pts[p][0];
                  const v = pts[p][1];
-                 const diff = Math.abs(t - bucketTime);
-                 if (diff < minDiff) {
-                    minDiff = diff;
-                    closestVal = v;
+                 
+                 // If the point is before passing rangeStart, track it as latest known state
+                 if (t <= rangeStart && t > bestTBefore) {
+                    bestTBefore = t;
+                    lastSeenBeforeOrAtStart = v;
                  }
-                 if (t >= bucketTime && t < bucketTime + stepMs) {
+                 
+                 // If inside the bucket
+                 if (t > rangeStart && t <= rangeEnd) {
                     sum += v;
                     count++;
                  }
-                 if (t > bucketTime + stepMs) break; 
+                 
+                 // Optimisation: stop if we passed the end
+                 // if (t > rangeEnd) break;  // Can do this since pts is sorted
               }
-              point[key] = count > 0 ? parseFloat((sum/count).toFixed(2)) : parseFloat(closestVal.toFixed(2));
+              
+              if (count > 0) {
+                  // If we got values strictly this period, use average or last value?
+                  // Trend charting typically uses the average during this bucket
+                  point[key] = parseFloat((sum/count).toFixed(2));
+              } else {
+                  // No data *inside* bucket, hold latest known state!
+                  point[key] = parseFloat(lastSeenBeforeOrAtStart.toFixed(2));
+              }
            } else if (itemValueMap[key] !== undefined) {
               point[key] = parseFloat(parseFloat(itemValueMap[key]).toFixed(2));
            } else {
