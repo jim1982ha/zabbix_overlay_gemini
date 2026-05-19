@@ -991,7 +991,7 @@ export default function App() {
             "grid auto-rows-[25px] sm:auto-rows-[30px] lg:auto-rows-[25px]",
             isMobile ? "grid-cols-1 gap-6" : "gap-4"
           )}
-          style={!isMobile ? { gridTemplateColumns: 'repeat(24, minmax(0, 1fr))', gridAutoFlow: 'dense' } : {}}
+          style={!isMobile ? { gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' } : {}}
         >
           <AnimatePresence mode="popLayout">
             {widgets.filter(w => 
