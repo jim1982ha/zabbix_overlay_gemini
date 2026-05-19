@@ -130,7 +130,7 @@ export function Shell({
           ) : null}
           <button onClick={toggleCollapse} className={cn("hidden lg:flex transition-colors", isCollapsed ? "w-[60px] h-[60px] items-center justify-center hover:bg-slate-50" : "p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-md")} title={isCollapsed ? "Expand Menu" : "Collapse Menu"}>
             {isCollapsed ? (
-              <div className="w-[42px] h-[42px] bg-blue-600 rounded-[14px] flex items-center justify-center shadow-sm shrink-0 text-white cursor-pointer hover:bg-blue-700 transition-colors">
+              <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center shadow-sm shrink-0 text-white cursor-pointer hover:bg-blue-700 transition-colors">
                 <Activity className="w-5 h-5" />
               </div>
             ) : <ChevronLeft className="w-4 h-4" />}
@@ -269,7 +269,7 @@ export function Shell({
                 </div>
               ) : (
                  <div 
-                   className="w-[42px] h-[42px] rounded-[14px] bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 relative cursor-pointer hover:bg-amber-200 transition-colors" 
+                   className="w-8 h-8 rounded-md bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 relative cursor-pointer hover:bg-amber-200 transition-colors" 
                    title={`${hiddenSeries.size} series hidden. Click to clear filters.`}
                    onClick={() => toggleSeriesVisibility?.(Array.from(hiddenSeries))}
                  >
@@ -338,7 +338,7 @@ function NavItem({ icon, label, active = false, isCollapsed = false, onClick, cl
       title={isCollapsed && typeof label === 'string' ? label : undefined}
       className={cn(
         "flex items-center transition-all group cursor-pointer",
-        isCollapsed ? "justify-center mx-auto w-[42px] h-[42px] rounded-[14px]" : "gap-3 px-4 py-2 border-l-[3px]",
+        isCollapsed ? "justify-center mx-auto w-8 h-8 rounded-md" : "gap-3 px-4 py-2 border-l-[3px]",
         active ? 
           (isCollapsed ? 'bg-blue-50 text-blue-600 shadow-sm border border-blue-100/50' : 'bg-blue-50/50 text-blue-700 border-blue-600') : 
           (isCollapsed ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 border border-transparent' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-transparent'),

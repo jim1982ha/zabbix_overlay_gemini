@@ -21,7 +21,7 @@ import {
   Brush
 } from 'recharts';
 import { motion } from 'motion/react';
-import { cn } from '../../lib/utils';
+import { cn, formatValue } from '../../lib/utils';
 
 interface DataPoint {
   time: string;
@@ -162,7 +162,11 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                   </span>
                 </div>
                 <span className="text-[10px] font-bold text-slate-900 whitespace-nowrap ml-2">
-                  {entry.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{entry.payload?.unit || series.find((s) => s.key === entry.dataKey)?.unit || unit || ''}
+                  {(() => {
+                    const u = entry.payload?.unit || series.find((s) => s.key === entry.dataKey)?.unit || unit;
+                    const { value, unit: fmtUnit } = formatValue(entry.value || 0, u);
+                    return `${value} ${fmtUnit}`.trim();
+                  })()}
                 </span>
               </div>
             ))}
@@ -215,7 +219,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
+            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit && unit !== 'B' ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Line 
@@ -256,8 +260,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
                 return (
                 <linearGradient key={`mixed-grad-${s.key}`} id={safeId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={0.15}/>
-                  <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0}/>
+                  <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0.05}/>
                 </linearGradient>
                 );
               })}
@@ -271,10 +275,14 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            {hasLeft && <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={leftUnit ? { value: leftUnit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />}
-            {hasRight && <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} width={55} label={rightUnit ? { value: rightUnit.trim(), angle: 90, position: 'insideRight', offset: 0, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />}
+            {hasLeft && <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, leftUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={leftUnit && leftUnit !== 'B' ? { value: leftUnit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />}
+            {hasRight && <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, rightUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} width={55} label={rightUnit && rightUnit !== 'B' ? { value: rightUnit.trim(), angle: 90, position: 'insideRight', offset: 0, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />}
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
-            {series.map((s, i) => {
+            {[...series].sort((a, b) => {
+              if (a.metric === 'series1' && b.metric === 'series2') return 1;
+              if (a.metric === 'series2' && b.metric === 'series1') return -1;
+              return 0;
+            }).map((s, i) => {
               const metric = s.metric || s.key.split('_')[0];
               const conf = seriesConfig?.[metric] || { chartType: 'line', yAxis: 'left', stacked: false };
               const t = conf.chartType;
@@ -288,6 +296,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                     name={s.name} 
                     dataKey={s.key} 
                     fill={getSeriesColor(s, i)} 
+                    fillOpacity={0.85}
                     stackId={conf.stacked ? `stack-${metric}` : undefined} 
                     unit={unit} 
                     radius={[4, 4, 0, 0]} 
@@ -348,7 +357,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
+            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit && unit !== 'B' ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Bar 
@@ -357,6 +366,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 name={s.name} 
                 dataKey={s.key} 
                 fill={getSeriesColor(s, i)} 
+                fillOpacity={0.85}
                 stackId={stacked ? "a" : undefined} 
                 unit={unit} 
                 radius={[4, 4, 0, 0]} 
@@ -375,8 +385,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
                 return (
                 <linearGradient key={s.key} id={safeId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={0.15}/>
-                  <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0}/>
+                  <stop offset="5%" stopColor={getSeriesColor(s, i)} stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor={getSeriesColor(s, i)} stopOpacity={0.05}/>
                 </linearGradient>
                 );
               })}
@@ -390,7 +400,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30} 
             />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
+            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit && unit !== 'B' ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => {
               const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;

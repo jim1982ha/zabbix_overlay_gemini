@@ -10,9 +10,10 @@ interface StatCardProps {
   change?: number;
   trend?: 'up' | 'down';
   color?: string;
+  tooltip?: string;
 }
 
-export function StatCard({ title, value, unit, change, trend, color = "blue" }: StatCardProps) {
+export function StatCard({ title, value, unit, change, trend, color = "blue", tooltip }: StatCardProps) {
   const isPositive = trend === 'up';
   
   return (
@@ -37,7 +38,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue" }: 
               )} 
               style={color.startsWith('#') ? { backgroundColor: color } : {}}
             />
-            <span className="text-sm font-semibold text-slate-600 truncate w-full">
+            <span className="text-sm font-semibold text-slate-600 truncate w-full" title={tooltip || title}>
               {title}
             </span>
           </div>
@@ -55,8 +56,8 @@ export function StatCard({ title, value, unit, change, trend, color = "blue" }: 
           </div>
           {unit && (
             <span className={cn(
-              "font-medium text-slate-500 ml-1.5 @[200px]:ml-2 shrink-0 self-end mb-[0.15em]",
-              "text-[0.4em]"
+              "font-medium text-slate-500 ml-1.5 @[200px]:ml-2 shrink-0 self-end mb-[0.10em]",
+              "text-[0.6em]"
             )}>
               {unit}
             </span>

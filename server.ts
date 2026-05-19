@@ -282,7 +282,7 @@ async function startServer() {
           method: "item.get",
           params: {
             output: ["itemid", "name", "lastvalue"],
-            selectHosts: ["host"],
+            selectHosts: ["name", "host"],
             search: { name: metrics },
             searchByAny: true,
             monitored: true,
@@ -293,7 +293,7 @@ async function startServer() {
 
         if (itemRes.data && itemRes.data.result) {
           itemRes.data.result.forEach((item: any) => {
-             const h = item.hosts?.[0]?.host;
+             const h = item.hosts?.[0]?.name || item.hosts?.[0]?.host;
              const m = item.name;
              if (h && m) {
                 // Keep the exact last value

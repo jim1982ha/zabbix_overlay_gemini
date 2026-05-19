@@ -45,10 +45,11 @@ import {
   X,
   Calendar,
   ZoomOut,
-  GripVertical
+  GripVertical,
+  ArrowUpDown
 } from "lucide-react";
 import axios from "axios";
-import { cn } from "./lib/utils";
+import { cn, getDeterministicColor, formatValue } from "./lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 
 interface Widget {
@@ -254,58 +255,7 @@ export default function App() {
     });
   }, []);
 
-  const globalColorMap = useMemo(() => {
-    const palette = [
-      '#0284c7', '#4f46e5', '#7c3aed', '#db2777', '#d97706', '#059669', 
-      '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', 
-      '#06b6d4', '#ef4444', '#84cc16', '#64748b', '#14b8a6', '#f97316'
-    ];
-    const colorMap: Record<string, string> = {};
-    
-    // Stable hash function for strings
-    const hashString = (str: string) => {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0;
-      }
-      return Math.abs(hash);
-    };
-    
-    const allSeriesKeys = new Set<string>();
-    widgets.forEach(w => {
-      if (w.aggregation !== 'none') {
-        allSeriesKeys.add('agg_val');
-      } else {
-        w.metrics.forEach(m => {
-          w.hosts.forEach(h => {
-            allSeriesKeys.add(`${m}_${h}`);
-          });
-        });
-      }
-    });
-    
-    const usedColors = new Set<string>();
-    
-    // Sort keys to ensure deterministic collision resolution
-    Array.from(allSeriesKeys).sort().forEach(key => {
-      let colorIndex = hashString(key) % palette.length;
-      let selectedColor = palette[colorIndex];
-      
-      // Collision resolution (linear probing)
-      let attempt = 0;
-      while (usedColors.has(selectedColor) && attempt < palette.length) {
-        colorIndex = (colorIndex + 1) % palette.length;
-        selectedColor = palette[colorIndex];
-        attempt++;
-      }
-      
-      colorMap[key] = selectedColor;
-      usedColors.add(selectedColor);
-    });
-    
-    return colorMap;
-  }, [widgets]);
+
 
   const handleCancelEdit = useCallback(() => {
     if (!editingWidgetId) return;
@@ -364,26 +314,6 @@ export default function App() {
     
     return !widgetsEqual || !nameEqual;
   }, [widgets, dashboardName, savedDashboards, activeDashboardId]);
-
-  // Consolidated Handle auto-save (moved here to have access to dashboardStorageKey)
-  useEffect(() => {
-    if (!activeDashboardId || !hasUnsavedChanges) return;
-
-    const timer = setTimeout(() => {
-      setSavedDashboards(prev => {
-        const updated = prev.map(d => 
-          d.id === activeDashboardId 
-            ? { ...d, widgets, name: dashboardName } 
-            : d
-        );
-        localStorage.setItem(dashboardStorageKey, JSON.stringify(updated));
-        return updated;
-      });
-      console.log('Dashboard auto-saved');
-    }, 5000); // 5-second debounce for auto-save
-
-    return () => clearTimeout(timer);
-  }, [widgets, dashboardName, activeDashboardId, hasUnsavedChanges, dashboardStorageKey]);
 
   useEffect(() => {
     let configuredFromApi = false;
@@ -1358,17 +1288,41 @@ export default function App() {
                       {w.chartType === 'mixed' && (
                         <div className="mt-8 space-y-6">
                           <h5 className="text-sm font-semibold text-slate-400">Series Configuration (Max 2 metrics for Mixed)</h5>
-                          <div className="bg-slate-900/40 rounded-xl p-6 sm:p-8 space-y-8">
+                          <div className="bg-slate-900/40 rounded-xl p-6 sm:p-8 flex flex-col gap-6 relative">
                             {['series1', 'series2'].map((seriesKey, idx) => {
                               const sConf = w.seriesConfig?.[seriesKey] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: idx === 0 ? 'left' : 'right', chartType: 'line', aggregation: 'none', stacked: false };
                               
                               const generateOption = (val: string, lbl: string) => <option value={val} key={val}>{lbl}</option>;
                               
                               return (
-                                <div key={seriesKey} className="space-y-4">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-sky-400 capitalize">Series {idx + 1}</span>
-                                  </div>
+                                <React.Fragment key={seriesKey}>
+                                  {idx === 1 && (
+                                    <div className="flex justify-center relative z-10 w-full my-6">
+                                      <div className="absolute inset-x-0 h-[1px] bg-slate-800 top-1/2 -translate-y-1/2 -mx-6 sm:-mx-8" />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const prevSeries1 = w.seriesConfig?.['series1'] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: 'left', chartType: 'line', aggregation: 'none', stacked: false };
+                                          const prevSeries2 = w.seriesConfig?.['series2'] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: 'right', chartType: 'line', aggregation: 'none', stacked: false };
+                                          const allMetrics = Array.from(new Set([...(prevSeries2.metrics || (prevSeries2.metric ? [prevSeries2.metric] : [])), ...(prevSeries1.metrics || (prevSeries1.metric ? [prevSeries1.metric] : []))]));
+                                          const allHosts = Array.from(new Set([...(prevSeries2.hosts || (prevSeries2.host ? [prevSeries2.host] : [])), ...(prevSeries1.hosts || (prevSeries1.host ? [prevSeries1.host] : []))]));
+                                          handleUpdateWidget(w.id, { 
+                                            seriesConfig: { ...w.seriesConfig, series1: prevSeries2, series2: prevSeries1 },
+                                            metrics: allMetrics,
+                                            hosts: allHosts
+                                          });
+                                        }}
+                                        className="relative p-2 bg-slate-800 hover:bg-slate-700 rounded-full border border-slate-700 text-slate-400 hover:text-white transition-all transform hover:scale-110 shadow-lg"
+                                        title="Swap Series"
+                                      >
+                                        <ArrowUpDown className="w-5 h-5" />
+                                      </button>
+                                    </div>
+                                  )}
+                                  <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm font-bold text-sky-400 capitalize">Series {idx + 1}</span>
+                                    </div>
                                   <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                                     <div className="col-span-2 md:col-span-3">
                                       <MultiSelect 
@@ -1468,7 +1422,8 @@ export default function App() {
                                       </div>
                                     </div>
                                   </div>
-                                </div>
+                                  </div>
+                                </React.Fragment>
                               );
                             })}
                           </div>
@@ -1504,10 +1459,9 @@ export default function App() {
                 </div>, document.body
               ) : (
                 w.type === 'kpi' ? (
-                  <StatCard 
-                    title={w.title} 
-                    value={(() => {
-                      if (data.length === 0) return '...';
+                  (() => {
+                    let finalValue = null;
+                    if (data.length > 0) {
                       const lastPoint = data[data.length - 1];
                       let values: number[] = [];
                       
@@ -1520,49 +1474,21 @@ export default function App() {
                         });
                       });
 
-                      if (values.length === 0) return '0';
-                      
-                      const sum = values.reduce((a, b) => a + b, 0);
-                      if (w.aggregation === 'avg') {
-                        return (sum / values.length).toFixed(1);
-                      }
-                      if (w.aggregation === 'sum') {
-                        return Math.round(sum).toLocaleString();
-                      }
-                      return values[0].toFixed(1);
-                    })()}
-                    unit={metricUnitsMap[w.metrics[0]] ? (metricUnitsMap[w.metrics[0]] === '%' ? '%' : ` ${metricUnitsMap[w.metrics[0]]}`) : ''} 
-                    change={(() => {
-                      if (data.length < 2) return 0;
-                      
-                      const getVal = (point: any) => {
-                        let values: number[] = [];
-                        w.metrics.forEach(m => {
-                          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
-                          hostsToUse.forEach(h => {
-                            const key = `${m}_${h}`;
-                            if (!hiddenSeries.has(key) && point[key] !== undefined) {
-                              values.push(Number(point[key]));
-                            }
-                          });
-                        });
-                        if (values.length === 0) return 0;
+                      if (values.length > 0) {
                         const sum = values.reduce((a, b) => a + b, 0);
-                        if (w.aggregation === 'avg') return sum / values.length;
-                        if (w.aggregation === 'sum') return sum;
-                        return values[0];
-                      };
+                        if (w.aggregation === 'avg') finalValue = sum / values.length;
+                        else if (w.aggregation === 'sum') finalValue = sum;
+                        else finalValue = values[0];
+                      }
+                    }
 
-                      // Compare first half vs second half or just first point vs last point
-                      // A simple evolution calculation for the current window: First point vs Last point
-                      const firstVal = getVal(data[0]);
-                      const lastVal = getVal(data[data.length - 1]);
-                      if (firstVal === 0) return lastVal > 0 ? 100 : 0;
-                      return Number((((lastVal - firstVal) / firstVal) * 100).toFixed(1));
-                    })()}
-                    trend={(() => {
-                      if (data.length < 2) return "up";
-                      
+                    const rawUnit = metricUnitsMap[w.metrics[0]] || '';
+                    const { value: fmtValue, unit: fmtUnit } = finalValue !== null ? formatValue(finalValue, rawUnit, true) : { value: '...', unit: '' };
+
+                    let changePct = 0;
+                    let trendDir: 'up' | 'down' = 'up';
+
+                    if (data.length >= 2) {
                       const getVal = (point: any) => {
                         let values: number[] = [];
                         w.metrics.forEach(m => {
@@ -1583,10 +1509,24 @@ export default function App() {
 
                       const firstVal = getVal(data[0]);
                       const lastVal = getVal(data[data.length - 1]);
-                      return lastVal >= firstVal ? "up" : "down";
-                    })()}
-                    color={w.aggregation !== 'none' ? globalColorMap['agg_val'] : (w.metrics[0] && w.hosts[0] ? globalColorMap[`${w.metrics[0]}_${w.hosts[0]}`] : '#0EA5E9')}
-                  />
+                      if (firstVal === 0) changePct = lastVal > 0 ? 100 : 0;
+                      else changePct = Number((((lastVal - firstVal) / firstVal) * 100).toFixed(1));
+                      
+                      trendDir = lastVal >= firstVal ? 'up' : 'down';
+                    }
+
+                    return (
+                      <StatCard 
+                        title={w.title} 
+                        tooltip={w.metrics.map(m => m.toUpperCase()).join(', ')}
+                        value={fmtValue}
+                        unit={fmtUnit || (rawUnit === '%' ? '%' : (rawUnit ? ` ${rawUnit}` : ''))}
+                        change={changePct}
+                        trend={trendDir}
+                        color={w.aggregation !== 'none' ? getDeterministicColor('agg_val') : (w.metrics[0] && w.hosts[0] ? getDeterministicColor(`${w.metrics[0]}_${w.hosts[0]}`) : '#0EA5E9')}
+                      />
+                    );
+                  })()
                 ) : (
                   (() => {
                     const isAggregated = w.chartType !== 'mixed' && w.aggregation !== 'none';
@@ -1624,7 +1564,7 @@ export default function App() {
                              chartSeries.push({
                                key: aggKey,
                                name: `${m.toUpperCase()} (${aggType === 'sum' ? 'Sum' : 'Avg'})${axisLabel}`,
-                               color: globalColorMap[`${m}_${shosts.includes('all') ? availableHosts[0] : shosts[0]}`] || '#0ea5e9',
+                               color: getDeterministicColor(`${m}_${shosts.includes('all') ? availableHosts[0] : shosts[0]}`),
                                metric: sKey,
                                unit: u
                              });
@@ -1638,7 +1578,7 @@ export default function App() {
                                chartSeries.push({
                                  key,
                                  name: `${m.toUpperCase()} [${h}]${axisLabel}`,
-                                 color: globalColorMap[key],
+                                 color: getDeterministicColor(key),
                                  metric: sKey,
                                  unit: u
                                });
@@ -1651,7 +1591,7 @@ export default function App() {
                        const label = w.aggregation === 'sum' ? 'Aggregate Sum' : 'Aggregate Mean';
                        const m = w.metrics[0];
                        const u = m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
-                       chartSeries = [{ key: 'agg_val', name: label, color: globalColorMap['agg_val'], unit: u }];
+                       chartSeries = [{ key: 'agg_val', name: label, color: getDeterministicColor('agg_val'), unit: u }];
                       
                       chartData = data.map(point => {
                         let values: number[] = [];
@@ -1684,7 +1624,7 @@ export default function App() {
                           chartSeries.push({
                             key,
                             name: (w.hosts.length > 1 || w.hosts.includes('all') || w.metrics.length > 1) ? `${metricLabel} [${hostLabel}]` : metricLabel,
-                            color: globalColorMap[key] || '#0EA5E9',
+                            color: getDeterministicColor(key),
                             metric: m,
                             unit: u
                           });
