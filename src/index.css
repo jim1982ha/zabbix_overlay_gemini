@@ -41,3 +41,41 @@
     --color-rose-200: #be123c; /* rose-700 */
   }
 }
+
+@layer base {
+  /* Scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1; /* slate-300 */
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; /* slate-400 */
+  }
+
+  /* Dark mode scrollbar */
+  .dark ::-webkit-scrollbar-track, html.dark::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .dark ::-webkit-scrollbar-thumb, html.dark::-webkit-scrollbar-thumb {
+    background: #334155; /* slate-700 */
+  }
+  .dark ::-webkit-scrollbar-thumb:hover, html.dark::-webkit-scrollbar-thumb:hover {
+    background: #475569; /* slate-600 */
+  }
+  
+  /* Fallbacks for Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  .dark *, html.dark {
+    scrollbar-color: #334155 transparent;
+  }
+}
