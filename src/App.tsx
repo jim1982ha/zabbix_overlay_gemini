@@ -17,6 +17,7 @@ import { RangePicker } from "./components/dashboard/RangePicker";
 import { NetworkTopology } from "./components/dashboard/NetworkTopology";
 import { InfraInventory } from "./components/dashboard/InfraInventory";
 import { NotificationFeed } from "./components/dashboard/NotificationFeed";
+import { ImportModal } from "./components/dashboard/ImportModal";
 import { 
   Activity,   Cpu, 
   HardDrive, 
@@ -101,6 +102,9 @@ export default function App() {
   const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
   const [draggingWidgetId, setDraggingWidgetId] = useState<string | null>(null);
   const [widgetZoomDomains, setWidgetZoomDomains] = useState<Record<string, [number, number] | null>>({});
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const handleUpdateWidgetZoom = (id: string, domain: [number, number] | null) => {
     setWidgetZoomDomains(prev => ({
@@ -694,30 +698,9 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportDashboard = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-        if (json.widgets && Array.isArray(json.widgets)) {
-          // If we have a successful parse, we update the current state
-          // We don't auto-save to localStorage yet, allowing user to review
-          setWidgets(json.widgets);
-          if (json.name) setDashboardName(json.name);
-          alert("Dashboard configuration imported. Review and click 'Save' to persist.");
-        } else {
-          alert("Invalid dashboard configuration file.");
-        }
-      } catch (err) {
-        alert("Failed to parse the configuration file.");
-      }
-    };
-    reader.readAsText(file);
-    // Reset input
-    e.target.value = '';
+  const handleImportSuccess = (json: any) => {
+    setWidgets(json.widgets);
+    if (json.name) setDashboardName(json.name);
   };
 
   const discoverZabbixAssets = useCallback(async (manual = false, overrideConfig?: {url: string, token: string}) => {
@@ -1848,10 +1831,13 @@ export default function App() {
                     <button onClick={handleExportDashboard} className="px-3 py-1 hover:bg-slate-50 text-xs font-semibold text-slate-500 hover:text-blue-600 rounded-md flex items-center gap-2 transition-all" title="Export Dashboard">
                       <Download className="w-4 h-4" /> <span className="hidden xl:inline">Export</span>
                     </button>
-                    <label className="px-3 py-1 hover:bg-slate-50 text-xs font-semibold text-slate-500 hover:text-blue-600 rounded-md flex items-center gap-2 transition-all cursor-pointer" title="Import Dashboard">
+                    <button 
+                      onClick={() => setIsImportModalOpen(true)}
+                      className="px-3 py-1 hover:bg-slate-50 text-xs font-semibold text-slate-500 hover:text-blue-600 rounded-md flex items-center gap-2 transition-all" 
+                      title="Import Dashboard"
+                    >
                       <Upload className="w-4 h-4" /> <span className="hidden xl:inline">Import</span>
-                      <input type="file" accept=".json" className="hidden" onChange={handleImportDashboard} />
-                    </label>
+                    </button>
                 </div>
 
                 {hasUnsavedChanges && (
@@ -1938,6 +1924,14 @@ export default function App() {
           </div>
         </div>
       </div>
+    )}
+    {isImportModalOpen && createPortal(
+      <ImportModal 
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImportSuccess}
+      />,
+      document.body
     )}
     </>
   );
