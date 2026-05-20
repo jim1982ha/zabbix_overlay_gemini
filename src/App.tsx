@@ -105,6 +105,19 @@ export default function App() {
   const [activeDashboardId, setActiveDashboardId] = useState<string | undefined>();
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [globalSearch, setGlobalSearch] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
+
+  const showToast = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+    setToast({ message, type });
+  }, []);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   const [discoveryStatus, setDiscoveryStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [dashboardName, setDashboardName] = useState<string>('Executive Overview');
   const [lastSync, setLastSync] = useState<Date>(new Date());
@@ -490,7 +503,7 @@ export default function App() {
       console.error("Failed to fetch statistics", error);
       if (error.response?.status !== 401 && error.message !== "Switched to Demo Mode") {
         const msg = error.response?.data?.error || "Failed to fetch statistics from Zabbix";
-        alert(msg);
+        showToast(msg, "error");
       }
     } finally {
       setTimeout(() => setLoading(false), 500);
@@ -806,12 +819,12 @@ export default function App() {
     }
 
     if (view === "infra") {
-      return <InfraInventory filters={filters} globalSearch={globalSearch} zabbixConfig={zabbixConfig} />;
+      return <InfraInventory filters={filters} globalSearch={globalSearch} zabbixConfig={zabbixConfig} showToast={showToast} />;
     }
 
     if (view === "notifications") {
       const zabbixBaseUrl = zabbixConfig.url.replace('/api_jsonrpc.php', '');
-      return <NotificationFeed globalSearch={globalSearch} zabbixBaseUrl={zabbixBaseUrl} zabbixConfig={zabbixConfig} />;
+      return <NotificationFeed globalSearch={globalSearch} zabbixBaseUrl={zabbixBaseUrl} zabbixConfig={zabbixConfig} showToast={showToast} />;
     }
 
     if (view === "config") {
@@ -1242,12 +1255,12 @@ export default function App() {
                           <div>
                             <div className="flex justify-between items-center mb-2">
                               <label className="text-sm font-semibold text-slate-400 block">Title</label>
-                              <label className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-300 cursor-pointer select-none transition-colors">
+                              <label className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer select-none transition-colors">
                                 <input 
                                   type="checkbox" 
                                   checked={!!w.forceNewline} 
                                   onChange={e => handleUpdateWidget(w.id, { forceNewline: e.target.checked })} 
-                                  className="w-3.5 h-3.5 rounded bg-slate-900 border-slate-700 text-sky-500 focus:ring-sky-500/20" 
+                                  className="w-3.5 h-3.5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-blue-600 dark:text-sky-500 focus:ring-blue-500/20 dark:focus:ring-sky-500/20" 
                                 /> 
                                 Force New Line
                               </label>
@@ -1257,8 +1270,8 @@ export default function App() {
                               value={w.title} 
                               onChange={e => handleUpdateWidget(w.id, { title: e.target.value })} 
                               className={cn(
-                                "w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border outline-none transition-all shadow-inner text-white",
-                                !w.title.trim() ? "border-rose-500/50 focus:border-rose-500" : "border-slate-700 focus:border-sky-500"
+                                "w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border outline-none transition-all shadow-inner text-slate-900 dark:text-white",
+                                !w.title.trim() ? "border-rose-500/50 focus:border-rose-500" : "border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500"
                               )} 
                               placeholder="Widget Title"
                             />
@@ -1276,7 +1289,7 @@ export default function App() {
                                 <select 
                                   value={w.chartType} 
                                   onChange={e => handleUpdateWidget(w.id, { chartType: e.target.value as any })} 
-                                  className="w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-700 focus:border-sky-500 outline-none transition-all text-white"
+                                  className="w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all text-slate-900 dark:text-white"
                                 >
                                   <option value="area">Area Map</option>
                                   <option value="line">Line Chart</option>
@@ -1293,7 +1306,7 @@ export default function App() {
                                 <select 
                                   value={w.type === 'kpi' && w.aggregation === 'none' ? 'avg' : w.aggregation} 
                                   onChange={e => handleUpdateWidget(w.id, { aggregation: e.target.value as any })} 
-                                  className="w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-700 focus:border-sky-500 outline-none transition-all text-white"
+                                  className="w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all text-slate-900 dark:text-white"
                                 >
                                   {w.type !== 'kpi' && <option value="none">Detailed Multi-Series</option>}
                                   <option value="sum">Sum</option>
@@ -1306,12 +1319,12 @@ export default function App() {
                           {w.type === 'chart' && w.chartType !== 'mixed' && (
                             <div>
                               <label className="text-sm font-semibold text-slate-400 block mb-2">Display Mode</label>
-                              <label className="flex items-center gap-3 sm:gap-4 w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-700 hover:border-slate-600 focus-within:border-sky-500 outline-none transition-all text-white cursor-pointer select-none">
+                              <label className="flex items-center gap-3 sm:gap-4 w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 focus-within:border-blue-500 dark:focus-within:border-sky-500 outline-none transition-all text-slate-800 dark:text-white cursor-pointer select-none">
                                 <input 
                                   type="checkbox" 
                                   checked={w.stacked} 
                                   onChange={e => handleUpdateWidget(w.id, { stacked: e.target.checked })} 
-                                  className="w-4 h-4 sm:w-5 sm:h-5 rounded bg-slate-900 border-slate-700 text-sky-500 focus:ring-sky-500/20" 
+                                  className="w-4 h-4 sm:w-5 sm:h-5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-blue-600 dark:text-sky-500 focus:ring-blue-500/20 dark:focus:ring-sky-500/20" 
                                 /> 
                                 Stack Series
                               </label>
@@ -1362,7 +1375,7 @@ export default function App() {
                       {w.chartType === 'mixed' && (
                         <div className="mt-8 space-y-6">
                           <h5 className="text-sm font-semibold text-slate-400">Series Configuration (Max 2 metrics for Mixed)</h5>
-                          <div className="bg-slate-900/40 rounded-xl p-6 sm:p-8 flex flex-col gap-6 relative">
+                          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl p-6 sm:p-8 flex flex-col gap-6 relative">
                             {['series1', 'series2'].map((seriesKey, idx) => {
                               const sConf = w.seriesConfig?.[seriesKey] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: idx === 0 ? 'left' : 'right', chartType: 'line', aggregation: 'none', stacked: false };
                               
@@ -1372,7 +1385,7 @@ export default function App() {
                                 <React.Fragment key={seriesKey}>
                                   {idx === 1 && (
                                     <div className="flex justify-center relative z-10 w-full my-6">
-                                      <div className="absolute inset-x-0 h-[1px] bg-slate-800 top-1/2 -translate-y-1/2 -mx-6 sm:-mx-8" />
+                                      <div className="absolute inset-x-0 h-[1px] bg-slate-200 dark:bg-slate-800 top-1/2 -translate-y-1/2 -mx-6 sm:-mx-8" />
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1386,7 +1399,7 @@ export default function App() {
                                             hosts: allHosts
                                           });
                                         }}
-                                        className="relative p-2 bg-slate-800 hover:bg-slate-700 rounded-full border border-slate-700 text-slate-400 hover:text-white transition-all transform hover:scale-110 shadow-lg"
+                                        className="relative p-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all transform hover:scale-110 shadow-md"
                                         title="Swap Series"
                                       >
                                         <ArrowUpDown className="w-5 h-5" />
@@ -1395,7 +1408,7 @@ export default function App() {
                                   )}
                                   <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                      <span className="text-sm font-bold text-sky-400 capitalize">Series {idx + 1}</span>
+                                      <span className="text-sm font-bold text-blue-600 dark:text-sky-400 capitalize">Series {idx + 1}</span>
                                     </div>
                                   <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                                     <div className="col-span-2 md:col-span-3">
@@ -1434,7 +1447,7 @@ export default function App() {
                                           <select 
                                             value={sConf.yAxis} 
                                             onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, yAxis: e.target.value as any } } })}
-                                            className="w-full bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-700 text-white outline-none appearance-none cursor-pointer"
+                                            className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
                                           >
                                             <option value="left">Primary (Left)</option>
                                             <option value="right">Secondary (Right)</option>
@@ -1450,7 +1463,7 @@ export default function App() {
                                           <select 
                                             value={sConf.chartType} 
                                             onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, chartType: e.target.value as any } } })}
-                                            className="w-full bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-700 text-white outline-none appearance-none cursor-pointer"
+                                            className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
                                           >
                                             <option value="line">Line</option>
                                             <option value="area">Area</option>
@@ -1467,7 +1480,7 @@ export default function App() {
                                           <select 
                                             value={sConf.aggregation} 
                                             onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, aggregation: e.target.value as any } } })}
-                                            className="w-full bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-700 text-white outline-none appearance-none cursor-pointer"
+                                            className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
                                           >
                                             <option value="none">Multi-Series</option>
                                             <option value="sum">Sum</option>
@@ -1484,7 +1497,7 @@ export default function App() {
                                           <select 
                                             value={sConf.stacked ? 'true' : 'false'} 
                                             onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, stacked: e.target.value === 'true' } } })}
-                                            className="w-full bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-700 text-white outline-none appearance-none cursor-pointer"
+                                            className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
                                           >
                                             <option value="false">Off</option>
                                             <option value="true">On</option>
@@ -1507,7 +1520,7 @@ export default function App() {
                       <div className="pt-6 sm:pt-8 flex flex-col sm:flex-row justify-end gap-3 mt-2">
                         <button 
                           onClick={handleCancelEdit}
-                          className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm rounded-lg sm:rounded-xl transition-all"
+                          className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-sm rounded-lg sm:rounded-xl transition-all border border-slate-200 dark:border-slate-700"
                         >
                           Cancel
                         </button>
@@ -2200,6 +2213,34 @@ export default function App() {
       />,
       document.body
     )}
+    {toast && createPortal(
+      <div className="fixed bottom-6 right-6 z-[250] pointer-events-none max-w-sm w-full font-sans">
+        <motion.div 
+          initial={{ opacity: 0, y: 30, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          className={cn(
+            "p-4 rounded-2xl shadow-xl border select-none pointer-events-auto flex items-center gap-3 backdrop-blur-md",
+            toast.type === 'error' ? "bg-rose-50/95 dark:bg-rose-950/90 border-rose-100 dark:border-rose-900 text-rose-800 dark:text-rose-200" :
+            toast.type === 'success' ? "bg-emerald-50/90 dark:bg-emerald-950/90 border-emerald-100 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200" :
+            toast.type === 'warning' ? "bg-amber-50/90 dark:bg-amber-950/90 border-amber-100 dark:border-amber-900 text-amber-800 dark:text-amber-200" :
+            "bg-blue-50/90 dark:bg-blue-950/90 border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200"
+          )}
+        >
+          <div className="shrink-0">
+            {toast.type === 'error' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            ) : toast.type === 'success' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            )}
+          </div>
+          <p className="text-sm font-semibold flex-1 leading-normal">{toast.message}</p>
+        </motion.div>
+      </div>,
+      document.body
+    )}
     </>
   );
 }
@@ -2233,40 +2274,40 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
         ref={buttonRef}
         onClick={toggleOpen}
         className={cn(
-          "w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border focus:border-sky-500 outline-none transition-all flex justify-between items-center group",
-          isOpen ? "border-sky-500 ring-1 ring-sky-500/50" : "border-slate-700 hover:border-slate-600"
+          "w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all flex justify-between items-center group",
+          isOpen ? "border-blue-500 dark:border-sky-500 ring-1 ring-blue-500/50 dark:ring-sky-500/50" : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-900 dark:text-white"
         )}
       >
-        <span className={cn("truncate font-medium flex-1 text-left", selected.length > 0 ? "text-sky-400" : "text-slate-500")}>
+        <span className={cn("truncate font-medium flex-1 text-left", selected.length > 0 ? "text-blue-600 dark:text-sky-400 font-semibold" : "text-slate-400 dark:text-slate-500")}>
            {selected.length > 0 ? selected.map(s => {
              const unit = metricUnitsMap?.[s];
              return unit ? `${s} (${unit})` : s;
            }).join(', ') : 'None selected'}
         </span>
-        <ChevronDown className={cn("w-4 h-4 transition-all duration-300 ml-2 shrink-0", isOpen ? "rotate-180 text-sky-500" : "opacity-30 group-hover:opacity-60 text-slate-400")} />
+        <ChevronDown className={cn("w-4 h-4 transition-all duration-300 ml-2 shrink-0", isOpen ? "rotate-180 text-blue-500 dark:text-sky-500" : "opacity-30 group-hover:opacity-60 text-slate-400")} />
       </button>
       {isOpen && typeof window !== 'undefined' && createPortal(
         <>
           <div className="fixed inset-0 z-[120]" onClick={() => setIsOpen(false)} />
           <div 
-            className="fixed z-[130] bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in duration-200 scrollbar-hide flex flex-col"
+            className="fixed z-[130] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in duration-200 scrollbar-hide flex flex-col"
             style={{
               top: dropdownPos.top,
               left: dropdownPos.left,
               width: dropdownPos.width,
             }}
           >
-            <div className="sticky top-0 bg-slate-900 pb-2 z-10 p-1 flex gap-2">
+            <div className="sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10 p-1 flex gap-2">
               <input 
                 type="text" 
                 placeholder="Search..." 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
-                className="flex-1 min-w-0 bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:border-sky-500 transition-colors placeholder:text-slate-500"
+                className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-950 dark:text-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:border-blue-500 dark:focus:border-sky-500 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange([]); }}
-                className="px-3 py-2 text-xs font-semibold bg-slate-800 text-slate-400 hover:text-white rounded-md hover:bg-slate-700 border border-slate-700 transition-all whitespace-nowrap opacity-50 hover:opacity-100"
+                className="px-3 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all whitespace-nowrap opacity-75 hover:opacity-100"
               >
                 Clear All
               </button>
@@ -2279,7 +2320,7 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
                   key={opt} 
                   className={cn(
                     "flex items-center gap-3 p-2.5 rounded-md cursor-pointer group transition-all",
-                    selected.includes(opt) ? "bg-sky-500/10 hover:bg-sky-500/20" : "hover:bg-slate-800"
+                    selected.includes(opt) ? "bg-blue-50 dark:bg-sky-500/10 hover:bg-blue-100 dark:hover:bg-sky-500/20" : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200"
                   )}
                 >
                   <div className="relative flex items-center justify-center">
@@ -2290,13 +2331,13 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
                         const next = e.target.checked ? [...selected, opt] : selected.filter(s => s !== opt);
                         onChange(next);
                       }}
-                      className="w-4 h-4 rounded-md bg-slate-950 border-slate-600 text-sky-500 focus:ring-0 transition-all cursor-pointer appearance-none border checked:bg-sky-500 checked:border-sky-400"
+                      className="w-4 h-4 rounded-md bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-blue-600 dark:text-sky-500 focus:ring-0 transition-all cursor-pointer appearance-none border checked:bg-blue-600 dark:checked:bg-sky-500 checked:border-blue-500 dark:checked:border-sky-400"
                     />
                     {selected.includes(opt) && <Check className="absolute w-3 h-3 text-white pointer-events-none" />}
                   </div>
                   <span className={cn(
                     "text-sm font-medium transition-colors text-left",
-                    selected.includes(opt) ? "text-sky-400" : "text-slate-300 group-hover:text-slate-100"
+                    selected.includes(opt) ? "text-blue-600 dark:text-sky-400" : "text-slate-700 dark:text-slate-300 group-hover:text-slate-950 dark:group-hover:text-slate-100"
                   )}>
                     {opt} {unit && <span className="opacity-50 text-xs ml-1">({unit})</span>}
                   </span>
@@ -2304,7 +2345,7 @@ function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { o
               );
             })}
             {filteredOptions.length > 100 && (
-              <div className="text-xs text-slate-500 text-center py-2 mt-1 border-t border-slate-800">
+              <div className="text-xs text-slate-500 text-center py-2 mt-1 border-t border-slate-150 dark:border-slate-800">
                 Showing 100 of {filteredOptions.length} results. Use search to refine.
               </div>
             )}

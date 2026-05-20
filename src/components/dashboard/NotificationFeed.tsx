@@ -18,7 +18,7 @@ interface Notification {
   host?: string;
 }
 
-export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbixConfig }: { globalSearch?: string, zabbixBaseUrl?: string, zabbixConfig?: { url: string, token: string } }) {
+export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbixConfig, showToast }: { globalSearch?: string, zabbixBaseUrl?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void }) {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info' | 'success'>('all');
   
@@ -310,7 +310,13 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                                     </a>
                                 ) : (
                                     <button 
-                                        onClick={() => alert("Zabbix configuration required for drill-down.")}
+                                        onClick={() => {
+                                            if (showToast) {
+                                                showToast("Zabbix configuration required for drill-down.", "warning");
+                                            } else {
+                                                alert("Zabbix configuration required for drill-down.");
+                                            }
+                                        }}
                                         className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl font-semibold text-sm transition-all cursor-not-allowed flex items-center justify-center gap-2"
                                     >
                                         <ExternalLink className="w-4 h-4 opacity-50" /> Open in Zabbix (Locked)

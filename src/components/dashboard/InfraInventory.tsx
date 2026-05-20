@@ -4,7 +4,7 @@ import { Server, Cpu, HardDrive, Database, Zap, Activity, ChevronRight, ChevronL
 import { cn } from '../../lib/utils';
 import axios from 'axios';
 
-export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string } }) {
+export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showToast }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void }) {
   const isHistorical = filters.mode === 'historical';
   const [activeHostGroup, setActiveHostGroup] = React.useState<string>('all');
   
@@ -254,7 +254,11 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig }: { f
                   const errorMsg = asset.hostid 
                     ? "Cannot open Zabbix: Configure API settings in ha-reporting first." 
                     : "Cannot open Zabbix: This is a demo test asset.";
-                  alert(errorMsg);
+                  if (showToast) {
+                    showToast(errorMsg, "warning");
+                  } else {
+                    alert(errorMsg);
+                  }
                   return;
                 }
                 const baseUrl = zabbixConfig.url.endsWith('/') ? zabbixConfig.url.slice(0, -1) : zabbixConfig.url;
