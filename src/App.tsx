@@ -356,7 +356,7 @@ export default function App() {
   const isDemo = !zabbixConfig.url || (!zabbixConfig.token && !zabbixConfig.isPreconfigured);
   const [availableHosts, setAvailableHosts] = useState<string[]>(['srv-prod-01', 'sql-db-primary', 'gateway-02']);
   const [availableMetrics, setAvailableMetrics] = useState<string[]>(['cpu', 'memory', 'traffic', 'latency', 'disk']);
-  const [metricDict, setMetricDict] = useState<Record<string, {itemid: string, value_type: string}>>({});
+  const [metricDict, setMetricDict] = useState<Record<string, {itemid: string, value_type: string, lastvalue: string}>>({});
   const [hostMetricsMap, setHostMetricsMap] = useState<Record<string, string[]>>({});
   const [metricUnitsMap, setMetricUnitsMap] = useState<Record<string, string>>({
     'cpu': '%',
@@ -677,7 +677,7 @@ export default function App() {
         token: tokenToUse,
         method: "item.get",
         params: { 
-          output: ["name", "key_", "units", "itemid", "value_type"], 
+          output: ["name", "key_", "units", "itemid", "value_type", "lastvalue"], 
           selectHosts: ["name", "host"],
           monitored: true,
           limit: 5000
@@ -687,7 +687,7 @@ export default function App() {
       if (itemRes.data.result) {
         const units: Record<string, string> = {};
         const mapping: Record<string, string[]> = {};
-        const dict: Record<string, {itemid: string, value_type: string}> = {};
+        const dict: Record<string, {itemid: string, value_type: string, lastvalue: string}> = {};
         itemRes.data.result.forEach((i: any) => {
           const base = i.name;
           if (i.units) units[base] = i.units;
@@ -696,7 +696,7 @@ export default function App() {
               const hostName = h.name || h.host;
               if (!mapping[hostName]) mapping[hostName] = [];
               mapping[hostName].push(base);
-              dict[`${base}_${hostName}`] = { itemid: i.itemid, value_type: i.value_type };
+              dict[`${base}_${hostName}`] = { itemid: i.itemid, value_type: i.value_type, lastvalue: i.lastvalue };
             });
           }
         });
@@ -1466,14 +1466,18 @@ export default function App() {
                 w.type === 'kpi' ? (
                   (() => {
                     let finalValue = null;
+                    let lastPoint: any = null;
                     if (data.length > 0) {
-                      const lastPoint = data[data.length - 1];
+                      lastPoint = [...data].reverse().find((d: any) => 
+                        w.metrics.some((m: string) => w.hosts.some((h: string) => !hiddenSeries.has(`${m}_${h}`) && d[`${m}_${h}`] != null))
+                      ) || data[data.length - 1];
+                      
                       let values: number[] = [];
                       
                       w.metrics.forEach(m => {
                         w.hosts.forEach(h => {
                           const key = `${m}_${h}`;
-                          if (!hiddenSeries.has(key) && lastPoint[key] !== undefined) {
+                          if (!hiddenSeries.has(key) && lastPoint[key] != null) {
                             values.push(Number(lastPoint[key]));
                           }
                         });
@@ -1500,7 +1504,7 @@ export default function App() {
                           const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
                           hostsToUse.forEach(h => {
                             const key = `${m}_${h}`;
-                            if (!hiddenSeries.has(key) && point[key] !== undefined) {
+                            if (!hiddenSeries.has(key) && point[key] != null) {
                               values.push(Number(point[key]));
                             }
                           });
@@ -1512,8 +1516,11 @@ export default function App() {
                         return values[0];
                       };
 
-                      const firstVal = getVal(data[0]);
-                      const lastVal = getVal(data[data.length - 1]);
+                      const firstPoint = data.find((d: any) => 
+                        w.metrics.some((m: string) => w.hosts.some((h: string) => !hiddenSeries.has(`${m}_${h}`) && d[`${m}_${h}`] != null))
+                      ) || data[0];
+                      const firstVal = getVal(firstPoint);
+                      const lastVal = getVal(lastPoint);
                       if (firstVal === 0) changePct = lastVal > 0 ? 100 : 0;
                       else changePct = Number((((lastVal - firstVal) / firstVal) * 100).toFixed(1));
                       

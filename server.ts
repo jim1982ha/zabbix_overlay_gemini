@@ -291,6 +291,7 @@ async function startServer() {
                  const key = `${m}_${h}`;
                  const info = itemDict[key];
                  if (info) {
+                    itemValueMap[key] = info.lastvalue;
                     const vtype = parseInt(info.value_type, 10);
                     if (!isNaN(vtype)) {
                        if (!itemsToFetchHistory[vtype]) itemsToFetchHistory[vtype] = [];
