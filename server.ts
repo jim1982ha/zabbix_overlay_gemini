@@ -382,7 +382,6 @@ async function startServer() {
                output: "extend",
                history: vtype,
                itemids,
-               limit: 50000,
                time_from: Math.floor(actualStartTime / 1000) - 43200, // Look back 12h for stable lines
                time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
              },
@@ -485,7 +484,7 @@ async function startServer() {
               const rangeStart = bucketTime;
               const rangeEnd = bucketTime + stepMs;
 
-              let lastSeenBeforeOrAtStart = pts[0][1];
+              let lastSeenBeforeOrAtStart: number | null = null;
               // Optimally, we can find the exact value active at rangeStart.
               // Note: pts is sorted by timestamp asc
               let bestTBefore = -Infinity;
@@ -514,12 +513,18 @@ async function startServer() {
                   // If we got values strictly this period, use average or last value?
                   // Trend charting typically uses the average during this bucket
                   point[key] = parseFloat((sum/count).toFixed(2));
-              } else {
+              } else if (lastSeenBeforeOrAtStart !== null) {
                   // No data *inside* bucket, hold latest known state!
                   point[key] = parseFloat(lastSeenBeforeOrAtStart.toFixed(2));
+              } else {
+                  point[key] = null;
               }
            } else if (itemValueMap[key] !== undefined) {
-              point[key] = parseFloat(parseFloat(itemValueMap[key]).toFixed(2));
+              if (i === dataPoints - 1) {
+                  point[key] = parseFloat(parseFloat(itemValueMap[key]).toFixed(2));
+              } else {
+                  point[key] = null;
+              }
            } else if (isDemo) {
              // Mock values based on metric name heuristics (Demo Mode only)
              const timeValue = new Date(timeLabels[i]).getTime();

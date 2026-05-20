@@ -66,7 +66,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
           {unit && (
             <span className={cn(
               "font-semibold text-slate-500 ml-2 shrink-0 self-end mb-[0.15em]",
-              "text-[min(1.2rem,8cqw)]"
+              "text-[clamp(1rem,10cqw,2rem)]"
             )}>
               {unit}
             </span>
