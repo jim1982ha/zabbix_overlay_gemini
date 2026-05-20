@@ -47,8 +47,8 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col items-center justify-center min-h-0 py-4 w-full overflow-hidden">
-        <div className="flex items-center justify-between w-full max-w-full px-2 gap-4">
-          <div className="flex items-baseline min-w-0 justify-center flex-1">
+        <div className="flex items-center justify-center w-full max-w-full px-2 gap-4">
+          <div className="flex items-baseline min-w-0 justify-center">
               <div className={cn(
                 "font-extrabold tracking-tight leading-none transition-all duration-300 flex-shrink min-w-0 truncate",
                 color === "red" ? "text-rose-600" : "text-slate-900",
@@ -65,29 +65,29 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
                 </span>
               )}
           </div>
-          
-          {change !== undefined && (
-            <div className="flex flex-col items-start justify-center" aria-label="Compared to previous period of same duration">
-                <div className={cn(
-                  "flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded border shrink-0 shadow-sm",
-                  isPositive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
-                )}>
-                  {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  {Math.abs(change).toFixed(1)}%
-                </div>
-            </div>
-          )}
         </div>
       </div>
       
       {/* Footer Area - Change indicator or Contextual Data */}
-      <div className="relative z-10 flex items-center justify-between pt-1 shrink-0 mt-auto">
+      <div className="relative z-10 flex items-center justify-between pt-1 shrink-0 mt-auto w-full">
         {timestamp ? (
             <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-400 font-medium px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-full shrink-0">
               <Clock className="w-3 h-3" />
               {timestamp}
             </div>
         ) : <div />}
+
+        {change !== undefined && (
+          <div className="flex flex-col items-end justify-center shrink-0" aria-label="Compared to previous period of same duration">
+              <div className={cn(
+                "flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded border shrink-0 shadow-sm",
+                isPositive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+              )}>
+                {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {Math.abs(change).toFixed(1)}%
+              </div>
+          </div>
+        )}
 
         {change === undefined && (
           <div className="w-1/2 flex flex-col gap-1 px-1 opacity-60 ml-auto">

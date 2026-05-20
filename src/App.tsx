@@ -977,6 +977,14 @@ export default function App() {
                     });
                   }
                 });
+              } else if (w.type === 'kpi') {
+                const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+                w.metrics.forEach((m: string) => {
+                  hostsToUse.forEach((h: string) => {
+                    const key = `${m}_${h}`;
+                    if (hiddenSeries.has(key)) hasFilter = true;
+                  });
+                });
               } else if (w.aggregation === 'avg' || w.aggregation === 'sum') {
                 if (hiddenSeries.has('agg_val')) hasFilter = true;
               } else {
@@ -1920,12 +1928,12 @@ export default function App() {
                     onClick={() => setFilters({...filters, mode: 'live'})}
                     className={cn(
                       "relative overflow-hidden px-3 py-1 rounded-md text-xs font-medium transition-all h-full flex items-center justify-center min-w-[70px]",
-                      filters.mode === 'live' ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                      filters.mode === 'live' ? "bg-black text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                     )}
                   >
                     {filters.mode === 'live' && (
                         <div 
-                          className="absolute bottom-0 left-0 h-full bg-blue-500/50 transition-all duration-1000 ease-linear pointer-events-none" 
+                          className="absolute bottom-0 left-0 h-full bg-blue-600 transition-all duration-1000 ease-linear pointer-events-none" 
                           style={{ width: `${refreshProgress}%` }} 
                         />
                     )}
@@ -1935,7 +1943,7 @@ export default function App() {
                     onClick={() => setFilters({...filters, mode: 'historical'})}
                     className={cn(
                       "px-3 py-1 rounded-md text-xs font-medium transition-all h-full flex items-center justify-center min-w-[70px]",
-                      filters.mode === 'historical' ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                      filters.mode === 'historical' ? "bg-black text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                     )}
                   >
                     Historical
