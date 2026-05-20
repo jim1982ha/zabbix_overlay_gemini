@@ -512,8 +512,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         
         {chartType === 'pie' && (
           <div className={cn(
-            "shrink-0 bg-white relative z-10",
-            "flex flex-col gap-2 w-auto min-w-[120px] max-w-[40%] ml-4 max-h-[160px] overflow-y-auto px-2" 
+            "shrink min-h-0 bg-white relative z-10",
+            "flex flex-col gap-2 w-auto min-w-[120px] max-w-[40%] ml-4 max-h-[160px] overflow-y-auto px-2 scrollbar-hide flex-shrink" 
           )}>
             {series.map((s, i) => {
               const isHidden = hiddenSeries?.has(s.key);
@@ -541,7 +541,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         )}
         
         {chartType !== 'pie' && (
-          <div className="shrink-0 bg-white relative z-10 w-full mb-1 flex flex-wrap gap-x-4 gap-y-1.5 mt-3 max-h-[140px] overflow-y-auto px-1">
+          <div className="shrink min-h-0 bg-white relative z-10 w-full mb-1 flex flex-wrap gap-x-4 gap-y-1.5 mt-2 max-h-[120px] overflow-y-auto px-1 scrollbar-hide flex-shrink">
               {series.map((s, i) => {
                 const isHidden = hiddenSeries?.has(s.key);
                 return (

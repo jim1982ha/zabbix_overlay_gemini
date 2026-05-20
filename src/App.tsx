@@ -1882,12 +1882,6 @@ export default function App() {
                         <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Unsaved Changes</span>
                       </div>
                     )}
-                    {view === 'dashboard' && !hasUnsavedChanges && (
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 border border-emerald-100 rounded-full shrink-0">
-                        <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Saved</span>
-                      </div>
-                    )}
                     {view === 'dashboard' && (
                       <button 
                         type="button"
