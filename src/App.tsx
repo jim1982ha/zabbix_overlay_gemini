@@ -67,6 +67,8 @@ interface Widget {
   seriesConfig?: Record<string, {
     metric?: string;
     host?: string;
+    metrics?: string[];
+    hosts?: string[];
     yAxis: 'left' | 'right';
     chartType: 'area' | 'line' | 'bar';
     aggregation: 'none' | 'sum' | 'avg';
@@ -313,7 +315,7 @@ export default function App() {
   const dashboardStorageKey = useMemo(() => {
     return savedZabbixUrl 
       ? `hareporting_dashboards_${btoa(savedZabbixUrl).replace(/=/g, '')}` 
-      : 'hareporting_dashboards_v1_sim';
+      : 'hareporting_dashboards_v4_mixed_stack_area';
   }, [savedZabbixUrl]);
 
   // Consolidated Tracker for unsaved changes (moved here to have access to dashboardStorageKey)
@@ -391,9 +393,170 @@ export default function App() {
   const isMobile = windowWidth < 640;
 
   const defaultWidgets: Widget[] = [
-    { id: 'kpi-1', title: 'Average Cluster CPU', type: 'kpi', chartType: 'area', metrics: ['cpu'], hosts: ['all'], aggregation: 'avg', stacked: false, cols: 6, rows: 4 },
-    { id: 'kpi-2', title: 'Total Network Flow', type: 'kpi', chartType: 'area', metrics: ['traffic'], hosts: ['all'], aggregation: 'sum', stacked: false, cols: 6, rows: 4 },
-    { id: 'chart-1', title: 'Production Core Trends', type: 'chart', chartType: 'area', metrics: ['cpu', 'memory'], hosts: ['srv-prod-01'], aggregation: 'none', stacked: true, cols: 12, rows: 10 },
+    { 
+      id: 'kpi-1', 
+      title: 'Average Cluster CPU', 
+      type: 'kpi', 
+      chartType: 'area', 
+      metrics: ['cpu'], 
+      hosts: ['all'], 
+      aggregation: 'avg', 
+      stacked: false, 
+      cols: 4, 
+      rows: 5 
+    },
+    { 
+      id: 'kpi-2', 
+      title: 'Global Cluster Network Flow', 
+      type: 'kpi', 
+      chartType: 'bar', 
+      metrics: ['traffic'], 
+      hosts: ['all'], 
+      aggregation: 'sum', 
+      stacked: false, 
+      cols: 10, 
+      rows: 5 
+    },
+    { 
+      id: 'kpi-3', 
+      title: 'Primary SQL Latency', 
+      type: 'kpi', 
+      chartType: 'line', 
+      metrics: ['latency'], 
+      hosts: ['sql-db-primary'], 
+      aggregation: 'avg', 
+      stacked: false, 
+      cols: 5, 
+      rows: 5 
+    },
+    { 
+      id: 'kpi-4', 
+      title: 'Cluster Storage Health', 
+      type: 'kpi', 
+      chartType: 'area', 
+      metrics: ['disk'], 
+      hosts: ['all'], 
+      aggregation: 'avg', 
+      stacked: false, 
+      cols: 5, 
+      rows: 5 
+    },
+    { 
+      id: 'chart-1', 
+      title: 'Dual-Axis Health Correlation (Mixed View)', 
+      type: 'chart', 
+      chartType: 'mixed', 
+      metrics: ['cpu', 'traffic'], 
+      hosts: ['all'], 
+      aggregation: 'none', 
+      stacked: false, 
+      cols: 16, 
+      rows: 13,
+      seriesConfig: {
+        series1: {
+          metrics: ['cpu'],
+          metric: 'cpu',
+          hosts: ['all'],
+          host: 'all',
+          yAxis: 'left',
+          chartType: 'line',
+          aggregation: 'avg',
+          stacked: false
+        },
+        series2: {
+          metrics: ['traffic'],
+          metric: 'traffic',
+          hosts: ['all'],
+          host: 'all',
+          yAxis: 'right',
+          chartType: 'bar',
+          aggregation: 'sum',
+          stacked: false
+        }
+      }
+    },
+    { 
+      id: 'chart-2', 
+      title: 'Storage Volume Allocation (Pie View)', 
+      type: 'chart', 
+      chartType: 'pie', 
+      metrics: ['disk'], 
+      hosts: ['all'], 
+      aggregation: 'none', 
+      stacked: false, 
+      cols: 8, 
+      rows: 13 
+    },
+    { 
+      id: 'chart-3', 
+      title: 'Production Server Resource Footprint (Stacked Area)', 
+      type: 'chart', 
+      chartType: 'area', 
+      metrics: ['cpu', 'memory'], 
+      hosts: ['srv-prod-01'], 
+      aggregation: 'none', 
+      stacked: true, 
+      cols: 12, 
+      rows: 11 
+    },
+    { 
+      id: 'chart-4', 
+      title: 'Database Read Latency Trends (Line View)', 
+      type: 'chart', 
+      chartType: 'line', 
+      metrics: ['latency'], 
+      hosts: ['all'], 
+      aggregation: 'none', 
+      stacked: false, 
+      cols: 12, 
+      rows: 11 
+    },
+    { 
+      id: 'chart-5', 
+      title: 'Inter-Zone Network Traffic Load (Bar View)', 
+      type: 'chart', 
+      chartType: 'bar', 
+      metrics: ['traffic'], 
+      hosts: ['all'], 
+      aggregation: 'none', 
+      stacked: false, 
+      cols: 24, 
+      rows: 11 
+    },
+    { 
+      id: 'chart-6', 
+      title: 'Network Load & Resource Correlation (Dual-Axis Mixed Stacking)', 
+      type: 'chart', 
+      chartType: 'mixed', 
+      metrics: ['traffic', 'cpu'], 
+      hosts: ['srv-prod-01', 'sql-db-primary', 'gateway-02'], 
+      aggregation: 'none', 
+      stacked: false, 
+      cols: 24, 
+      rows: 12,
+      seriesConfig: {
+        series1: {
+          metrics: ['traffic'],
+          metric: 'traffic',
+          hosts: ['srv-prod-01', 'sql-db-primary', 'gateway-02'],
+          host: 'srv-prod-01',
+          yAxis: 'left',
+          chartType: 'bar',
+          aggregation: 'none',
+          stacked: true
+        },
+        series2: {
+          metrics: ['cpu'],
+          metric: 'cpu',
+          hosts: ['all'],
+          host: 'all',
+          yAxis: 'right',
+          chartType: 'area',
+          aggregation: 'avg',
+          stacked: false
+        }
+      }
+    }
   ];
 
   const handleUpdateDashboardName = (newName: string) => {
@@ -429,7 +592,7 @@ export default function App() {
       }
     } else {
       // Initialize with default if first time
-      const initialWidgets = dashboardStorageKey === 'hareporting_dashboards_v1_sim' ? defaultWidgets : [];
+      const initialWidgets = dashboardStorageKey === 'hareporting_dashboards_v4_mixed_stack_area' ? defaultWidgets : [];
       const initialDashboard: Dashboard = {
         id: 'default-board-1',
         name: 'Executive Overview',
@@ -457,13 +620,13 @@ export default function App() {
           setDashboardName(migrated[0].name);
           setActiveDashboardId(migrated[0].id);
         } else {
-          setWidgets(dashboardStorageKey === 'hareporting_dashboards_v1_sim' ? defaultWidgets : []);
+          setWidgets(dashboardStorageKey === 'hareporting_dashboards_v4_mixed_stack_area' ? defaultWidgets : []);
         }
       } catch (e) {
-        setWidgets(dashboardStorageKey === 'hareporting_dashboards_v1_sim' ? defaultWidgets : []);
+        setWidgets(dashboardStorageKey === 'hareporting_dashboards_v4_mixed_stack_area' ? defaultWidgets : []);
       }
     } else {
-      setWidgets(dashboardStorageKey === 'hareporting_dashboards_v1_sim' ? defaultWidgets : []);
+      setWidgets(dashboardStorageKey === 'hareporting_dashboards_v4_mixed_stack_area' ? defaultWidgets : []);
     }
   }, [dashboardStorageKey]);
 

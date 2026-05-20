@@ -227,6 +227,10 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               innerRadius={0}
               outerRadius="80%"
               dataKey="value"
+              isAnimationActive={true}
+              animationBegin={0}
+              animationDuration={350}
+              animationEasing="ease-out"
             >
               {pieData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" strokeWidth={0} />
@@ -501,8 +505,14 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         </div>
       </div>
 
-      <div className={cn("flex-1 w-full relative min-h-0 flex", chartType === 'pie' ? "flex-row items-center" : "flex-col")}>
-        <div className={`flex-1 w-full h-full relative select-none cursor-crosshair min-h-[100px]`}>
+      <div className={cn(
+        "flex-1 w-full relative min-h-0 flex", 
+        chartType === 'pie' ? "flex-col @[450px]:flex-row items-center justify-center gap-3" : "flex-col"
+      )}>
+        <div className={cn(
+          "flex-1 w-full relative select-none cursor-crosshair",
+          chartType === 'pie' ? "h-[160px] @[450px]:h-full min-h-[120px]" : "h-full min-h-[100px]"
+        )}>
           <div className="absolute inset-0 min-w-0 min-h-0">
             <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               {renderChart()}
@@ -512,8 +522,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         
         {chartType === 'pie' && (
           <div className={cn(
-            "shrink min-h-0 bg-white relative z-10",
-            "flex flex-col gap-2 w-auto min-w-[120px] max-w-[40%] ml-4 max-h-[160px] overflow-y-auto px-2 scrollbar-hide flex-shrink" 
+            "shrink-0 min-h-0 bg-white relative z-10",
+            "flex flex-row @[450px]:flex-col flex-wrap @[450px]:flex-nowrap justify-center gap-x-3 gap-y-1.5 w-full @[450px]:w-auto @[450px]:min-w-[120px] @[450px]:max-w-[40%] @[450px]:ml-4 max-h-[80px] @[450px]:max-h-[160px] overflow-y-auto px-2 scrollbar-hide" 
           )}>
             {series.map((s, i) => {
               const isHidden = hiddenSeries?.has(s.key);
