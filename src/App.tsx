@@ -927,7 +927,41 @@ export default function App() {
               w.metrics.some(m => m.toLowerCase().includes(globalSearch.toLowerCase())) ||
               w.hosts.some(h => h.toLowerCase().includes(globalSearch.toLowerCase()))
             ).map((w, index) => {
-              const hasFilter = w.metrics.some(m => w.hosts.some(h => hiddenSeries.has(`${m}_${h}`)));
+              let hasFilter = false;
+              if (w.chartType === 'mixed' && w.seriesConfig) {
+                ['series1', 'series2'].forEach(sKey => {
+                  const sConf = w.seriesConfig?.[sKey];
+                  if (!sConf) return;
+                  const smetrics = sConf.metrics || (sConf.metric ? [sConf.metric] : []);
+                  const shosts = sConf.hosts || (sConf.host ? [sConf.host] : []);
+                  const aggType = sConf.aggregation || 'none';
+                  if (aggType !== 'none') {
+                    smetrics.forEach((m: string) => {
+                      if (hiddenSeries.has(`${sKey}_${m}_agg`)) hasFilter = true;
+                    });
+                  } else {
+                    smetrics.forEach((m: string) => {
+                      const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
+                      hostsToUse.forEach((h: string) => {
+                        const key = `${m}_${h}`;
+                        // For mixed charts, check if data exists? Let's just check hiddenSeries
+                        if (hiddenSeries.has(key)) hasFilter = true;
+                      });
+                    });
+                  }
+                });
+              } else if (w.aggregation === 'avg' || w.aggregation === 'sum') {
+                if (hiddenSeries.has('agg_val')) hasFilter = true;
+              } else {
+                w.metrics.forEach((m: string) => {
+                  const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+                  hostsToUse.forEach((h: string) => {
+                    const key = `${m}_${h}`;
+                    const hasDataForSeries = data.some((point: any) => point[key] != null);
+                    if (hasDataForSeries && hiddenSeries.has(key)) hasFilter = true;
+                  });
+                });
+              }
               
               return (
               <motion.div 
@@ -1469,13 +1503,17 @@ export default function App() {
                     let lastPoint: any = null;
                     if (data.length > 0) {
                       lastPoint = [...data].reverse().find((d: any) => 
-                        w.metrics.some((m: string) => w.hosts.some((h: string) => !hiddenSeries.has(`${m}_${h}`) && d[`${m}_${h}`] != null))
+                        w.metrics.some((m: string) => {
+                          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+                          return hostsToUse.some((h: string) => !hiddenSeries.has(`${m}_${h}`) && d[`${m}_${h}`] != null);
+                        })
                       ) || data[data.length - 1];
                       
                       let values: number[] = [];
                       
                       w.metrics.forEach(m => {
-                        w.hosts.forEach(h => {
+                        const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+                        hostsToUse.forEach(h => {
                           const key = `${m}_${h}`;
                           if (!hiddenSeries.has(key) && lastPoint[key] != null) {
                             values.push(Number(lastPoint[key]));
@@ -1517,7 +1555,10 @@ export default function App() {
                       };
 
                       const firstPoint = data.find((d: any) => 
-                        w.metrics.some((m: string) => w.hosts.some((h: string) => !hiddenSeries.has(`${m}_${h}`) && d[`${m}_${h}`] != null))
+                        w.metrics.some((m: string) => {
+                          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+                          return hostsToUse.some((h: string) => !hiddenSeries.has(`${m}_${h}`) && d[`${m}_${h}`] != null);
+                        })
                       ) || data[0];
                       const firstVal = getVal(firstPoint);
                       const lastVal = getVal(lastPoint);

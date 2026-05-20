@@ -477,8 +477,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
 
       <div className={cn("flex-1 w-full relative min-h-0 flex", chartType === 'pie' ? "flex-row items-center" : "flex-col")}>
         <div className={`flex-1 w-full h-full relative select-none cursor-crosshair min-h-[100px]`}>
-          <div className="absolute inset-0">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="absolute inset-0 min-w-0 min-h-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               {renderChart()}
             </ResponsiveContainer>
           </div>

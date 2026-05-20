@@ -341,7 +341,7 @@ async function startServer() {
         // Fetch real history data from Zabbix
         for (const [vtypeStr, itemids] of Object.entries(itemsToFetchHistory)) {
            const vtype = parseInt(vtypeStr, 10);
-           const histRes = await axios.post(url, {
+           const zabbixReqPayload = {
              jsonrpc: "2.0",
              method: "history.get",
              params: {
@@ -353,10 +353,51 @@ async function startServer() {
              },
              auth: token,
              id: Date.now()
-           }, { maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 30000 });
+           };
+           const histRes = await axios.post(url, zabbixReqPayload, { maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 30000 });
            
-           if (histRes.data && histRes.data.result) {
-              histRes.data.result.forEach((pt: any) => {
+           if (!global.zabbixHistDebugLog) global.zabbixHistDebugLog = [];
+           global.zabbixHistDebugLog.push({
+             vtype,
+             reqSize: itemids.length,
+             req: zabbixReqPayload.params,
+             resLen: histRes.data?.result?.length,
+             err: histRes.data?.error
+           });
+
+           let results = histRes.data?.result || [];
+           
+           // Fallback to trend.get if history returns empty and vtype is numeric (0=float, 3=unsigned)
+           if (results.length === 0 && (vtype === 0 || vtype === 3)) {
+               console.log(`[timeseries] history.get returned 0 points for vtype ${vtype}, trying trend.get...`);
+               const trendReqPayload = {
+                  jsonrpc: "2.0",
+                  method: "trend.get",
+                  params: {
+                     output: "extend",
+                     itemids,
+                     time_from: Math.floor(actualStartTime / 1000) - 43200,
+                     time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
+                  },
+                  auth: token,
+                  id: Date.now()
+               };
+               const trendRes = await axios.post(url, trendReqPayload, { timeout: 30000 });
+               if (trendRes.data && trendRes.data.result) {
+                  results = trendRes.data.result.map((pt: any) => ({
+                     itemid: pt.itemid,
+                     clock: pt.clock,
+                     value: pt.value_avg // use average for trends
+                  }));
+                  global.zabbixHistDebugLog.push({
+                     action: "trend.get fallback",
+                     resLen: results.length
+                  });
+               }
+           }
+
+           if (results.length > 0) {
+              results.forEach((pt: any) => {
                  const key = itemIdToKey[pt.itemid];
                  if (key) {
                     if (!historyValues[key]) historyValues[key] = [];
@@ -370,6 +411,17 @@ async function startServer() {
         for (const key of Object.keys(historyValues)) {
            historyValues[key].sort((a,b) => a[0] - b[0]);
         }
+        
+        try {
+           require('fs').writeFileSync('zabbix-debug.json', JSON.stringify({
+             itemsToFetchHistory,
+             itemIdToKey,
+             zabbixHistDebugLog: global.zabbixHistDebugLog,
+             historyKeys: Object.keys(historyValues),
+             historyCounts: Object.fromEntries(Object.entries(historyValues).map(([k,v]) => [k, (v as any[]).length]))
+           }, null, 2));
+           console.log(`[timeseries] Debug log written to zabbix-debug.json`);
+        } catch(e) {}
       } catch (e) {
         console.error("Failed to fetch real data for timeseries", e);
       }
