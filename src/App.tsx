@@ -1568,6 +1568,8 @@ export default function App() {
                       trendDir = lastVal >= firstVal ? 'up' : 'down';
                     }
 
+                    const timestampStr = lastPoint?.time ? new Date(lastPoint.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined;
+
                     return (
                       <StatCard 
                         title={w.title} 
@@ -1577,6 +1579,7 @@ export default function App() {
                         change={changePct}
                         trend={trendDir}
                         color={w.aggregation !== 'none' ? getDeterministicColor('agg_val') : (w.metrics[0] && w.hosts[0] ? getDeterministicColor(`${w.metrics[0]}_${w.hosts[0]}`) : '#0EA5E9')}
+                        timestamp={timestampStr}
                       />
                     );
                   })()

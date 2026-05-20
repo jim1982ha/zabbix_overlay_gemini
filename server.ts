@@ -335,6 +335,40 @@ async function startServer() {
            }
         }
         
+        if (mode === 'live' && Object.keys(itemIdToKey).length > 0) {
+           try {
+               const liveItemRes = await axios.post(url, {
+                   jsonrpc: "2.0",
+                   method: "item.get",
+                   params: {
+                        output: ["itemid", "lastvalue", "lastclock"],
+                        itemids: Object.keys(itemIdToKey)
+                   },
+                   auth: token,
+                   id: Date.now()
+               }, { timeout: 15000 });
+               if (liveItemRes.data?.result) {
+                   liveItemRes.data.result.forEach((pt: any) => {
+                       const key = itemIdToKey[pt.itemid];
+                       if (key && pt.lastvalue !== undefined) {
+                           itemValueMap[key] = pt.lastvalue;
+                           const ts = parseInt(pt.lastclock, 10) * 1000;
+                           if (!isNaN(ts)) {
+                               if (!historyValues[key]) historyValues[key] = [];
+                               const val = parseFloat(pt.lastvalue);
+                               if (!isNaN(val)) {
+                                  // push the latest point into history to guarantee the line extends to the present truthfully
+                                  historyValues[key].push([ts, val]);
+                               }
+                           }
+                       }
+                   });
+               }
+           } catch (err) {
+               console.error("[timeseries] Failed to refetch live lastvalue", err);
+           }
+        }
+
         const actualStartTime = new Date(timeLabels[0]).getTime();
         const actualEndTime = new Date(timeLabels[timeLabels.length - 1]).getTime();
 
@@ -348,6 +382,7 @@ async function startServer() {
                output: "extend",
                history: vtype,
                itemids,
+               limit: 50000,
                time_from: Math.floor(actualStartTime / 1000) - 43200, // Look back 12h for stable lines
                time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
              },
@@ -413,14 +448,15 @@ async function startServer() {
         }
         
         try {
-           require('fs').writeFileSync('zabbix-debug.json', JSON.stringify({
+           const dbgInfo = {
              itemsToFetchHistory,
              itemIdToKey,
              zabbixHistDebugLog: global.zabbixHistDebugLog,
              historyKeys: Object.keys(historyValues),
              historyCounts: Object.fromEntries(Object.entries(historyValues).map(([k,v]) => [k, (v as any[]).length]))
-           }, null, 2));
-           console.log(`[timeseries] Debug log written to zabbix-debug.json`);
+           };
+           require('fs').writeFileSync(require('path').join(process.cwd(), 'zabbix-debug.json'), JSON.stringify(dbgInfo, null, 2));
+           console.log(`[timeseries] Debug log written. historyCounts:`, dbgInfo.historyCounts);
         } catch(e) {}
       } catch (e) {
         console.error("Failed to fetch real data for timeseries", e);
