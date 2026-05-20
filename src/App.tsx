@@ -136,6 +136,7 @@ export default function App() {
   const [secureTokenPrompt, setSecureTokenPrompt] = useState(false);
   const [secureTokenInput, setSecureTokenInput] = useState("");
   const [requiresSecureToken, setRequiresSecureToken] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState(0);
 
   useEffect(() => {
     let isRefreshing = false;
@@ -503,18 +504,44 @@ export default function App() {
   useEffect(() => {
     fetchStats();
     if (filters.mode === 'live') {
-      let intervalTime = 60000;
+      let stepMs = 60000;
       switch (filters.granularity) {
-        case '1m': intervalTime = 60000; break;
-        case '5m': intervalTime = 300000; break;
-        case '15m': intervalTime = 900000; break;
-        case '30m': intervalTime = 1800000; break;
-        case '1h': intervalTime = 3600000; break;
-        case '1d': intervalTime = 86400000; break;
-        default: intervalTime = 60000;
+        case '1m': stepMs = 60000; break;
+        case '5m': stepMs = 300000; break;
+        case '15m': stepMs = 900000; break;
+        case '30m': stepMs = 1800000; break;
+        case '1h': stepMs = 3600000; break;
+        case '1d': stepMs = 86400000; break;
+        default: stepMs = 60000;
       }
-      const interval = setInterval(fetchStats, intervalTime);
+      
+      const updateProgress = () => {
+         const t = Date.now();
+         const settledEnd = Math.floor((t - 60000) / stepMs) * stepMs;
+         const nextRefreshTime = settledEnd + stepMs + 60000;
+         const lastRefreshTime = settledEnd + 60000;
+         
+         const progress = Math.max(0, Math.min(100, ((t - lastRefreshTime) / (nextRefreshTime - lastRefreshTime)) * 100));
+         setRefreshProgress(progress);
+      };
+      
+      let lastSettledEnd = Math.floor((Date.now() - 60000) / stepMs) * stepMs;
+      
+      const interval = setInterval(() => {
+         updateProgress();
+         const t = Date.now();
+         const currentSettledEnd = Math.floor((t - 60000) / stepMs) * stepMs;
+         if (currentSettledEnd > lastSettledEnd) {
+             lastSettledEnd = currentSettledEnd;
+             fetchStats();
+         }
+      }, 1000);
+      
+      updateProgress();
+      
       return () => clearInterval(interval);
+    } else {
+      setRefreshProgress(0);
     }
   }, [fetchStats, filters.mode, filters.granularity]);
 
@@ -1556,18 +1583,13 @@ export default function App() {
                         return sum / values.length;
                       };
 
-                      const firstPoint = data.find((d: any) => 
-                        w.metrics.some((m: string) => {
-                          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
-                          return hostsToUse.some((h: string) => !hiddenSeries.has(`${m}_${h}`) && d[`${m}_${h}`] != null);
-                        })
-                      ) || data[0];
-                      const firstVal = getVal(firstPoint);
+                      const prevPoint = data.length >= 2 ? data[data.length - 2] : data[0];
+                      const prevVal = getVal(prevPoint);
                       const lastVal = getVal(lastPoint);
-                      if (firstVal === 0) changePct = lastVal > 0 ? 100 : 0;
-                      else changePct = Number((((lastVal - firstVal) / firstVal) * 100).toFixed(1));
+                      if (prevVal === 0) changePct = lastVal > 0 ? 100 : 0;
+                      else changePct = Number((((lastVal - prevVal) / prevVal) * 100).toFixed(1));
                       
-                      trendDir = lastVal >= firstVal ? 'up' : 'down';
+                      trendDir = lastVal >= prevVal ? 'up' : 'down';
                     }
 
                     let timestampStr: string | undefined = undefined;
@@ -1897,11 +1919,17 @@ export default function App() {
                   <button 
                     onClick={() => setFilters({...filters, mode: 'live'})}
                     className={cn(
-                      "px-3 py-1 rounded-md text-xs font-medium transition-all h-full flex items-center justify-center min-w-[70px]",
+                      "relative overflow-hidden px-3 py-1 rounded-md text-xs font-medium transition-all h-full flex items-center justify-center min-w-[70px]",
                       filters.mode === 'live' ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                     )}
                   >
-                    Live
+                    {filters.mode === 'live' && (
+                        <div 
+                          className="absolute bottom-0 left-0 h-full bg-blue-500/50 transition-all duration-1000 ease-linear pointer-events-none" 
+                          style={{ width: `${refreshProgress}%` }} 
+                        />
+                    )}
+                    <span className="relative z-10">Live</span>
                   </button>
                   <button 
                     onClick={() => setFilters({...filters, mode: 'historical'})}
