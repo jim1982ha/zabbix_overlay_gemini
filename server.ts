@@ -299,10 +299,14 @@ async function startServer() {
            let res = await axios.post(url, payload, { headers, maxBodyLength: Infinity, maxContentLength: Infinity, timeout });
            if (res.data?.error) {
               const errStr = JSON.stringify(res.data.error);
-              if (errStr.includes("unexpected parameter") || errStr.includes("Session terminated") || errStr.includes("Not authorized")) {
+              console.error(`[zReq] First attempt failed for ${method}:`, errStr);
+              if (errStr.includes("Session terminated") || errStr.includes("Not authorized")) {
                  delete headers['Authorization'];
                  payload.auth = token;
                  res = await axios.post(url, payload, { headers, maxBodyLength: Infinity, maxContentLength: Infinity, timeout });
+                 if (res.data?.error) {
+                     console.error(`[zReq] Second attempt failed for ${method}:`, JSON.stringify(res.data.error));
+                 }
               }
            }
            return res;
@@ -400,7 +404,7 @@ async function startServer() {
            if (isNumeric && useTrend) {
                try {
                   const trendRes = await zReq("trend.get", {
-                        output: ["itemid", "clock", "value_avg"],
+                        output: "extend",
                         itemids,
                         time_from: Math.floor(actualStartTime / 1000) - lookbackSeconds,
                         time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
@@ -421,7 +425,7 @@ async function startServer() {
             if (results.length === 0) {
               try {
                 const histRes = await zReq("history.get", {
-                  output: ["itemid", "clock", "value"],
+                  output: "extend",
                   history: vtype,
                   itemids,
                   time_from: Math.floor(actualStartTime / 1000) - lookbackSeconds,
