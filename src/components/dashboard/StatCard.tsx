@@ -39,7 +39,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
               )} 
               style={color.startsWith('#') ? { backgroundColor: color } : {}}
             />
-            <span className="text-sm font-semibold text-slate-600 truncate w-full" title={tooltip || title}>
+            <span className="text-sm font-semibold text-slate-600 truncate block w-full" title={tooltip || title}>
               {title}
             </span>
           </div>

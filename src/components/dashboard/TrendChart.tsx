@@ -148,7 +148,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white/95 backdrop-blur-sm border border-slate-100 rounded-lg shadow-lg p-1.5 max-h-[200px] overflow-y-auto flex flex-col gap-0.5 scrollbar-hide border-l-2 border-l-blue-600 min-w-[160px]">
+        <div className="bg-white/95 backdrop-blur-sm border border-slate-100 rounded-lg shadow-lg p-1.5 max-h-[400px] overflow-y-auto flex flex-col gap-0.5 border-l-2 border-l-blue-600 min-w-[160px]">
           {label && (
              <div className="text-[10px] uppercase font-bold text-slate-500 mb-0.5 px-1 border-b border-slate-100 pb-1">
                {(() => {
@@ -185,7 +185,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               <div key={`item-${index}`} className="flex items-center justify-between gap-3 px-1 py-0.5 hover:bg-slate-50 rounded bg-transparent transition-colors">
                 <div className="flex items-center gap-1.5 overflow-hidden">
                   <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: entry.color || entry.fill }} />
-                  <span className="text-[10px] font-medium text-slate-600 truncate max-w-[120px]">
+                  <span className="text-[10px] font-medium text-slate-600 truncate block max-w-[120px]">
                     {entry.name}
                   </span>
                 </div>
@@ -531,7 +531,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                     className="w-2.5 h-2.5 rounded-sm flex-shrink-0" 
                     style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s) }} 
                   />
-                  <span className={cn("truncate max-w-full", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
+                  <span className={cn("truncate block min-w-0 flex-1", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
                     {s.name}
                   </span>
                 </div>
@@ -558,7 +558,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                       className="w-2.5 h-2.5 rounded-sm flex-shrink-0" 
                       style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s) }} 
                     />
-                    <span className={cn("truncate max-w-full", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
+                    <span className={cn("truncate block min-w-0 flex-1", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
                       {s.name}
                     </span>
                   </div>
