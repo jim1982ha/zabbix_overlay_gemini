@@ -293,6 +293,21 @@ async function startServer() {
         const itemsToFetchHistory: Record<number, string[]> = {};
         const itemIdToKey: Record<string, string> = {};
 
+        const zReq = async (method: string, params: any, timeout = 30000) => {
+           let payload: any = { jsonrpc: "2.0", method, params, id: Date.now() };
+           let headers: any = { 'Content-Type': 'application/json-rpc', 'Authorization': `Bearer ${token}` };
+           let res = await axios.post(url, payload, { headers, maxBodyLength: Infinity, maxContentLength: Infinity, timeout });
+           if (res.data?.error) {
+              const errStr = JSON.stringify(res.data.error);
+              if (errStr.includes("unexpected parameter") || errStr.includes("Session terminated") || errStr.includes("Not authorized")) {
+                 delete headers['Authorization'];
+                 payload.auth = token;
+                 res = await axios.post(url, payload, { headers, maxBodyLength: Infinity, maxContentLength: Infinity, timeout });
+              }
+           }
+           return res;
+        };
+
         if (Object.keys(itemDict).length > 0) {
            console.log(`[timeseries] Using provided itemDict`);
            metrics.forEach((m: string) => {
@@ -312,19 +327,13 @@ async function startServer() {
            });
         } else {
            console.log(`[timeseries] No itemDict provided, falling back to item.get`);
-           const itemRes = await axios.post(url, {
-             jsonrpc: "2.0",
-             method: "item.get",
-             params: {
+           const itemRes = await zReq("item.get", {
                output: ["itemid", "name", "value_type", "lastvalue"],
                selectHosts: ["name", "host"],
                search: { name: metrics },
                searchByAny: true,
                monitored: true,
-             },
-             auth: token,
-             id: Date.now()
-           }, { timeout: 10000 });
+           }, 10000);
            
            if (itemRes.data && itemRes.data.result) {
              itemRes.data.result.forEach((item: any) => {
@@ -346,16 +355,10 @@ async function startServer() {
         
         if (mode === 'live' && Object.keys(itemIdToKey).length > 0) {
            try {
-               const liveItemRes = await axios.post(url, {
-                   jsonrpc: "2.0",
-                   method: "item.get",
-                   params: {
-                        output: ["itemid", "lastvalue", "lastclock"],
-                        itemids: Object.keys(itemIdToKey)
-                   },
-                   auth: token,
-                   id: Date.now()
-               }, { timeout: 15000 });
+               const liveItemRes = await zReq("item.get", {
+                    output: ["itemid", "lastvalue", "lastclock"],
+                    itemids: Object.keys(itemIdToKey)
+               }, 15000);
                if (liveItemRes.data?.result) {
                    liveItemRes.data.result.forEach((pt: any) => {
                        const key = itemIdToKey[pt.itemid];
@@ -396,18 +399,12 @@ async function startServer() {
            // If it's numeric and duration > 2 days, try trend.get first
            if (isNumeric && useTrend) {
                try {
-                  const trendRes = await axios.post(url, {
-                     jsonrpc: "2.0",
-                     method: "trend.get",
-                     params: {
+                  const trendRes = await zReq("trend.get", {
                         output: ["itemid", "clock", "value_avg"],
                         itemids,
                         time_from: Math.floor(actualStartTime / 1000) - lookbackSeconds,
                         time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
-                     },
-                     auth: token,
-                     id: Date.now()
-                  }, { timeout: 30000 });
+                  }, 30000);
                   
                   if (trendRes.data && trendRes.data.result) {
                      results = trendRes.data.result.map((pt: any) => ({
@@ -421,22 +418,15 @@ async function startServer() {
            }
 
            // If not used trend, or trend returned nothing, fallback to history.get
-           if (results.length === 0) {
-              const zabbixReqPayload = {
-                jsonrpc: "2.0",
-                method: "history.get",
-                params: {
+            if (results.length === 0) {
+              try {
+                const histRes = await zReq("history.get", {
                   output: ["itemid", "clock", "value"],
                   history: vtype,
                   itemids,
                   time_from: Math.floor(actualStartTime / 1000) - lookbackSeconds,
                   time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
-                },
-                auth: token,
-                id: Date.now()
-              };
-              try {
-                const histRes = await axios.post(url, zabbixReqPayload, { maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 30000 });
+                }, 30000);
                 results = histRes.data?.result || [];
                 queryUsed = "history.get";
                 
