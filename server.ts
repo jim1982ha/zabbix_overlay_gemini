@@ -197,6 +197,15 @@ async function startServer() {
     }
   });
 
+  app.get("/api/zabbix-debug", (req, res) => {
+    try {
+        const dbgInfo = require('node:fs').readFileSync(require('node:path').join(process.cwd(), 'zabbix-debug.json'), 'utf8');
+        res.json(JSON.parse(dbgInfo));
+    } catch(e) {
+        res.status(500).json({ error: "Debug file not found or could not be read", globalLogs: global.zabbixHistDebugLog || [] });
+    }
+  });
+
   // Dynamic Timeseries API for Dashboard
   app.post("/api/timeseries", async (req, res) => {
     let { start, end, granularity = '5m', range = '24h', mode = 'live', url, token, metrics = [], hosts = [], itemDict = {} } = req.body;
@@ -372,62 +381,74 @@ async function startServer() {
         const actualStartTime = new Date(timeLabels[0]).getTime();
         const actualEndTime = new Date(timeLabels[timeLabels.length - 1]).getTime();
 
-        // Fetch real history data from Zabbix
+        // Decide whether to use history or trends based on duration
+        const durationSeconds = (actualEndTime - actualStartTime) / 1000;
+        const useTrend = durationSeconds > 86400 * 2; // Use trends if duration is > 2 days
+        const lookbackSeconds = useTrend ? 86400 : 7200; // Look back 1 day for trends, 2 hours for history to find a "before" point.
+        
         for (const [vtypeStr, itemids] of Object.entries(itemsToFetchHistory)) {
            const vtype = parseInt(vtypeStr, 10);
-           const zabbixReqPayload = {
-             jsonrpc: "2.0",
-             method: "history.get",
-             params: {
-               output: "extend",
-               history: vtype,
-               itemids,
-               time_from: Math.floor(actualStartTime / 1000) - 43200, // Look back 12h for stable lines
-               time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
-             },
-             auth: token,
-             id: Date.now()
-           };
-           const histRes = await axios.post(url, zabbixReqPayload, { maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 30000 });
-           
-           if (!global.zabbixHistDebugLog) global.zabbixHistDebugLog = [];
-           global.zabbixHistDebugLog.push({
-             vtype,
-             reqSize: itemids.length,
-             req: zabbixReqPayload.params,
-             resLen: histRes.data?.result?.length,
-             err: histRes.data?.error
-           });
+           const isNumeric = (vtype === 0 || vtype === 3);
 
-           let results = histRes.data?.result || [];
-           
-           // Fallback to trend.get if history returns empty and vtype is numeric (0=float, 3=unsigned)
-           if (results.length === 0 && (vtype === 0 || vtype === 3)) {
-               console.log(`[timeseries] history.get returned 0 points for vtype ${vtype}, trying trend.get...`);
-               const trendReqPayload = {
-                  jsonrpc: "2.0",
-                  method: "trend.get",
-                  params: {
-                     output: "extend",
-                     itemids,
-                     time_from: Math.floor(actualStartTime / 1000) - 43200,
-                     time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
-                  },
-                  auth: token,
-                  id: Date.now()
-               };
-               const trendRes = await axios.post(url, trendReqPayload, { timeout: 30000 });
-               if (trendRes.data && trendRes.data.result) {
-                  results = trendRes.data.result.map((pt: any) => ({
-                     itemid: pt.itemid,
-                     clock: pt.clock,
-                     value: pt.value_avg // use average for trends
-                  }));
-                  global.zabbixHistDebugLog.push({
-                     action: "trend.get fallback",
-                     resLen: results.length
-                  });
-               }
+           let results: any[] = [];
+           let queryUsed = "";
+
+           // If it's numeric and duration > 2 days, try trend.get first
+           if (isNumeric && useTrend) {
+               try {
+                  const trendRes = await axios.post(url, {
+                     jsonrpc: "2.0",
+                     method: "trend.get",
+                     params: {
+                        output: ["itemid", "clock", "value_avg"],
+                        itemids,
+                        time_from: Math.floor(actualStartTime / 1000) - lookbackSeconds,
+                        time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
+                     },
+                     auth: token,
+                     id: Date.now()
+                  }, { timeout: 30000 });
+                  
+                  if (trendRes.data && trendRes.data.result) {
+                     results = trendRes.data.result.map((pt: any) => ({
+                        itemid: pt.itemid,
+                        clock: pt.clock,
+                        value: pt.value_avg
+                     }));
+                     queryUsed = "trend.get";
+                  }
+               } catch (e) { console.error("[timeseries] trend.get failed", e); }
+           }
+
+           // If not used trend, or trend returned nothing, fallback to history.get
+           if (results.length === 0) {
+              const zabbixReqPayload = {
+                jsonrpc: "2.0",
+                method: "history.get",
+                params: {
+                  output: ["itemid", "clock", "value"],
+                  history: vtype,
+                  itemids,
+                  time_from: Math.floor(actualStartTime / 1000) - lookbackSeconds,
+                  time_till: Math.floor(actualEndTime / 1000) + Math.floor(stepMs / 1000)
+                },
+                auth: token,
+                id: Date.now()
+              };
+              try {
+                const histRes = await axios.post(url, zabbixReqPayload, { maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 30000 });
+                results = histRes.data?.result || [];
+                queryUsed = "history.get";
+                
+                if (!global.zabbixHistDebugLog) global.zabbixHistDebugLog = [];
+                global.zabbixHistDebugLog.push({
+                   vtype,
+                   query: queryUsed,
+                   reqSize: itemids.length,
+                   resLen: results.length,
+                   err: histRes.data?.error
+                });
+              } catch (e) { console.error("[timeseries] history.get failed", e); }
            }
 
            if (results.length > 0) {
