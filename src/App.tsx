@@ -356,6 +356,7 @@ export default function App() {
   const isDemo = !zabbixConfig.url || (!zabbixConfig.token && !zabbixConfig.isPreconfigured);
   const [availableHosts, setAvailableHosts] = useState<string[]>(['srv-prod-01', 'sql-db-primary', 'gateway-02']);
   const [availableMetrics, setAvailableMetrics] = useState<string[]>(['cpu', 'memory', 'traffic', 'latency', 'disk']);
+  const [metricDict, setMetricDict] = useState<Record<string, {itemid: string, value_type: string}>>({});
   const [hostMetricsMap, setHostMetricsMap] = useState<Record<string, string[]>>({});
   const [metricUnitsMap, setMetricUnitsMap] = useState<Record<string, string>>({
     'cpu': '%',
@@ -479,7 +480,8 @@ export default function App() {
         url: zabbixConfig.url,
         token: zabbixConfig.token,
         metrics: activeMetrics,
-        hosts: activeHosts
+        hosts: activeHosts,
+        itemDict: metricDict
       });
       setData(response.data);
       setLastSync(new Date());
@@ -492,7 +494,7 @@ export default function App() {
     } finally {
       setTimeout(() => setLoading(false), 500);
     }
-  }, [filters.range, filters.mode, filters.start, filters.end, filters.granularity, zabbixConfig, activeMetricsStr, activeHostsStr, availableMetrics, availableHosts]);
+  }, [filters.range, filters.mode, filters.start, filters.end, filters.granularity, zabbixConfig, activeMetricsStr, activeHostsStr, availableMetrics, availableHosts, metricDict]);
 
   const handleSync = () => {
     fetchStats();
@@ -675,7 +677,7 @@ export default function App() {
         token: tokenToUse,
         method: "item.get",
         params: { 
-          output: ["name", "key_", "units"], 
+          output: ["name", "key_", "units", "itemid", "value_type"], 
           selectHosts: ["name", "host"],
           monitored: true,
           limit: 5000
@@ -685,6 +687,7 @@ export default function App() {
       if (itemRes.data.result) {
         const units: Record<string, string> = {};
         const mapping: Record<string, string[]> = {};
+        const dict: Record<string, {itemid: string, value_type: string}> = {};
         itemRes.data.result.forEach((i: any) => {
           const base = i.name;
           if (i.units) units[base] = i.units;
@@ -693,9 +696,11 @@ export default function App() {
               const hostName = h.name || h.host;
               if (!mapping[hostName]) mapping[hostName] = [];
               mapping[hostName].push(base);
+              dict[`${base}_${hostName}`] = { itemid: i.itemid, value_type: i.value_type };
             });
           }
         });
+        setMetricDict(dict);
         setMetricUnitsMap(prev => ({ ...prev, ...units }));
 
         for (const host in mapping) {

@@ -199,7 +199,7 @@ async function startServer() {
 
   // Dynamic Timeseries API for Dashboard
   app.post("/api/timeseries", async (req, res) => {
-    let { start, end, granularity = '5m', range = '24h', mode = 'live', url, token, metrics = [], hosts = [] } = req.body;
+    let { start, end, granularity = '5m', range = '24h', mode = 'live', url, token, metrics = [], hosts = [], itemDict = {} } = req.body;
     
     const isDemo = !url || !token;
 
@@ -281,40 +281,57 @@ async function startServer() {
       console.log(`metrics array:`, metrics);
       console.log(`hosts array:`, hosts);
       try {
-        const itemRes = await axios.post(url, {
-          jsonrpc: "2.0",
-          method: "item.get",
-          params: {
-            output: ["itemid", "name", "value_type", "lastvalue"],
-            selectHosts: ["name", "host"],
-            filter: { name: metrics },
-            monitored: true,
-          },
-          auth: token,
-          id: Date.now()
-        }, { timeout: 10000 });
-        
-        console.log(`[timeseries] itemRes payload length: ${itemRes.data?.result?.length || 0}`);
-
-
         const itemsToFetchHistory: Record<number, string[]> = {};
         const itemIdToKey: Record<string, string> = {};
 
-        if (itemRes.data && itemRes.data.result) {
-          itemRes.data.result.forEach((item: any) => {
-             const h = item.hosts?.[0]?.name || item.hosts?.[0]?.host;
-             const m = item.name;
-             if (h && m) {
-                const key = `${m}_${h}`;
-                itemValueMap[key] = item.lastvalue;
-                const vtype = parseInt(item.value_type, 10);
-                if (!isNaN(vtype)) {
-                   if (!itemsToFetchHistory[vtype]) itemsToFetchHistory[vtype] = [];
-                   itemsToFetchHistory[vtype].push(item.itemid);
-                   itemIdToKey[item.itemid] = key;
+        if (Object.keys(itemDict).length > 0) {
+           console.log(`[timeseries] Using provided itemDict`);
+           metrics.forEach((m: string) => {
+              hosts.forEach((h: string) => {
+                 const key = `${m}_${h}`;
+                 const info = itemDict[key];
+                 if (info) {
+                    const vtype = parseInt(info.value_type, 10);
+                    if (!isNaN(vtype)) {
+                       if (!itemsToFetchHistory[vtype]) itemsToFetchHistory[vtype] = [];
+                       itemsToFetchHistory[vtype].push(info.itemid);
+                       itemIdToKey[info.itemid] = key;
+                    }
+                 }
+              });
+           });
+        } else {
+           console.log(`[timeseries] No itemDict provided, falling back to item.get`);
+           const itemRes = await axios.post(url, {
+             jsonrpc: "2.0",
+             method: "item.get",
+             params: {
+               output: ["itemid", "name", "value_type", "lastvalue"],
+               selectHosts: ["name", "host"],
+               search: { name: metrics },
+               searchByAny: true,
+               monitored: true,
+             },
+             auth: token,
+             id: Date.now()
+           }, { timeout: 10000 });
+           
+           if (itemRes.data && itemRes.data.result) {
+             itemRes.data.result.forEach((item: any) => {
+                const h = item.hosts?.[0]?.name || item.hosts?.[0]?.host;
+                const m = item.name;
+                if (h && m) {
+                   const key = `${m}_${h}`;
+                   itemValueMap[key] = item.lastvalue;
+                   const vtype = parseInt(item.value_type, 10);
+                   if (!isNaN(vtype)) {
+                      if (!itemsToFetchHistory[vtype]) itemsToFetchHistory[vtype] = [];
+                      itemsToFetchHistory[vtype].push(item.itemid);
+                      itemIdToKey[item.itemid] = key;
+                   }
                 }
-             }
-          });
+             });
+           }
         }
         
         const actualStartTime = new Date(timeLabels[0]).getTime();
@@ -414,8 +431,8 @@ async function startServer() {
               }
            } else if (itemValueMap[key] !== undefined) {
               point[key] = parseFloat(parseFloat(itemValueMap[key]).toFixed(2));
-           } else {
-             // Mock values based on metric name heuristics
+           } else if (isDemo) {
+             // Mock values based on metric name heuristics (Demo Mode only)
              const timeValue = new Date(timeLabels[i]).getTime();
              const seedValue = timeValue / 10000; 
              const hostSeed = h.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
@@ -431,6 +448,9 @@ async function startServer() {
              else val = Math.floor(((Math.sin(combined) + 1) / 2) * 100) + 10;
 
              point[key] = val;
+           } else {
+             // Real API but no data found for this timestamp bucket
+             point[key] = null;
            }
         });
       });

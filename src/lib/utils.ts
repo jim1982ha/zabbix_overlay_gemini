@@ -27,7 +27,9 @@ export function getDeterministicColor(key: string) {
 export function formatValue(value: number, unit?: string, noUnitString = false): { value: string, unit: string } {
   if (value == null || isNaN(value)) return { value: '...', unit: '' };
   
-  if (unit === 'B') {
+  const cleanUnit = unit ? unit.trim() : '';
+  
+  if (cleanUnit === 'B') {
     if (Math.abs(value) < 1024) return { value: Math.round(value).toString(), unit: noUnitString ? '' : 'B' };
     if (Math.abs(value) < 1024 * 1024) return { value: (value / 1024).toFixed(1), unit: noUnitString ? '' : 'KB' };
     if (Math.abs(value) < 1024 * 1024 * 1024) return { value: (value / (1024 * 1024)).toFixed(1), unit: noUnitString ? '' : 'MB' };
@@ -36,7 +38,7 @@ export function formatValue(value: number, unit?: string, noUnitString = false):
   }
   
   const formattedValue = Math.abs(value) >= 1000 ? Math.round(value).toLocaleString() : (value % 1 === 0 ? value.toString() : value.toFixed(1));
-  let formattedUnit = unit ? (unit === '%' ? '%' : ` ${unit}`) : '';
+  let formattedUnit = cleanUnit ? (cleanUnit === '%' ? '%' : ` ${cleanUnit}`) : '';
   if (noUnitString) formattedUnit = '';
 
   return { value: formattedValue, unit: formattedUnit.trim() };
