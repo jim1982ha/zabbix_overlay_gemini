@@ -1256,11 +1256,11 @@ export default function App() {
                               <div>
                                 <label className="text-sm font-semibold text-slate-400 block mb-2">Aggregation</label>
                                 <select 
-                                  value={w.aggregation} 
+                                  value={w.type === 'kpi' && w.aggregation === 'none' ? 'avg' : w.aggregation} 
                                   onChange={e => handleUpdateWidget(w.id, { aggregation: e.target.value as any })} 
                                   className="w-full bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-700 focus:border-sky-500 outline-none transition-all text-white"
                                 >
-                                  <option value="none">Detailed Multi-Series</option>
+                                  {w.type !== 'kpi' && <option value="none">Detailed Multi-Series</option>}
                                   <option value="sum">Sum</option>
                                   <option value="avg">Average</option>
                                 </select>
@@ -1523,9 +1523,10 @@ export default function App() {
 
                       if (values.length > 0) {
                         const sum = values.reduce((a, b) => a + b, 0);
-                        if (w.aggregation === 'avg') finalValue = sum / values.length;
-                        else if (w.aggregation === 'sum') finalValue = sum;
-                        else finalValue = values[0];
+                        const kpiAgg = w.aggregation === 'none' ? 'avg' : w.aggregation;
+                        if (kpiAgg === 'avg') finalValue = sum / values.length;
+                        else if (kpiAgg === 'sum') finalValue = sum;
+                        else finalValue = sum / values.length;
                       }
                     }
 
@@ -1549,9 +1550,10 @@ export default function App() {
                         });
                         if (values.length === 0) return 0;
                         const sum = values.reduce((a, b) => a + b, 0);
-                        if (w.aggregation === 'avg') return sum / values.length;
-                        if (w.aggregation === 'sum') return sum;
-                        return values[0];
+                        const kpiAgg = w.aggregation === 'none' ? 'avg' : w.aggregation;
+                        if (kpiAgg === 'avg') return sum / values.length;
+                        if (kpiAgg === 'sum') return sum;
+                        return sum / values.length;
                       };
 
                       const firstPoint = data.find((d: any) => 
@@ -1568,7 +1570,29 @@ export default function App() {
                       trendDir = lastVal >= firstVal ? 'up' : 'down';
                     }
 
-                    const timestampStr = lastPoint?.time ? new Date(lastPoint.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined;
+                    let timestampStr: string | undefined = undefined;
+                    if (lastPoint?.time) {
+                       const d = new Date(lastPoint.time);
+                       if (filters.mode === 'live') {
+                           let d2: Date | null = null;
+                           if (filters.granularity === '1h') d2 = new Date(d.getTime() + 60 * 60 * 1000);
+                           else if (filters.granularity === '1m') d2 = new Date(d.getTime() + 60 * 1000);
+                           else if (filters.granularity === '5m') d2 = new Date(d.getTime() + 5 * 60 * 1000);
+                           else if (filters.granularity === '15m') d2 = new Date(d.getTime() + 15 * 60 * 1000);
+                           else if (filters.granularity === '30m') d2 = new Date(d.getTime() + 30 * 60 * 1000);
+                           
+                           if (d2) {
+                               timestampStr = `${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                           } else if (filters.granularity === '1d') {
+                               const dNext = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+                               timestampStr = `${d.toLocaleDateString()} - ${dNext.toLocaleDateString()}`;
+                           } else {
+                               timestampStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                           }
+                       } else {
+                           timestampStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                       }
+                    }
 
                     return (
                       <StatCard 

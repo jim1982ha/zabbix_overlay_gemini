@@ -496,7 +496,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                   key={s.key} 
                   onClick={() => onLegendClick?.(s.key)} 
                   className={cn(
-                    "flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold transition-opacity duration-200 select-none max-w-full",
+                    "flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold transition-opacity duration-200 select-none max-w-full min-w-0",
                     isHidden ? "opacity-40 hover:opacity-70" : "opacity-100 hover:opacity-80"
                   )}
                   title={s.name}
@@ -515,7 +515,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         )}
         
         {chartType !== 'pie' && (
-          <div className="shrink-0 bg-white relative z-10 w-full mb-1 flex flex-wrap gap-x-4 gap-y-1.5 mt-3 max-h-[80px] overflow-y-auto custom-scrollbar px-1">
+          <div className="shrink-0 bg-white relative z-10 w-full mb-1 flex flex-wrap gap-x-4 gap-y-1.5 mt-3 max-h-[140px] overflow-y-auto px-1">
               {series.map((s, i) => {
                 const isHidden = hiddenSeries?.has(s.key);
                 return (
@@ -523,7 +523,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                     key={s.key} 
                     onClick={() => onLegendClick?.(s.key)} 
                     className={cn(
-                      "flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold transition-opacity duration-200 select-none max-w-full",
+                      "flex items-center gap-1.5 cursor-pointer text-[10px] font-semibold transition-opacity duration-200 select-none max-w-full min-w-0",
                       isHidden ? "opacity-40 hover:opacity-70" : "opacity-100 hover:opacity-80"
                     )}
                     title={s.name}

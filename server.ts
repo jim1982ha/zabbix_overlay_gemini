@@ -271,7 +271,9 @@ async function startServer() {
         return new Date(startTime + i * stepMs).toISOString();
       });
     } else {
-      const now = Date.now();
+      let now = Date.now();
+      now = Math.floor(now / stepMs) * stepMs;
+      
       const totalRangeMs = rangeMsMap[range as string] || 86400000;
       
       dataPoints = Math.min(Math.floor(totalRangeMs / stepMs), 500);
