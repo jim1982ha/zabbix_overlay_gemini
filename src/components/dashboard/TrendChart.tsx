@@ -151,7 +151,33 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         <div className="bg-white/95 backdrop-blur-sm border border-slate-100 rounded-lg shadow-lg p-1.5 max-h-[200px] overflow-y-auto flex flex-col gap-0.5 scrollbar-hide border-l-2 border-l-blue-600 min-w-[160px]">
           {label && (
              <div className="text-[10px] uppercase font-bold text-slate-500 mb-0.5 px-1 border-b border-slate-100 pb-1">
-               {formatXAxis(label)}
+               {(() => {
+                 try {
+                   const d = new Date(label);
+                   if (isNaN(d.getTime())) return formatXAxis(label);
+                   let stepMs = 60000;
+                   const granLower = (granularity || '').toLowerCase();
+                   if (granLower === '1m') stepMs = 60000;
+                   else if (granLower === '5m') stepMs = 300000;
+                   else if (granLower === '15m') stepMs = 900000;
+                   else if (granLower === '30m') stepMs = 1800000;
+                   else if (granLower === '1h') stepMs = 3600000;
+                   else if (granLower === '1d') stepMs = 86400000;
+                   else stepMs = 60000;
+
+                   const d2 = new Date(d.getTime() + stepMs);
+                   const t1 = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                   const t2 = d2.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                   
+                   if (granLower === '1d') {
+                     const opt = { month: 'short', day: 'numeric' } as const;
+                     return `[${d.toLocaleDateString([], opt)} - ${d2.toLocaleDateString([], opt)}]`;
+                   }
+                   return `[${t1} - ${t2}]`;
+                 } catch (err) {
+                   return formatXAxis(label);
+                 }
+               })()}
              </div>
           )}
           <div className="space-y-0.5">

@@ -69,21 +69,21 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
       </div>
       
       {/* Footer Area - Change indicator or Contextual Data */}
-      <div className="relative z-10 flex items-center justify-between pt-1 shrink-0 mt-auto w-full">
+      <div className="relative z-10 flex flex-row items-center justify-between pt-1 shrink-0 mt-auto w-full min-w-0 gap-2">
         {timestamp ? (
-            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-400 font-medium px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-full shrink-0">
-              <Clock className="w-3 h-3" />
-              {timestamp}
+            <div className="flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-xs text-slate-400 font-medium px-1.5 @[200px]:px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-full shrink-0 min-w-0 max-w-[70%] truncate">
+              <Clock className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3 shrink-0" />
+              <span className="truncate">{timestamp}</span>
             </div>
         ) : <div />}
 
         {change !== undefined && (
-          <div className="flex flex-col items-end justify-center shrink-0" aria-label="Compared to previous period of same duration">
+          <div className="hidden @[240px]:flex flex-col items-end justify-center shrink-0 min-w-0" aria-label="Compared to previous period of same duration">
               <div className={cn(
-                "flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded border shrink-0 shadow-sm",
+                "flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-xs font-bold px-1.5 @[200px]:px-2 py-0.5 rounded border shrink-0 shadow-sm",
                 isPositive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
               )}>
-                {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {isPositive ? <TrendingUp className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3" /> : <TrendingDown className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3" />}
                 {Math.abs(change).toFixed(1)}%
               </div>
           </div>
