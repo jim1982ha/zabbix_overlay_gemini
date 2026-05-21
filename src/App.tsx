@@ -46,10 +46,11 @@ import {
   Calendar,
   ZoomOut,
   GripVertical,
-  ArrowUpDown
+  ArrowUpDown,
+  Info
 } from "lucide-react";
 import axios from "axios";
-import { cn, getDeterministicColor, formatValue } from "./lib/utils";
+import { cn, getDeterministicColor, formatValue, updateMetricColor } from "./lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 
 interface Widget {
@@ -152,6 +153,15 @@ export default function App() {
   const [secureTokenInput, setSecureTokenInput] = useState("");
   const [requiresSecureToken, setRequiresSecureToken] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState(0);
+
+  const [colorPickerTarget, setColorPickerTarget] = useState<{ metric: string, current: string } | null>(null);
+  const [dummyColorRevision, setDummyColorRevision] = useState(0);
+
+  useEffect(() => {
+    const handler = () => setDummyColorRevision(r => r + 1);
+    window.addEventListener('ha_color_map_changed', handler);
+    return () => window.removeEventListener('ha_color_map_changed', handler);
+  }, []);
 
   useEffect(() => {
     let isRefreshing = false;
@@ -315,7 +325,7 @@ export default function App() {
   const dashboardStorageKey = useMemo(() => {
     return savedZabbixUrl 
       ? `hareporting_dashboards_${btoa(savedZabbixUrl).replace(/=/g, '')}` 
-      : 'hareporting_dashboards_v4_mixed_stack_area';
+      : 'hareporting_dashboards_v5';
   }, [savedZabbixUrl]);
 
   // Consolidated Tracker for unsaved changes (moved here to have access to dashboardStorageKey)
@@ -489,25 +499,25 @@ export default function App() {
     },
     { 
       id: 'chart-3', 
-      title: 'Production Server Resource Footprint (Stacked Area)', 
+      title: 'Production Server Resource Footprint', 
       type: 'chart', 
-      chartType: 'area', 
+      chartType: 'line', 
       metrics: ['cpu', 'memory'], 
       hosts: ['srv-prod-01'], 
       aggregation: 'none', 
-      stacked: true, 
+      stacked: false, 
       cols: 12, 
       rows: 11 
     },
     { 
       id: 'chart-4', 
-      title: 'Database Read Latency Trends (Line View)', 
+      title: 'Database Read Latency Trends', 
       type: 'chart', 
-      chartType: 'line', 
+      chartType: 'area', 
       metrics: ['latency'], 
       hosts: ['all'], 
       aggregation: 'none', 
-      stacked: false, 
+      stacked: true, 
       cols: 12, 
       rows: 11 
     },
@@ -592,7 +602,7 @@ export default function App() {
       }
     } else {
       // Initialize with default if first time
-      const initialWidgets = dashboardStorageKey === 'hareporting_dashboards_v4_mixed_stack_area' ? defaultWidgets : [];
+      const initialWidgets = dashboardStorageKey === 'hareporting_dashboards_v5' ? defaultWidgets : [];
       const initialDashboard: Dashboard = {
         id: 'default-board-1',
         name: 'Executive Overview',
@@ -620,13 +630,13 @@ export default function App() {
           setDashboardName(migrated[0].name);
           setActiveDashboardId(migrated[0].id);
         } else {
-          setWidgets(dashboardStorageKey === 'hareporting_dashboards_v4_mixed_stack_area' ? defaultWidgets : []);
+          setWidgets(dashboardStorageKey === 'hareporting_dashboards_v5' ? defaultWidgets : []);
         }
       } catch (e) {
-        setWidgets(dashboardStorageKey === 'hareporting_dashboards_v4_mixed_stack_area' ? defaultWidgets : []);
+        setWidgets(dashboardStorageKey === 'hareporting_dashboards_v5' ? defaultWidgets : []);
       }
     } else {
-      setWidgets(dashboardStorageKey === 'hareporting_dashboards_v4_mixed_stack_area' ? defaultWidgets : []);
+      setWidgets(dashboardStorageKey === 'hareporting_dashboards_v5' ? defaultWidgets : []);
     }
   }, [dashboardStorageKey]);
 
@@ -994,10 +1004,10 @@ export default function App() {
       return (
         <div className="w-full flex-1 flex flex-col items-center justify-center min-h-[400px] py-12">
           <div className="w-full max-w-3xl space-y-6">
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 sm:p-8 rounded-xl">
               <div className="space-y-6">
               {zabbixConfig.isPreconfigured ? (
-                 <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-800">
+                 <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400">
                    <p className="font-semibold mb-2 flex items-center gap-2">
                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-check"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
                      Connected via Server Environment
@@ -1009,44 +1019,44 @@ export default function App() {
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-semibold text-slate-600 block mb-2">Zabbix Endpoint</label>
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 block mb-2">Zabbix Endpoint</label>
                     <input 
                       type="text" 
                       value={draftZabbixConfig.url} 
                       onChange={e => setDraftZabbixConfig({...draftZabbixConfig, url: e.target.value})}
                       placeholder="https://your-zabbix.com/zabbix/api_jsonrpc.php"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 font-mono focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-semibold text-slate-600 block mb-2">Zabbix API Token</label>
+                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 block mb-2">Zabbix API Token</label>
                     <input 
                       type="password" 
                       value={draftZabbixConfig.token} 
                       onChange={e => setDraftZabbixConfig({...draftZabbixConfig, token: e.target.value})}
                       placeholder="Your Zabbix API Token..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 font-mono focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
                     />
                   </div>
                 </div>
               )}
               
               {requiresSecureToken && (
-                <div className={cn("pt-6 border-t", zabbixConfig.isPreconfigured ? "border-slate-200" : "border-slate-200")}>
-                  <p className="text-sm font-semibold text-indigo-800 mb-2 flex items-center gap-2">
+                <div className={cn("pt-6 border-t", zabbixConfig.isPreconfigured ? "border-slate-200 dark:border-slate-800" : "border-slate-200 dark:border-slate-800")}>
+                  <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-400 mb-2 flex items-center gap-2">
                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                      Secure Application Access
                   </p>
-                  <p className="text-xs text-indigo-700 opacity-90 mb-4">
+                  <p className="text-xs text-indigo-700 dark:text-indigo-300 opacity-90 mb-4">
                      This application requires an access token. Ensure this is configured if you intend to trigger a discovery or save your options.
                   </p>
-                  <label className="text-sm font-semibold text-slate-600 block mb-2">Access Token</label>
+                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 block mb-2">Access Token</label>
                   <input 
                     type="password" 
                     defaultValue=""
                     onChange={e => localStorage.setItem('hareporting_app_secure_token', e.target.value)}
                     placeholder={localStorage.getItem('hareporting_app_secure_token') ? "Token is set. Enter a new one to update..." : "Your APP_SECURE_TOKEN..."}
-                    className="w-full bg-indigo-50/50 border border-indigo-200 rounded-xl px-4 py-3 text-sm text-slate-900 font-mono focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm" 
+                    className="w-full bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 font-mono focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm" 
                   />
                 </div>
               )}
@@ -1107,7 +1117,7 @@ export default function App() {
 
     if (view !== "dashboard") {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[400px] bg-white border border-slate-200 shadow-sm rounded-3xl p-12 text-center">
+        <div className="flex flex-col items-center justify-center min-h-[400px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-12 text-center">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">{view === 'network' ? 'Network Topology' : view === 'infra' ? 'Hardware Inventory' : 'System Alerts'}</h2>
           <p className="text-slate-500">Live telemetry stream active. Data visualization loading...</p>
         </div>
@@ -1190,7 +1200,7 @@ export default function App() {
                 }}
                 data-widget-id={w.id}
                 className={cn(
-                  "relative group rounded-xl",
+                  "relative group",
                   draggingWidgetId === w.id ? "z-[100] shadow-2xl ring-2 ring-blue-500/50 bg-white cursor-grabbing" :
                   editingWidgetId === w.id ? "z-[100]" : "z-10 hover:z-[60]",
                   hasFilter && "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-50"
@@ -1203,12 +1213,25 @@ export default function App() {
                   }
                 )}
               >
-                {/* Drag Handle & Left-Right Move Actions (Top Left) */}
+                {/* Widget Controls (Top Left Stack) */}
                 <div className={cn(
                   "absolute inset-0 z-30 pointer-events-none opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200",
                   draggingWidgetId === w.id && "opacity-0"
                 )}>
-                  <div className="absolute top-3 left-3 flex gap-1.5 items-center pointer-events-auto">
+                  <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start pointer-events-auto">
+                    {/* 1. Edit */}
+                    <button 
+                      onClick={() => setEditingWidgetId(editingWidgetId === w.id ? null : w.id)}
+                      className={cn(
+                        "p-1.5 rounded-lg border transition-all shadow-sm backdrop-blur-md h-[26px] w-[26px] flex items-center justify-center",
+                        editingWidgetId === w.id ? "bg-blue-600 border-blue-500 text-white" : "bg-white/90 border-slate-200/50 text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                      )}
+                      title="Edit Widget"
+                    >
+                      <Settings2 className="w-3 h-3" />
+                    </button>
+
+                    {/* 2. Drag Handle */}
                     {!isMobile && (
                       <div 
                         className="flex items-center justify-center p-1.5 bg-white/90 backdrop-blur-md rounded-lg shadow-sm border border-slate-200/50 text-slate-400 cursor-grab active:cursor-grabbing hover:bg-slate-50 hover:text-slate-600 transition-colors h-[26px] w-[26px]"
@@ -1271,11 +1294,13 @@ export default function App() {
                         <GripVertical className="w-4 h-4" />
                       </div>
                     )}
-                    <div className="flex bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-lg overflow-hidden shadow-sm h-[26px]">
+
+                    {/* 3. Move left-right */}
+                    <div className="flex flex-col bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-lg overflow-hidden shadow-sm w-[26px]">
                       <button 
                         onClick={() => handleMoveWidget(w.id, 'left')} 
                         className={cn(
-                          "px-1.5 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors border-r border-slate-200/50 h-full flex items-center justify-center",
+                          "py-1 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors border-b border-slate-200/50 flex items-center justify-center w-full",
                           index === 0 && "opacity-20 pointer-events-none"
                         )} 
                         title="Move Backwards"
@@ -1285,7 +1310,7 @@ export default function App() {
                       <button 
                         onClick={() => handleMoveWidget(w.id, 'right')} 
                         className={cn(
-                          "px-1.5 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors h-full flex items-center justify-center",
+                          "py-1 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors flex items-center justify-center w-full",
                           index === widgets.length - 1 && "opacity-20 pointer-events-none"
                         )} 
                         title="Move Forwards"
@@ -1293,10 +1318,19 @@ export default function App() {
                         <ChevronRight className="w-3 h-3" />
                       </button>
                     </div>
+
+                    {/* 4. Delete */}
+                    <button 
+                      onClick={() => handleRemoveWidget(w.id)}
+                      className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded-lg hover:bg-rose-600 shadow-sm transition-all backdrop-blur-md h-[26px] w-[26px] flex items-center justify-center opacity-60 hover:opacity-100"
+                      title="Remove Widget"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
                   {/* Widget Actions (Top Right) */}
-                  <div className="absolute top-3 right-3 flex gap-1.5 items-center pointer-events-auto">
+                  <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end pointer-events-auto">
                       {widgetZoomDomains[w.id] && (
                         <button 
                           onClick={() => handleZoomOut(w.id)}
@@ -1307,22 +1341,6 @@ export default function App() {
                           Reset Zoom
                         </button>
                       )}
-                      <button 
-                        onClick={() => setEditingWidgetId(editingWidgetId === w.id ? null : w.id)}
-                        className={cn(
-                          "p-1.5 rounded-lg border transition-all shadow-sm backdrop-blur-md h-[26px] flex items-center justify-center",
-                          editingWidgetId === w.id ? "bg-blue-600 border-blue-500 text-white" : "bg-white/90 border-slate-200/50 text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-                        )}
-                      >
-                        <Settings2 className="w-3 h-3" />
-                      </button>
-                      <button 
-                        onClick={() => handleRemoveWidget(w.id)}
-                        className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded-lg hover:bg-rose-600 shadow-sm transition-all backdrop-blur-md h-[26px] flex items-center justify-center opacity-60 hover:opacity-100"
-                        title="Remove Widget"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                   </div>
 
                 {/* Resize Handles (Hidden on small screens) */}
@@ -1396,19 +1414,19 @@ export default function App() {
               {editingWidgetId === w.id ? createPortal(
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                   <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={handleCancelEdit} />
-                  <div className="relative w-full max-w-4xl bg-white border border-slate-200 p-6 sm:p-10 rounded-[28px] sm:rounded-[40px] shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+                  <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-10 shadow-2xl rounded-xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-6 sm:mb-10">
                       <div className="flex items-center gap-3 sm:gap-4">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                          <Settings2 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                          <Settings2 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div className="min-w-0">
-                          <h4 className="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight truncate">Widget Configuration</h4>
-                          <p className="text-xs font-medium text-slate-500 mt-1 truncate">ID: {w.id}</p>
+                          <h4 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight truncate">Widget Configuration</h4>
+                          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 truncate">ID: {w.id}</p>
                         </div>
                       </div>
-                      <button onClick={handleCancelEdit} className="p-2 sm:p-3 hover:bg-slate-100 rounded-full transition-colors shrink-0">
-                        <X className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 hover:text-slate-900" />
+                      <button onClick={handleCancelEdit} className="p-2 sm:p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors shrink-0">
+                        <X className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 hover:text-slate-900 dark:hover:text-white" />
                       </button>
                     </div>
 
@@ -1538,7 +1556,7 @@ export default function App() {
                       {w.chartType === 'mixed' && (
                         <div className="mt-8 space-y-6">
                           <h5 className="text-sm font-semibold text-slate-400">Series Configuration (Max 2 metrics for Mixed)</h5>
-                          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl p-6 sm:p-8 flex flex-col gap-6 relative">
+                          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 flex flex-col gap-6 relative">
                             {['series1', 'series2'].map((seriesKey, idx) => {
                               const sConf = w.seriesConfig?.[seriesKey] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: idx === 0 ? 'left' : 'right', chartType: 'line', aggregation: 'none', stacked: false };
                               
@@ -1808,7 +1826,7 @@ export default function App() {
                         unit={fmtUnit || (rawUnit === '%' ? '%' : (rawUnit ? ` ${rawUnit}` : ''))}
                         change={changePct}
                         trend={trendDir}
-                        color={w.aggregation !== 'none' ? getDeterministicColor('agg_val') : (w.metrics[0] && w.hosts[0] ? getDeterministicColor(`${w.metrics[0]}_${w.hosts[0]}`) : '#0EA5E9')}
+                        color={w.aggregation !== 'none' ? getDeterministicColor('agg_val', w.metrics[0]) : (w.metrics[0] && w.hosts[0] ? getDeterministicColor(`${w.metrics[0]}_${w.hosts[0]}`, w.metrics[0]) : '#0EA5E9')}
                         timestamp={timestampStr}
                       />
                     );
@@ -1864,7 +1882,7 @@ export default function App() {
                                chartSeries.push({
                                  key,
                                  name: `${m.toUpperCase()} [${h}]${axisLabel}`,
-                                 color: getDeterministicColor(key),
+                                 color: getDeterministicColor(key, m),
                                  metric: sKey,
                                  unit: u
                                });
@@ -1877,7 +1895,7 @@ export default function App() {
                        const label = w.aggregation === 'sum' ? 'Aggregate Sum' : 'Aggregate Mean';
                        const m = w.metrics[0];
                        const u = m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
-                       chartSeries = [{ key: 'agg_val', name: label, color: getDeterministicColor('agg_val'), unit: u }];
+                       chartSeries = [{ key: 'agg_val', name: label, color: getDeterministicColor('agg_val', w.metrics[0]), unit: u }];
                       
                       chartData = data.map(point => {
                         let values: number[] = [];
@@ -1910,7 +1928,7 @@ export default function App() {
                           chartSeries.push({
                             key,
                             name: (w.hosts.length > 1 || w.hosts.includes('all') || w.metrics.length > 1) ? `${metricLabel} [${hostLabel}]` : metricLabel,
-                            color: getDeterministicColor(key),
+                            color: getDeterministicColor(key, m),
                             metric: m,
                             unit: u
                           });
@@ -1951,6 +1969,7 @@ export default function App() {
                         aggregation={w.chartType === 'mixed' ? undefined : w.aggregation}
                         hiddenSeries={hiddenSeries}
                         onLegendClick={(key) => toggleSeriesVisibility(key)}
+                        onColorChangeRequest={(metric, current) => setColorPickerTarget({ metric, current })}
                         onHostClick={(host) => {
                           // Toggle all series for this host
                           const keysForHost: string[] = [];
@@ -1990,6 +2009,185 @@ export default function App() {
   return (
     <>
     <Shell 
+      topBar={
+        <div className="flex items-center justify-between w-full h-full text-slate-800 dark:text-slate-200 px-4">
+          {view !== 'config' ? (
+            <div className="flex items-center w-full max-w-sm h-[40px] pr-4">
+              <Search className="w-5 h-5 text-slate-800 dark:text-slate-400 shrink-0 mr-3 stroke-[2.5]" />
+              <input 
+                type="text" 
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                placeholder="Search" 
+                className="w-full bg-transparent text-[15px] font-semibold text-slate-800 dark:text-slate-200 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500" 
+              />
+            </div>
+          ) : <div />}
+
+          <div className="flex items-center h-full gap-4">
+            {['dashboard', 'network', 'infra'].includes(view) && (
+              <div className="flex px-2 py-1 shrink-0 h-[36px] items-center gap-2 sm:gap-4">
+              {filters.mode === 'live' ? (
+                <div className="flex items-center gap-2 sm:gap-4 h-full">
+                  <div className="flex items-center min-w-[120px] relative h-full">
+                    <button 
+                      onClick={() => setShowRangeMenu(!showRangeMenu)}
+                      className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-slate-500 font-normal hidden xl:inline">Rolling:</span>
+                        <span className="font-semibold text-blue-600 dark:text-sky-400">
+                          {filters.range === '1h' ? 'Last Hour' : 
+                          filters.range === '6h' ? 'Last 6 Hours' : 
+                          filters.range === '24h' ? 'Last 24 Hours' : 'Last 7 Days'}
+                        </span>
+                      </span>
+                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                    </button>
+                    {showRangeMenu && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowRangeMenu(false)} />
+                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                          {['1h', '6h', '24h', '7d'].map((r) => (
+                            <button 
+                              key={r}
+                              onClick={() => {
+                                setFilters({...filters, range: r});
+                                setShowRangeMenu(false);
+                              }}
+                              className={cn(
+                                "w-full px-3 py-2 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                                filters.range === r ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
+                              )}
+                            >
+                              {r === '1h' ? 'Last Hour' : 
+                               r === '6h' ? '6 Hours' : 
+                               r === '24h' ? '24 Hours' : '7 Days'}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="hidden sm:block w-[1px] h-4 bg-slate-200 dark:bg-slate-800" />
+                  <div className="flex items-center min-w-[100px] relative h-full">
+                    <button 
+                      onClick={() => setShowGranMenu(!showGranMenu)}
+                      className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-slate-500 font-normal hidden xl:inline">Granularity:</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          {filters.granularity === '1m' ? '1 Min' :
+                          filters.granularity === '5m' ? '5 Min' :
+                          filters.granularity === '15m' ? '15 Min' : '1 Hour'}
+                        </span>
+                      </span>
+                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                    </button>
+                    {showGranMenu && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowGranMenu(false)} />
+                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                          {['1m', '5m', '15m', '1h'].map((g) => (
+                            <button 
+                              key={g}
+                              onClick={() => {
+                                setFilters({...filters, granularity: g});
+                                setShowGranMenu(false);
+                              }}
+                              className={cn(
+                                "w-full px-3 py-2 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                                filters.granularity === g ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10" : "text-slate-600 dark:text-slate-400"
+                              )}
+                            >
+                              {g === '1m' ? '1 Minute' : g === '5m' ? '5 Minutes' : g === '15m' ? '15 Min' : '1 Hour'}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 sm:gap-4 h-full">
+                  <RangePicker 
+                    range={{ start: filters.start, end: filters.end }}
+                    onChange={(newVal) => setFilters({...filters, ...newVal})}
+                  />
+                  <div className="hidden sm:block w-[1px] h-4 bg-slate-200 dark:bg-slate-800" />
+                  <div className="flex items-center min-w-[100px] relative h-full">
+                    <button 
+                      onClick={() => setShowGranMenu(!showGranMenu)}
+                      className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-slate-500 font-normal hidden xl:inline">Resolution:</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          {filters.granularity === '5m' ? '5 Min' :
+                          filters.granularity === '30m' ? '30 Min' :
+                          filters.granularity === '1d' ? '1 Day' : '1 Hour'}
+                        </span>
+                      </span>
+                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                    </button>
+                    {showGranMenu && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowGranMenu(false)} />
+                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                          {['5m', '30m', '1h', '1d'].map((g) => (
+                            <button 
+                              key={g}
+                              onClick={() => {
+                                setFilters({...filters, granularity: g});
+                                setShowGranMenu(false);
+                              }}
+                              className={cn(
+                                "w-full px-3 py-2 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                                filters.granularity === g ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10" : "text-slate-600 dark:text-slate-400"
+                              )}
+                            >
+                              {g === '5m' ? '5 Minutes' : g === '30m' ? '30 Minutes' : g === '1d' ? '1 Day' : '1 Hour'}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+                  <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 block" />
+                  <div className="flex h-full items-center p-0.5">
+                    <button 
+                      onClick={() => setFilters({...filters, mode: 'live'})}
+                      className={cn(
+                        "relative overflow-hidden px-2 sm:px-3 py-1 text-[11px] sm:text-xs font-medium transition-all h-full flex items-center justify-center min-w-[50px] sm:min-w-[70px]",
+                        filters.mode === 'live' ? "bg-black dark:bg-white text-white dark:text-black shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      {filters.mode === 'live' && (
+                          <div 
+                            className="absolute bottom-0 left-0 h-full bg-blue-600 transition-all duration-1000 ease-linear pointer-events-none" 
+                            style={{ width: `${refreshProgress}%` }} 
+                          />
+                      )}
+                      <span className="relative z-10">Live</span>
+                    </button>
+                    <button 
+                      onClick={() => setFilters({...filters, mode: 'historical'})}
+                      className={cn(
+                        "px-2 sm:px-3 py-1 text-[11px] sm:text-xs font-medium transition-all h-full flex items-center justify-center min-w-[50px] sm:min-w-[70px]",
+                        filters.mode === 'historical' ? "bg-black dark:bg-white text-white dark:text-black shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      Historical
+                    </button>
+                  </div>
+              </div>
+            )}
+          </div>
+        </div>
+      }
       savedDashboards={savedDashboards} 
       onSelectDashboard={handleSelectDashboard}
       onRenameDashboard={handleRenameDashboardLocal}
@@ -2004,279 +2202,81 @@ export default function App() {
       toggleSeriesVisibility={toggleSeriesVisibility}
     >
       <div className="max-w-[1400px] mx-auto space-y-4">
-        {/* Page Title Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-center shadow-sm shrink-0">
-                {view === 'dashboard' ? (
-                  <LayoutDashboard className="w-4 h-4 text-blue-600" />
-                ) : view === 'network' ? (
-                  <Activity className="w-4 h-4 text-blue-600" />
-                ) : view === 'infra' ? (
-                  <Server className="w-4 h-4 text-blue-600" />
-                ) : view === 'notifications' ? (
-                  <Bell className="w-4 h-4 text-blue-600" />
-                ) : (
-                  <Settings2 className="w-4 h-4 text-blue-600" />
-                )}
-              </div>
-              <div className="flex items-center gap-4 group/header min-w-0">
-                {isRenaming ? (
-                  <div className="flex items-center gap-2 w-full">
-                    <input
-                      autoFocus
-                      type="text"
-                      value={tempDashboardName}
-                      onChange={(e) => setTempDashboardName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleUpdateDashboardName(tempDashboardName);
-                          setIsRenaming(false);
-                        } else if (e.key === 'Escape') {
-                          setIsRenaming(false);
-                        }
-                      }}
-                      onBlur={() => {
+        {/* Page Title Section Simplified */}
+        <div className="flex flex-row items-center justify-between mb-4 flex-wrap gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-4 group/header min-w-0">
+              {isRenaming ? (
+                <div className="flex items-center gap-2 w-full">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={tempDashboardName}
+                    onChange={(e) => setTempDashboardName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
                         handleUpdateDashboardName(tempDashboardName);
                         setIsRenaming(false);
-                      }}
-                      className="bg-white border border-blue-500 rounded-xl px-3 py-1.5 text-lg sm:text-3xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-full"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight truncate">
-                      {view === 'dashboard' ? dashboardName : 
-                      view === 'network' ? 'Network Topology' : 
-                      view === 'infra' ? 'Asset Inventory' : 
-                      view === 'notifications' ? 'Current Problems' : 'Zabbix API Settings'}
-                    </h1>
-                    {view === 'dashboard' && hasUnsavedChanges && (
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-100 rounded-full animate-pulse shrink-0 transition-all">
-                        <div className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
-                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Unsaved Changes</span>
-                      </div>
-                    )}
-                    {view === 'dashboard' && (
-                      <button 
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setTempDashboardName(dashboardName);
-                          setIsRenaming(true);
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-50 rounded-md lg:opacity-0 group-hover/header:opacity-100 transition-all border border-transparent hover:border-slate-200 shrink-0"
-                        title="Rename Dashboard"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                    )}
-                  </>
-                )}
-                <div className="hidden sm:block w-[1px] h-8 bg-slate-200 mx-2 opacity-0" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3 self-end sm:self-auto">
-            {view !== 'config' && (
-              <div className="relative group w-full sm:w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                <input 
-                  type="text" 
-                  value={globalSearch}
-                  onChange={(e) => setGlobalSearch(e.target.value)}
-                  placeholder="Search metrics, hosts, or entities..." 
-                  className="w-full bg-white border border-slate-200 focus:border-blue-500/50 rounded-lg py-2 pl-9 pr-3 text-sm font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400 shadow-sm" 
-                />
-              </div>
-            )}
-            {['dashboard', 'network', 'infra'].includes(view) && (
-              <div className="flex bg-white border border-slate-200 p-1 rounded-lg shadow-sm shrink-0 h-[36px] items-center">
-                  <button 
-                    onClick={() => setFilters({...filters, mode: 'live'})}
-                    className={cn(
-                      "relative overflow-hidden px-3 py-1 rounded-md text-xs font-medium transition-all h-full flex items-center justify-center min-w-[70px]",
-                      filters.mode === 'live' ? "bg-black text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-                    )}
-                  >
-                    {filters.mode === 'live' && (
-                        <div 
-                          className="absolute bottom-0 left-0 h-full bg-blue-600 transition-all duration-1000 ease-linear pointer-events-none" 
-                          style={{ width: `${refreshProgress}%` }} 
-                        />
-                    )}
-                    <span className="relative z-10">Live</span>
-                  </button>
-                  <button 
-                    onClick={() => setFilters({...filters, mode: 'historical'})}
-                    className={cn(
-                      "px-3 py-1 rounded-md text-xs font-medium transition-all h-full flex items-center justify-center min-w-[70px]",
-                      filters.mode === 'historical' ? "bg-black text-white shadow-sm" : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-                    )}
-                  >
-                    Historical
-                  </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-
-
-        {/* Telemetry Controls & Designer Bar */}
-        {['dashboard', 'network', 'infra'].includes(view) && (
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm shrink-0 lg:h-[40px] gap-2 sm:gap-4">
-              {filters.mode === 'live' ? (
-                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 w-full h-full">
-                  <div className="flex items-center min-w-full sm:min-w-[140px] relative h-full">
-                    <button 
-                      onClick={() => setShowRangeMenu(!showRangeMenu)}
-                      className="bg-transparent hover:bg-slate-50 rounded-md py-1 px-2 text-sm font-medium text-slate-700 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-slate-500 font-normal">Rolling Window:</span>
-                        <span className="font-semibold text-blue-600">
-                          {filters.range === '1h' ? 'Last Hour' : 
-                          filters.range === '6h' ? 'Last 6 Hours' : 
-                          filters.range === '24h' ? 'Last 24 Hours' : 'Last 7 Days'}
-                        </span>
-                      </span>
-                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
-                    </button>
-                    {showRangeMenu && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowRangeMenu(false)} />
-                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-md shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                          {['1h', '6h', '24h', '7d'].map((r) => (
-                            <button 
-                              key={r}
-                              onClick={() => {
-                                setFilters({...filters, range: r});
-                                setShowRangeMenu(false);
-                              }}
-                              className={cn(
-                                "w-full px-3 py-2 text-sm font-medium text-left hover:bg-slate-50 transition-colors",
-                                filters.range === r ? "text-blue-700 bg-blue-50/80" : "text-slate-600"
-                              )}
-                            >
-                              {r === '1h' ? 'Last Hour' : 
-                               r === '6h' ? '6 Hours' : 
-                               r === '24h' ? '24 Hours' : '7 Days'}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <div className="hidden sm:block w-[1px] h-4 bg-slate-200" />
-                  <div className="flex items-center min-w-full sm:min-w-[100px] relative h-full">
-                    <button 
-                      onClick={() => setShowGranMenu(!showGranMenu)}
-                      className="bg-transparent hover:bg-slate-50 rounded-md py-1 px-2 text-sm font-medium text-slate-700 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-slate-500 font-normal">Granularity:</span>
-                        <span className="font-semibold text-emerald-600">
-                          {filters.granularity === '1m' ? '1 Minute' :
-                          filters.granularity === '5m' ? '5 Minutes' :
-                          filters.granularity === '15m' ? '15 Min' : '1 Hour'}
-                        </span>
-                      </span>
-                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
-                    </button>
-                    {showGranMenu && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowGranMenu(false)} />
-                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-md shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                          {['1m', '5m', '15m', '1h'].map((g) => (
-                            <button 
-                              key={g}
-                              onClick={() => {
-                                setFilters({...filters, granularity: g});
-                                setShowGranMenu(false);
-                              }}
-                              className={cn(
-                                "w-full px-3 py-2 text-sm font-medium text-left hover:bg-slate-50 transition-colors",
-                                filters.granularity === g ? "text-emerald-700 bg-emerald-50" : "text-slate-600"
-                              )}
-                            >
-                              {g === '1m' ? '1 Minute' : g === '5m' ? '5 Minutes' : g === '15m' ? '15 Min' : '1 Hour'}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
+                      } else if (e.key === 'Escape') {
+                        setIsRenaming(false);
+                      }
+                    }}
+                    onBlur={() => {
+                      handleUpdateDashboardName(tempDashboardName);
+                      setIsRenaming(false);
+                    }}
+                    className="bg-transparent border-b border-blue-500 px-1 py-1 text-2xl font-black text-slate-900 focus:outline-none w-full"
+                  />
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 w-full h-full">
-                  <RangePicker 
-                    range={{ start: filters.start, end: filters.end }}
-                    onChange={(newVal) => setFilters({...filters, ...newVal})}
-                  />
-                  <div className="hidden sm:block w-[1px] h-4 bg-slate-200" />
-                  <div className="flex items-center min-w-full sm:min-w-[100px] relative h-full">
+                <>
+                  <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight truncate">
+                    {view === 'dashboard' ? dashboardName : 
+                    view === 'network' ? 'Network Topology' : 
+                    view === 'infra' ? 'Asset Inventory' : 
+                    view === 'notifications' ? 'Current Problems' : 'Zabbix API Settings'}
+                  </h1>
+                  {view === 'dashboard' && hasUnsavedChanges && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-100 rounded-full animate-pulse shrink-0 transition-all hidden sm:flex">
+                      <div className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
+                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Unsaved</span>
+                    </div>
+                  )}
+                  {view === 'dashboard' && (
                     <button 
-                      onClick={() => setShowGranMenu(!showGranMenu)}
-                      className="bg-transparent hover:bg-slate-50 rounded-md py-1 px-2 text-sm font-medium text-slate-700 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setTempDashboardName(dashboardName);
+                        setIsRenaming(true);
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-slate-700 bg-transparent hover:bg-slate-200/50 rounded-md lg:opacity-0 group-hover/header:opacity-100 transition-all border border-transparent shrink-0"
+                      title="Rename Dashboard"
                     >
-                      <span className="flex items-center gap-2">
-                        <span className="text-slate-500 font-normal">Resolution:</span>
-                        <span className="font-semibold text-emerald-600">
-                          {filters.granularity === '5m' ? '5 Minutes' :
-                          filters.granularity === '30m' ? '30 Minutes' :
-                          filters.granularity === '1d' ? '1 Day' : '1 Hour'}
-                        </span>
-                      </span>
-                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                      <Pencil className="w-4 h-4" />
                     </button>
-                    {showGranMenu && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowGranMenu(false)} />
-                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border border-slate-200 rounded-md shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                          {['5m', '30m', '1h', '1d'].map((g) => (
-                            <button 
-                              key={g}
-                              onClick={() => {
-                                setFilters({...filters, granularity: g});
-                                setShowGranMenu(false);
-                              }}
-                              className={cn(
-                                "w-full px-3 py-2 text-sm font-medium text-left hover:bg-slate-50 transition-colors",
-                                filters.granularity === g ? "text-emerald-700 bg-emerald-50" : "text-slate-600"
-                              )}
-                            >
-                              {g === '5m' ? '5 Minutes' : g === '30m' ? '30 Minutes' : g === '1d' ? '1 Day' : '1 Hour'}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </div>
-
-            {view === 'dashboard' && (
-              <div className="flex items-center gap-3 justify-end">
-                 <div className="flex bg-white border border-slate-200 rounded-lg p-1 gap-1 shadow-sm h-[40px] items-center">
-                    <button onClick={() => handleAddWidget('kpi')} className="px-3 sm:px-4 py-1 hover:bg-slate-50 text-xs font-semibold text-slate-500 hover:text-slate-900 rounded-md flex items-center gap-2 transition-all">
-                      <Plus className="w-4 h-4 text-blue-600" /> KPI
+          </div>
+          {view === 'dashboard' && (
+            <div className="flex items-center gap-2 sm:gap-3 justify-end shrink-0 ml-auto">
+               <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none p-1 gap-1 h-[40px] items-center">
+                  <button onClick={() => handleAddWidget('kpi')} className="px-2 sm:px-4 py-1 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 rounded-none flex items-center gap-2 transition-all">
+                      <Plus className="w-4 h-4 text-blue-600 dark:text-sky-500" /> <span className="hidden sm:inline">KPI</span>
                     </button>
-                    <div className="w-[1px] h-6 bg-slate-200 mx-1" />
-                    <button onClick={() => handleAddWidget('chart')} className="px-3 sm:px-4 py-1 hover:bg-slate-50 text-xs font-semibold text-slate-500 hover:text-slate-900 rounded-md flex items-center gap-2 transition-all">
-                      <Plus className="w-4 h-4 text-blue-600" /> CHART
+                    <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
+                    <button onClick={() => handleAddWidget('chart')} className="px-2 sm:px-4 py-1 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 rounded-none flex items-center gap-2 transition-all">
+                      <Plus className="w-4 h-4 text-blue-600 dark:text-sky-500" /> <span className="hidden sm:inline">CHART</span>
                     </button>
-                    <div className="w-[1px] h-6 bg-slate-200 mx-1" />
-                    <button onClick={handleExportDashboard} className="px-3 py-1 hover:bg-slate-50 text-xs font-semibold text-slate-500 hover:text-blue-600 rounded-md flex items-center gap-2 transition-all" title="Export Dashboard">
+                    <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
+                    <button onClick={handleExportDashboard} className="px-2 sm:px-3 py-1 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-500 hover:text-blue-600 dark:hover:text-sky-400 rounded-none flex items-center gap-2 transition-all" title="Export Dashboard">
                       <Download className="w-4 h-4" /> <span className="hidden xl:inline">Export</span>
                     </button>
                     <button 
                       onClick={() => setIsImportModalOpen(true)}
-                      className="px-3 py-1 hover:bg-slate-50 text-xs font-semibold text-slate-500 hover:text-blue-600 rounded-md flex items-center gap-2 transition-all" 
+                      className="px-2 sm:px-3 py-1 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-500 hover:text-blue-600 dark:hover:text-sky-400 rounded-none flex items-center gap-2 transition-all" 
                       title="Import Dashboard"
                     >
                       <Upload className="w-4 h-4" /> <span className="hidden xl:inline">Import</span>
@@ -2284,17 +2284,17 @@ export default function App() {
                 </div>
 
                 {hasUnsavedChanges && (
-                  <div className="flex bg-white border border-emerald-200 rounded-lg p-1 gap-1 shadow-sm h-[40px] items-center animate-in slide-in-from-right-4 duration-500">
+                  <div className="flex bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-none p-1 gap-1 shadow-sm h-[40px] items-center animate-in slide-in-from-right-4 duration-500">
                     <button 
                       onClick={handleSaveAll}
-                      className="px-4 h-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-all flex items-center justify-center gap-2 shadow-sm"
+                      className="px-3 sm:px-4 h-full bg-emerald-600 border border-emerald-600 hover:bg-emerald-700 text-white rounded-none transition-all flex items-center justify-center gap-2 shadow-sm"
                     >
                       <Save className="w-4 h-4" />
                       <span className="hidden sm:inline text-xs font-semibold">Save</span>
                     </button>
                     <button 
                       onClick={handleDiscardChanges}
-                      className="w-[40px] h-full hover:bg-rose-50 text-rose-600 rounded-md transition-all flex items-center justify-center"
+                      className="w-[36px] sm:w-[40px] h-full hover:bg-rose-50 dark:hover:bg-rose-950 text-rose-600 dark:text-rose-500 rounded-none transition-all flex items-center justify-center"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -2302,8 +2302,9 @@ export default function App() {
                 )}
               </div>
             )}
-          </div>
-        )}
+        </div>
+
+        {/* Telemetry Controls & Designer Bar */}
 
 
         {renderContent()}
@@ -2311,13 +2312,13 @@ export default function App() {
     </Shell>
     {secureTokenPrompt && (
       <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-white max-w-md w-full rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+        <div className="bg-white dark:bg-slate-900 rounded-xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
           <div className="p-6">
-            <div className="w-12 h-12 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-center shadow-sm mb-4">
-               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-shield text-indigo-600"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-xl flex items-center justify-center shadow-sm mb-4">
+               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield text-indigo-600 dark:text-indigo-400"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Authentication Required</h3>
-            <p className="text-sm text-slate-500 mb-6">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Authentication Required</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
               This dashboard is protected by a secure token to prevent unauthorized access.
             </p>
             <form onSubmit={e => {
@@ -2335,12 +2336,12 @@ export default function App() {
             }}>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Access Token</label>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Access Token</label>
                   <input 
                     type="password" 
                     value={secureTokenInput}
                     onChange={e => setSecureTokenInput(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-sm leading-tight" 
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-sm leading-tight" 
                     placeholder="Enter APP_SECURE_TOKEN..." 
                     autoFocus
                   />
@@ -2383,7 +2384,7 @@ export default function App() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           className={cn(
-            "p-4 rounded-2xl shadow-xl border select-none pointer-events-auto flex items-center gap-3 backdrop-blur-md",
+            "p-4 shadow-xl border select-none pointer-events-auto flex items-center gap-3 backdrop-blur-md",
             toast.type === 'error' ? "bg-rose-50/95 dark:bg-rose-950/90 border-rose-100 dark:border-rose-900 text-rose-800 dark:text-rose-200" :
             toast.type === 'success' ? "bg-emerald-50/90 dark:bg-emerald-950/90 border-emerald-100 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200" :
             toast.type === 'warning' ? "bg-amber-50/90 dark:bg-amber-950/90 border-amber-100 dark:border-amber-900 text-amber-800 dark:text-amber-200" :
@@ -2400,6 +2401,75 @@ export default function App() {
             )}
           </div>
           <p className="text-sm font-semibold flex-1 leading-normal">{toast.message}</p>
+        </motion.div>
+      </div>,
+      document.body
+    )}
+    {colorPickerTarget && createPortal(
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col"
+        >
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h3 className="font-bold text-slate-800 dark:text-white">Choose Color</h3>
+            <button onClick={() => setColorPickerTarget(null)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-500">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="p-4 space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Selecting a color for metric <span className="font-semibold text-slate-900 dark:text-slate-200">{colorPickerTarget.metric}</span>. This will apply globally across all dashboards.</p>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Custom Hex:</span>
+              <div className="flex-1 flex gap-2">
+                 <input 
+                   type="text" 
+                   value={colorPickerTarget.current} 
+                   onChange={(e) => setColorPickerTarget({...colorPickerTarget, current: e.target.value})}
+                   className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-sm outline-none text-slate-800 dark:text-slate-200 uppercase font-mono"
+                 />
+                 <div className="w-8 h-8 rounded-md shrink-0 border border-slate-200 dark:border-slate-800 shadow-inner" style={{backgroundColor: colorPickerTarget.current}}/>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {[
+                  '#ef4444', '#f97316', '#f59e0b', '#eab308', 
+                  '#84cc16', '#22c55e', '#10b981', '#14b8a6', 
+                  '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1', 
+                  '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', 
+                  '#f43f5e', '#64748b', '#71717a', '#000000', '#ffffff'
+              ].map(c => (
+                <button 
+                  key={c}
+                  onClick={() => setColorPickerTarget({...colorPickerTarget, current: c})}
+                  className={cn(
+                    "w-full pt-[100%] rounded-md relative outline-none ring-offset-2 dark:ring-offset-slate-900 transition-all hover:scale-110",
+                    colorPickerTarget.current.toLowerCase() === c.toLowerCase() ? "ring-2 ring-blue-500 scale-110 z-10 shell-ring" : "hover:z-10"
+                  )}
+                  style={{ backgroundColor: c, boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.06)' }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+            <button
+              onClick={() => setColorPickerTarget(null)}
+              className="px-4 py-2 font-medium text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                updateMetricColor(colorPickerTarget.metric, colorPickerTarget.current);
+                setColorPickerTarget(null);
+              }}
+              className="px-4 py-2 font-semibold text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors"
+            >
+              Apply Globally
+            </button>
+          </div>
         </motion.div>
       </div>,
       document.body

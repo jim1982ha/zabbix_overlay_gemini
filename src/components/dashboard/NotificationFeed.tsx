@@ -148,7 +148,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                         "px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all border",
                         severityFilter === sev 
                             ? "bg-slate-800 text-white border-slate-800 shadow-sm" 
-                            : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                            : "bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-900 dark:bg-slate-950"
                     )}
                 >
                     {sev}
@@ -166,7 +166,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
 
       <div className="space-y-4">
         {filteredNotifications.length === 0 ? (
-            <div className="py-20 text-center bg-slate-50 border border-slate-200 border-dashed rounded-3xl">
+            <div className="py-20 text-center bg-slate-50 border border-slate-200 border-dashed">
                 <Bell className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                 <p className="text-sm font-semibold text-slate-500">No notifications matching criteria</p>
             </div>
@@ -177,7 +177,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.1 }}
             onClick={() => setSelectedNotification(n)}
-            className="bg-white border border-slate-200 rounded-[24px] p-5 flex gap-5 hover:border-blue-500/30 transition-all group cursor-pointer relative overflow-hidden shadow-sm"
+            className="bg-white dark:bg-slate-900 border border-slate-200 p-5 flex gap-5 hover:border-blue-500/30 transition-all group cursor-pointer relative overflow-hidden shadow-sm"
           >
             <div className={cn(
               "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
@@ -211,7 +211,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
             <div className="flex flex-col justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                <button 
                   onClick={(e) => handleDismiss(n.id, e)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-all"
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 dark:bg-slate-800 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-all"
                 >
                   <X className="w-4 h-4" />
                </button>
@@ -238,7 +238,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                     initial={{ opacity: 0, scale: 0.9, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                    className="relative w-full max-w-lg bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-2xl"
+                    className="relative w-full max-w-lg bg-white border border-slate-200 overflow-hidden shadow-2xl"
                 >
                     <div className={cn(
                         "h-2",
@@ -281,18 +281,18 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                                 </h3>
                             </div>
 
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                            <div className="p-4 bg-slate-50 border border-slate-200">
                                 <p className="text-sm text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">
                                     {selectedNotification.description}
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                <div className="p-4 bg-slate-50 border border-slate-200">
                                     <span className="text-xs font-medium text-slate-500 block mb-1">Source Host</span>
                                     <span className="text-sm font-semibold text-slate-900">{selectedNotification.host || 'System Process'}</span>
                                 </div>
-                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                <div className="p-4 bg-slate-50 border border-slate-200">
                                     <span className="text-xs font-medium text-slate-500 block mb-1">Zabbix Item ID</span>
                                     <span className="text-sm font-mono font-medium text-blue-600">{selectedNotification.itemId || 'N/A'}</span>
                                 </div>

@@ -22,10 +22,10 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ y: -2 }}
-      className="bg-white border border-slate-100 rounded-2xl p-4 @[300px]:p-5 flex flex-col justify-between relative overflow-hidden group hover:border-sky-200 shadow-sm h-full transition-all duration-300 @container flex-1"
+      className="bg-white dark:bg-slate-900 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 dark:border-slate-800 p-4 @[300px]:p-5 flex flex-col justify-between relative overflow-hidden group h-full transition-all duration-300 @container flex-1"
     >
       {/* Header with Title Indicator */}
-      <div className="relative z-10 flex flex-col gap-1.5 shrink-0">
+      <div className="relative z-10 flex flex-col gap-1.5 shrink-0 transition-all duration-300 group-hover:pl-[34px]">
           <div className="flex items-center gap-2">
             <div 
               className={cn(
@@ -39,7 +39,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
               )} 
               style={color.startsWith('#') ? { backgroundColor: color } : {}}
             />
-            <span className="text-sm font-semibold text-slate-600 truncate block w-full" title={tooltip || title}>
+            <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 truncate block w-full" title={tooltip || title}>
               {title}
             </span>
           </div>
@@ -50,20 +50,15 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
         <div className="flex items-center justify-center w-full max-w-full px-2 gap-4">
           <div className="flex items-baseline min-w-0 justify-center">
               <div className={cn(
-                "font-extrabold tracking-tight leading-none transition-all duration-300 flex-shrink min-w-0 truncate",
-                color === "red" ? "text-rose-600" : "text-slate-900",
-                "text-[clamp(2rem,15cqw,4.5rem)]"
+                "font-bold tracking-tight leading-none transition-all duration-300 flex-shrink min-w-0 truncate",
+                color === "red" ? "text-rose-600 dark:text-rose-500" : "text-slate-900 dark:text-slate-100",
+                "text-4xl @[300px]:text-5xl"
               )}>
                 {value}
+                {unit && (
+                  <span className="text-xl @[300px]:text-2xl font-medium text-slate-500 dark:text-slate-400 ml-1">{unit.trim()}</span>
+                )}
               </div>
-              {unit && (
-                <span className={cn(
-                  "font-semibold text-slate-500 ml-2 shrink-0 self-end mb-[0.15em]",
-                  "text-[clamp(1rem,8cqw,1.75rem)]"
-                )}>
-                  {unit}
-                </span>
-              )}
           </div>
         </div>
       </div>
@@ -71,7 +66,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
       {/* Footer Area - Change indicator or Contextual Data */}
       <div className="relative z-10 flex flex-row items-center justify-between pt-1 shrink-0 mt-auto w-full min-w-0 gap-2">
         {timestamp ? (
-            <div className="flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-xs text-slate-400 font-medium px-1.5 @[200px]:px-2 py-0.5 bg-slate-50 border border-slate-100 rounded-full shrink-0 min-w-0 max-w-[70%] truncate">
+            <div className="flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-xs text-slate-400 dark:text-slate-500 font-medium px-1.5 @[200px]:px-2 py-0.5 bg-slate-50 dark:bg-slate-950 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-full shrink-0 min-w-0 max-w-[70%] truncate">
               <Clock className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3 shrink-0" />
               <span className="truncate">{timestamp}</span>
             </div>
@@ -80,7 +75,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
         {change !== undefined && (
           <div className="hidden @[240px]:flex flex-col items-end justify-center shrink-0 min-w-0" aria-label="Compared to previous period of same duration">
               <div className={cn(
-                "flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-xs font-bold px-1.5 @[200px]:px-2 py-0.5 rounded border shrink-0 shadow-sm",
+                "flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-xs font-bold px-1.5 @[200px]:px-2 py-0.5 rounded border shrink-0",
                 isPositive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
               )}>
                 {isPositive ? <TrendingUp className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3" /> : <TrendingDown className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3" />}
@@ -89,33 +84,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
           </div>
         )}
 
-        {change === undefined && (
-          <div className="w-1/2 flex flex-col gap-1 px-1 opacity-60 ml-auto">
-            <div className={cn(
-              "w-full h-1.5 rounded-full overflow-hidden bg-slate-100",
-              "group-hover:bg-slate-200 transition-colors"
-            )}>
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: '100%' }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className={cn(
-                  "h-full rounded-full bg-gradient-to-r",
-                  !color.startsWith('#') ? (
-                    color === "blue" ? "from-sky-700 to-sky-500" :
-                    color === "green" ? "from-emerald-700 to-emerald-500" :
-                    color === "red" ? "from-rose-700 to-rose-500" :
-                    "from-amber-700 to-amber-500"
-                  ) : ""
-                )}
-                style={color.startsWith('#') ? { background: `linear-gradient(to right, ${color}, ${color}CC)` } : {}}
-              />
-            </div>
-          </div>
-        )}
       </div>
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,0,0,0.01),transparent)] pointer-events-none" />
     </motion.div>
   );
 }

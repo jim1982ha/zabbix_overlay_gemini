@@ -1,44 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+}
 @variant dark (&:where(.dark, .dark *));
 
 @layer base {
-  .dark {
-    /* Backgrounds & foregrounds mapping */
-    --color-white: #0f172a; /* slate-900 */
-    --color-slate-50: #0f172a; /* slate-900 */
-    --color-slate-100: #1e293b; /* slate-800 */
-    --color-slate-200: #334155; /* slate-700 */
-    --color-slate-300: #475569; /* slate-600 */
-    --color-slate-400: #64748b; /* slate-500 */
-    --color-slate-500: #94a3b8; /* slate-400 */
-    --color-slate-600: #cbd5e1; /* slate-300 */
-    --color-slate-700: #e2e8f0; /* slate-200 */
-    --color-slate-800: #f1f5f9; /* slate-100 */
-    --color-slate-900: #f8fafc; /* slate-50 */
-    --color-slate-950: #f8fafc; /* slate-50 */
-
-    /* Mute other colors for dark mode context (make them less bright) */
-    --color-blue-50: #1e3a8a; /* blue-900 */
-    --color-blue-100: #1e40af; /* blue-800 */
-    --color-blue-200: #1d4ed8; /* blue-700 */
-    --color-blue-800: #bfdbfe; /* blue-200 */
-    --color-blue-900: #dbeafe; /* blue-100 */
-    
-    --color-sky-50: #0c4a6e; /* sky-900 */
-    --color-sky-100: #075985; /* sky-800 */
-    --color-sky-200: #0369a1; /* sky-700 */
-
-    --color-amber-50: #78350f; /* amber-900 */
-    --color-amber-100: #92400e; /* amber-800 */
-    --color-amber-200: #b45309; /* amber-700 */
-
-    --color-emerald-50: #064e3b; /* emerald-900 */
-    --color-emerald-100: #065f46; /* emerald-800 */
-    --color-emerald-200: #047857; /* emerald-700 */
-    
-    --color-rose-50: #881337; /* rose-900 */
-    --color-rose-100: #9f1239; /* rose-800 */
-    --color-rose-200: #be123c; /* rose-700 */
+  body {
+    @apply bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased;
   }
 }
 

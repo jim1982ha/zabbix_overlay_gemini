@@ -134,12 +134,12 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
     <div className="relative flex-1 min-w-full sm:min-w-[200px] h-full" ref={containerRef}>
        <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-transparent hover:bg-slate-50 rounded-md py-1 px-2 text-sm font-medium text-slate-700 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
+        className="bg-transparent hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-800 rounded-none py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
        >
          <span className="flex items-center gap-2 truncate">
            <span className="text-slate-500 font-normal">Analysis Period:</span>
            <CalendarIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-           <span className="truncate font-semibold text-slate-800">{displayText}</span>
+           <span className="truncate font-semibold text-slate-800 dark:text-slate-200 dark:text-slate-200">{displayText}</span>
          </span>
          <ChevronDown className={cn("w-4 h-4 text-slate-400 shrink-0 transition-transform duration-300", isOpen && "-rotate-180")} />
        </button>
@@ -157,13 +157,13 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
               initial={{ opacity: 0, y: 5, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 5, scale: 0.98 }}
-              className="absolute z-[1001] bg-white border border-slate-200 rounded-2xl shadow-xl p-4 w-[340px] flex flex-col gap-4 pointer-events-auto overflow-y-auto"
+              className="absolute z-[1001] bg-white dark:bg-slate-900 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 dark:border-slate-800 rounded-none shadow-xl p-4 w-[340px] flex flex-col gap-4 pointer-events-auto overflow-y-auto"
             >
               <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <CalendarIcon className="w-4 h-4 text-slate-400" /> Select Range
                 </span>
-                <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
+                <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-800 rounded-none transition-colors">
                   <X className="w-4 h-4 text-slate-500" />
                 </button>
               </div>
@@ -173,20 +173,20 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
                     <button 
                         key={p}
                         onClick={() => setPreset(p as any)}
-                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-slate-600 bg-slate-50 hover:text-blue-700 hover:bg-blue-50 transition-all border border-slate-200 uppercase tracking-wide"
+                        className="flex-1 py-1.5 rounded-none text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 hover:text-blue-700 dark:hover:text-sky-400 hover:bg-blue-50 dark:hover:bg-sky-500/10 transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-wide"
                     >
                         {p}
                     </button>
                 ))}
               </div>
 
-              <div className="p-2 bg-slate-50/50 rounded-xl border border-slate-100 flex justify-center">
+              <div className="p-2 bg-slate-50/50 dark:bg-slate-800/50 rounded-none border border-slate-100 dark:border-slate-700 flex justify-center">
                   <DayPicker
                       mode="range"
                       selected={tempRange}
                       onSelect={handleSelect}
                       numberOfMonths={1}
-                      className="rdp-custom"
+                      className="rdp-custom dark:text-slate-300"
                       showOutsideDays
                   />
               </div>
@@ -200,7 +200,7 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
                           type="time"
                           value={startTime}
                           onChange={(e) => setStartTime(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 shadow-sm"
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-none px-2.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none focus:border-blue-500 dark:focus:border-sky-500 shadow-sm"
                       />
                   </div>
                   <div className="space-y-1.5">
@@ -211,15 +211,15 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
                           type="time"
                           value={endTime}
                           onChange={(e) => setEndTime(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 shadow-sm"
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-none px-2.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none focus:border-blue-500 dark:focus:border-sky-500 shadow-sm"
                       />
                   </div>
               </div>
 
-              <div className="mt-2 flex justify-between items-center bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <div className="mt-2 flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-3.5 rounded-none border border-slate-200 dark:border-slate-700">
                   <div className="flex flex-col">
                       <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Selected Period</span>
-                      <span className="text-xs font-semibold text-blue-700 mt-0.5">
+                      <span className="text-xs font-semibold text-blue-700 dark:text-sky-400 mt-0.5">
                           {tempRange?.from ? format(tempRange.from, 'MMM d') : '-'}
                           {tempRange?.to ? ` → ${format(tempRange.to, 'MMM d')}` : ''}
                       </span>
@@ -227,7 +227,7 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
                   <button 
                       onClick={applyRange}
                       disabled={!tempRange?.from}
-                      className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-all shadow-sm active:scale-95"
+                      className="px-5 py-2 bg-blue-600 dark:bg-sky-600 hover:bg-blue-700 dark:hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-none transition-all shadow-sm active:scale-95"
                   >
                   Confirm
                   </button>

@@ -160,7 +160,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
   return (
     <div className="space-y-6">
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white border border-slate-200 p-2 rounded-xl shadow-sm relative overflow-hidden">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 dark:border-slate-800 p-2 shadow-sm relative overflow-hidden">
         {globalSearch && (
           <div className="flex items-center px-2 sm:px-4 shrink-0">
               <span className="text-xs font-semibold text-slate-500">
@@ -176,9 +176,9 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                   scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
                 }
               }}
-              className="absolute left-0 z-10 w-8 h-full flex items-center justify-start bg-gradient-to-r from-white from-50% to-transparent pointer-events-auto"
+              className="absolute left-0 z-10 w-8 h-full flex items-center justify-start bg-gradient-to-r from-white dark:from-slate-900 from-50% to-transparent pointer-events-auto"
             >
-              <div className="w-6 h-6 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:shadow transition-all">
+              <div className="w-6 h-6 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-200 hover:shadow transition-all">
                  <ChevronLeft className="w-4 h-4" />
               </div>
             </button>
@@ -193,7 +193,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
               onClick={() => setActiveHostGroup('all')}
               className={cn(
                 "px-4 py-2 text-sm font-semibold transition-all rounded-lg whitespace-nowrap flex items-center gap-2",
-                activeHostGroup === 'all' ? "bg-slate-100 text-slate-800" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                activeHostGroup === 'all' ? "bg-slate-100 dark:bg-slate-800 dark:bg-slate-800 text-slate-800" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:bg-slate-950"
               )}
             >
               All
@@ -265,7 +265,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                 const zBase = baseUrl.includes('api_jsonrpc.php') ? baseUrl.replace('/api_jsonrpc.php', '') : baseUrl;
                 window.open(`${zBase}/zabbix.php?action=latest.view&hostids[]=${asset.hostid}`, '_blank', 'noopener,noreferrer');
               }}
-              className="bg-white border border-slate-100 rounded-2xl p-6 group hover:border-blue-200 cursor-pointer transition-all relative overflow-hidden shadow-sm hover:shadow-md"
+              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 group hover:border-blue-200 cursor-pointer transition-all relative overflow-hidden shadow-sm hover:shadow-md"
             >
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
@@ -321,7 +321,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
           ))}
         </div>
       ) : (
-        <div className="py-20 flex flex-col items-center justify-center bg-slate-50 border border-slate-200 border-dashed rounded-2xl">
+        <div className="py-20 flex flex-col items-center justify-center bg-slate-50 border border-slate-200 border-dashed">
           <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
             <Search className="w-8 h-8 text-slate-400" />
           </div>

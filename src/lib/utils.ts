@@ -10,18 +10,47 @@ const hashString = (str: string) => {
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+    hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash);
 };
 
-export function getDeterministicColor(key: string) {
-  const palette = [
-    '#0284c7', '#4f46e5', '#7c3aed', '#db2777', '#d97706', '#059669', 
-    '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', 
-    '#06b6d4', '#ef4444', '#84cc16', '#64748b', '#14b8a6', '#f97316'
+export function getDeterministicColor(key: string, baseMetric?: string) {
+  try {
+    const customColorMap = JSON.parse(localStorage.getItem('ha_metric_colors') || '{}');
+    if (customColorMap[key]) return customColorMap[key];
+    if (baseMetric && customColorMap[baseMetric]) return customColorMap[baseMetric];
+  } catch {
+    //
+  }
+
+  // Use a highly distinct color palette designed for data visualization
+  const BRAND_COLORS = [
+    '#3b82f6', // blue-500
+    '#10b981', // emerald-500
+    '#f59e0b', // amber-500
+    '#ef4444', // red-500
+    '#8b5cf6', // violet-500
+    '#ec4899', // pink-500
+    '#f97316', // orange-500
+    '#14b8a6', // teal-500
+    '#6366f1', // indigo-500
+    '#eab308', // yellow-500
+    '#0ea5e9', // sky-500
+    '#84cc16'  // lime-500
   ];
-  return palette[hashString(key) % palette.length];
+  return BRAND_COLORS[hashString(key) % BRAND_COLORS.length];
+}
+
+export function updateMetricColor(key: string, color: string) {
+  try {
+    const customColorMap = JSON.parse(localStorage.getItem('ha_metric_colors') || '{}');
+    customColorMap[key] = color;
+    localStorage.setItem('ha_metric_colors', JSON.stringify(customColorMap));
+    window.dispatchEvent(new Event('ha_color_map_changed'));
+  } catch {
+    //
+  }
 }
 
 export function formatValue(value: number, unit?: string, noUnitString = false): { value: string, unit: string } {

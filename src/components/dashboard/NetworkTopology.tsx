@@ -201,12 +201,12 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl w-fit">
+        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 dark:bg-slate-800 p-1 w-fit rounded-lg">
           <button 
             onClick={() => setGroupingMode('none')}
             className={cn(
               "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
-              groupingMode === 'none' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              groupingMode === 'none' ? "bg-white dark:bg-slate-900 dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             )}
           >
             Organic
@@ -215,7 +215,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
             onClick={() => setGroupingMode('hostGroup')}
             className={cn(
               "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
-              groupingMode === 'hostGroup' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              groupingMode === 'hostGroup' ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             )}
           >
             Host Groups
@@ -224,7 +224,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
             onClick={() => setGroupingMode('status')}
             className={cn(
               "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
-              groupingMode === 'status' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              groupingMode === 'status' ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             )}
           >
             Status
@@ -232,7 +232,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
         </div>
       </div>
       <div className="flex flex-col gap-6">
-        <div ref={containerRef} className="bg-white border border-slate-100 rounded-2xl p-4 relative min-h-[450px] overflow-x-auto shadow-sm custom-scrollbar block">
+        <div ref={containerRef} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 relative min-h-[450px] overflow-x-auto shadow-sm custom-scrollbar block rounded-xl">
           {/* SVG Topology Graph */}
           {(() => {
             const maxY = nodes.length > 0 ? Math.max(...nodes.map(n => n.y)) : 300;
@@ -417,53 +417,53 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
             top: Math.min(tooltipPos.y + 15, window.innerHeight - 150) 
           }}
         >
-          <div className="bg-white/95 backdrop-blur-sm border border-slate-200 shadow-xl rounded-xl p-3 min-w-[200px] animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border border-slate-200 dark:border-slate-800 dark:border-slate-800 shadow-xl p-3 min-w-[200px] rounded-xl animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
             {hoveredNode && (() => {
               const node = nodes.find(n => n.id === hoveredNode)!;
               return (
                 <>
-                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="font-semibold text-slate-800 text-sm">{node.label}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 dark:text-slate-100 text-sm">{node.label}</span>
                   </div>
                   <div className="space-y-1.5">
                     {node.type === 'server' && (
                       <>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">CPU Usage:</span>
-                          <span className="font-medium text-slate-700">{getSeedMetric(30, 60, periodKey + node.id + 'cpu')}%</span>
+                          <span className="text-slate-500 dark:text-slate-400">CPU Usage:</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{getSeedMetric(30, 60, periodKey + node.id + 'cpu')}%</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">RAM Usage:</span>
-                          <span className="font-medium text-slate-700">{getSeedMetric(40, 50, periodKey + node.id + 'ram')}%</span>
+                          <span className="text-slate-500 dark:text-slate-400">RAM Usage:</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{getSeedMetric(40, 50, periodKey + node.id + 'ram')}%</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">Active Connections:</span>
-                          <span className="font-medium text-slate-700">{getSeedMetric(100, 900, periodKey + node.id + 'conn')}</span>
+                          <span className="text-slate-500 dark:text-slate-400">Active Connections:</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{getSeedMetric(100, 900, periodKey + node.id + 'conn')}</span>
                         </div>
                       </>
                     )}
                     {node.type === 'gateway' && (
                       <>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">Packet Loss:</span>
-                          <span className="font-medium text-slate-700">{(getSeedMetric(0, 5, periodKey + node.id + 'pl') / 10).toFixed(2)}%</span>
+                          <span className="text-slate-500 dark:text-slate-400">Packet Loss:</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{(getSeedMetric(0, 5, periodKey + node.id + 'pl') / 10).toFixed(2)}%</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">Throughput:</span>
-                          <span className="font-medium text-slate-700">{getSeedMetric(500, 1500, periodKey + node.id + 'tp')} Mbps</span>
+                          <span className="text-slate-500 dark:text-slate-400">Throughput:</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{getSeedMetric(500, 1500, periodKey + node.id + 'tp')} Mbps</span>
                         </div>
                       </>
                     )}
                     {node.type === 'switch' && (
                       <>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">Port Utilization:</span>
-                          <span className="font-medium text-slate-700">{getSeedMetric(20, 40, periodKey + node.id + 'pu')}%</span>
+                          <span className="text-slate-500 dark:text-slate-400">Port Utilization:</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{getSeedMetric(20, 40, periodKey + node.id + 'pu')}%</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">Dropped Packets:</span>
-                          <span className="font-medium text-slate-700">{getSeedMetric(0, 100, periodKey + node.id + 'dp')}</span>
+                          <span className="text-slate-500 dark:text-slate-400">Dropped Packets:</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">{getSeedMetric(0, 100, periodKey + node.id + 'dp')}</span>
                         </div>
                       </>
                     )}
@@ -481,22 +481,22 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
               const load = actualLink ? actualLink.load : 0;
               return (
                 <>
-                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
                     <Zap className="w-4 h-4 text-sky-500" />
-                    <span className="font-semibold text-slate-800 text-sm">Link Metrics</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm">Link Metrics</span>
                   </div>
                   <div className="space-y-1.5 flex flex-col items-center">
-                     <div className="flex items-center justify-between w-full text-xs text-slate-600 font-medium mb-1">
+                     <div className="flex items-center justify-between w-full text-xs text-slate-600 dark:text-slate-300 font-medium mb-1">
                        <span className="truncate max-w-[80px]">{fromNode.label}</span>
-                       <ArrowDownRight className="w-3 h-3 text-slate-400 shrink-0" />
+                       <ArrowDownRight className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" />
                        <span className="truncate max-w-[80px] text-right">{toNode.label}</span>
                      </div>
-                     <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mt-1 relative">
+                     <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-1 relative">
                         <div className={cn("absolute left-0 top-0 bottom-0", load > 80 ? "bg-rose-500" : "bg-sky-500")} style={{ width: `${load}%` }} />
                      </div>
                      <div className="flex justify-between w-full text-xs mt-1">
-                        <span className="text-slate-500">Utilization:</span>
-                        <span className={cn("font-semibold", load > 80 ? "text-rose-600" : "text-sky-600")}>{load}%</span>
+                        <span className="text-slate-500 dark:text-slate-400">Utilization:</span>
+                        <span className={cn("font-semibold", load > 80 ? "text-rose-600 dark:text-rose-400" : "text-sky-600 dark:text-sky-400")}>{load}%</span>
                      </div>
                   </div>
                 </>

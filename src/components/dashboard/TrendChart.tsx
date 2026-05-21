@@ -58,12 +58,13 @@ interface TrendChartProps {
   color?: string;
   hiddenSeries?: Set<string>;
   onLegendClick?: (key: string) => void;
+  onColorChangeRequest?: (metric: string, current: string) => void;
   onHostClick?: (host: string) => void;
   zoomDomain?: [number, number] | null;
   onZoomDomainChange?: (domain: [number, number] | null) => void;
 }
 
-export function TrendChart({ title, data, series, hosts, chartType = 'area', seriesConfig, stacked = false, unit, leftUnit, rightUnit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onHostClick, zoomDomain, onZoomDomainChange }: TrendChartProps) {
+export function TrendChart({ title, data, series, hosts, chartType = 'area', seriesConfig, stacked = false, unit, leftUnit, rightUnit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onColorChangeRequest, onHostClick, zoomDomain, onZoomDomainChange }: TrendChartProps) {
   const defaultColors = ['#0284c7', '#4f46e5', '#7c3aed', '#db2777', '#d97706', '#059669', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#06b6d4'];
   const chartColors = color ? [color, ...defaultColors.filter(c => c !== color)] : defaultColors;
 
@@ -148,7 +149,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white/95 backdrop-blur-sm border border-slate-100 rounded-lg shadow-lg p-1.5 max-h-[400px] overflow-y-auto flex flex-col gap-0.5 border-l-2 border-l-blue-600 min-w-[160px]">
+        <div className="bg-white dark:bg-slate-900/95 backdrop-blur-sm border border-slate-100 rounded-lg shadow-lg p-1.5 max-h-[400px] overflow-y-auto flex flex-col gap-0.5 border-l-2 border-l-blue-600 min-w-[160px]">
           {label && (
              <div className="text-[10px] uppercase font-bold text-slate-500 mb-0.5 px-1 border-b border-slate-100 pb-1">
                {(() => {
@@ -182,7 +183,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
           )}
           <div className="space-y-0.5">
             {payload.map((entry: any, index: number) => (
-              <div key={`item-${index}`} className="flex items-center justify-between gap-3 px-1 py-0.5 hover:bg-slate-50 rounded bg-transparent transition-colors">
+              <div key={`item-${index}`} className="flex items-center justify-between gap-3 px-1 py-0.5 hover:bg-slate-50 dark:bg-slate-950 rounded bg-transparent transition-colors">
                 <div className="flex items-center gap-1.5 overflow-hidden">
                   <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: entry.color || entry.fill }} />
                   <span className="text-[10px] font-medium text-slate-600 truncate block max-w-[120px]">
@@ -227,10 +228,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               innerRadius={0}
               outerRadius="80%"
               dataKey="value"
-              isAnimationActive={true}
-              animationBegin={0}
-              animationDuration={350}
-              animationEasing="ease-out"
+              isAnimationActive={false}
             >
               {pieData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" strokeWidth={0} />
@@ -251,7 +249,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit && unit !== 'B' ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
+            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Line 
@@ -289,11 +287,12 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 const metric = s.metric || s.key.split('_')[0];
                 const type = seriesConfig?.[metric]?.chartType || 'line';
                 if (type !== 'area') return null;
-                const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
+                const colorValue = getSeriesColor(s);
+                const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
                 return (
                 <linearGradient key={`mixed-grad-${s.key}`} id={safeId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={getSeriesColor(s)} stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor={getSeriesColor(s)} stopOpacity={0.05}/>
+                  <stop offset="5%" stopColor={colorValue} stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor={colorValue} stopOpacity={0.05}/>
                 </linearGradient>
                 );
               })}
@@ -307,8 +306,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            {hasLeft && <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, leftUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={leftUnit && leftUnit !== 'B' ? { value: leftUnit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />}
-            {hasRight && <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, rightUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} width={55} label={rightUnit && rightUnit !== 'B' ? { value: rightUnit.trim(), angle: 90, position: 'insideRight', offset: 0, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />}
+            {hasLeft && <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, leftUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />}
+            {hasRight && <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, rightUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} width={55} />}
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {[...series].sort((a, b) => {
               if (a.metric === 'series1' && b.metric === 'series2') return 1;
@@ -336,7 +335,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                   />
                 );
               } else if (t === 'area') {
-                const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
+                const colorValue = getSeriesColor(s);
+                const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
                 return (
                   <Area 
                     key={s.key} 
@@ -344,7 +344,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                     name={s.name} 
                     type="monotone" 
                     dataKey={s.key} 
-                    stroke={getSeriesColor(s)} 
+                    stroke={colorValue} 
                     stackId={conf.stacked ? `stack-${metric}` : undefined} 
                     strokeWidth={2.5} 
                     fillOpacity={1} 
@@ -389,7 +389,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit && unit !== 'B' ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
+            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Bar 
@@ -414,11 +414,12 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
           <AreaChart data={displayedData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }} {...dragProps}>
             <defs>
               {series.map((s, i) => {
-                const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
+                const colorValue = getSeriesColor(s);
+                const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
                 return (
                 <linearGradient key={s.key} id={safeId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={getSeriesColor(s)} stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor={getSeriesColor(s)} stopOpacity={0.05}/>
+                  <stop offset="5%" stopColor={colorValue} stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor={colorValue} stopOpacity={0.05}/>
                 </linearGradient>
                 );
               })}
@@ -432,10 +433,11 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30} 
             />
-            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} label={unit && unit !== 'B' ? { value: unit.trim(), angle: -90, position: 'insideLeft', offset: 25, style: { textAnchor: 'middle', fill: axisColor, fontSize: 11, fontWeight: 600 } } : undefined} />
+            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => {
-              const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}`;
+              const colorValue = getSeriesColor(s);
+              const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
               return (
               <Area 
                 key={s.key} 
@@ -443,7 +445,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 name={s.name} 
                 type="monotone" 
                 dataKey={s.key} 
-                stroke={getSeriesColor(s)} 
+                stroke={colorValue} 
                 stackId={stacked ? "1" : undefined} 
                 strokeWidth={2.5} 
                 fillOpacity={1} 
@@ -465,16 +467,16 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className={`bg-white rounded-2xl shadow-sm h-full flex flex-col @container transition-colors duration-300 ${zoomDomain ? 'border-[3px] border-sky-300 ring-2 ring-sky-100 ring-offset-1 p-[13px] @[400px]:p-[21px]' : 'border border-slate-100 p-4 @[400px]:p-6'}`}
+      className={`bg-white dark:bg-slate-900 h-full flex flex-col @container transition-colors duration-300 ${zoomDomain ? 'border-[3px] border-sky-300 ring-2 ring-sky-100 ring-offset-1 p-[13px] @[400px]:p-[21px]' : 'border border-slate-200 dark:border-slate-800 dark:border-slate-800 p-4 @[400px]:p-6'}`}
     >
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex justify-between items-start mb-6 transition-all duration-300 group-hover:pl-[34px]">
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between mb-2 gap-4">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className="w-1.5 h-5 bg-blue-600 rounded-full shrink-0" />
-              <h3 className="text-base @[400px]:text-lg font-semibold text-slate-800 tracking-tight truncate">{title}</h3>
+              <h3 className="text-base @[400px]:text-lg font-semibold text-slate-800 dark:text-slate-200 dark:text-slate-100 tracking-tight truncate">{title}</h3>
               {stacked && (
-                <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded font-medium border border-blue-200 shrink-0 hidden @[250px]:flex">Stacked</span>
+                <span className="text-xs px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-sky-400 rounded font-medium border border-blue-200 dark:border-blue-500/20 shrink-0 hidden @[250px]:flex">Stacked</span>
               )}
             </div>
           </div>
@@ -491,7 +493,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                   "text-xs px-2 py-0.5 rounded font-medium border transition-colors cursor-pointer",
                   isFiltered 
                     ? "bg-amber-50 text-amber-600 border-amber-200 line-through opacity-70" 
-                    : "bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-slate-200"
+                    : "bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 hover:text-slate-900 border-slate-200"
                 )}
                 title={isFiltered ? "Click to show this host globally" : "Click to hide this host globally"}
               >
@@ -511,7 +513,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
       )}>
         <div className={cn(
           "flex-1 w-full relative select-none cursor-crosshair",
-          chartType === 'pie' ? "h-[160px] @[450px]:h-full min-h-[120px]" : "h-full min-h-[100px]"
+          chartType === 'pie' ? "h-[220px] @[450px]:h-full min-h-[180px] w-full" : "h-full min-h-[100px]"
         )}>
           <div className="absolute inset-0 min-w-0 min-h-0">
             <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
@@ -522,7 +524,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         
         {chartType === 'pie' && (
           <div className={cn(
-            "shrink-0 min-h-0 bg-white relative z-10",
+            "shrink-0 min-h-0 bg-transparent relative z-10",
             "flex flex-row @[450px]:flex-col flex-wrap @[450px]:flex-nowrap justify-center gap-x-3 gap-y-1.5 w-full @[450px]:w-auto @[450px]:min-w-[120px] @[450px]:max-w-[40%] @[450px]:ml-4 max-h-[80px] @[450px]:max-h-[160px] overflow-y-auto px-2 scrollbar-hide" 
           )}>
             {series.map((s, i) => {
@@ -538,10 +540,20 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                   title={s.name}
                 >
                   <div 
-                    className="w-2.5 h-2.5 rounded-sm flex-shrink-0" 
+                    className="w-2.5 h-2.5 rounded-sm flex-shrink-0 relative group/dot" 
                     style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s) }} 
-                  />
-                  <span className={cn("truncate block min-w-0 flex-1", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
+                    onClick={(e) => {
+                      if (onColorChangeRequest) {
+                        e.stopPropagation();
+                        onColorChangeRequest(s.metric || s.key, getSeriesColor(s));
+                      }
+                    }}
+                  >
+                    {onColorChangeRequest && (
+                      <div className="absolute inset-0 bg-black/10 dark:bg-white/20 opacity-0 group-hover/dot:opacity-100 transition-opacity rounded-sm" />
+                    )}
+                  </div>
+                  <span className={cn("truncate block min-w-0 flex-1", isHidden ? "text-slate-400 dark:text-slate-500 line-through" : "text-slate-600 dark:text-slate-300")}>
                     {s.name}
                   </span>
                 </div>
@@ -551,7 +563,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         )}
         
         {chartType !== 'pie' && (
-          <div className="shrink min-h-0 bg-white relative z-10 w-full mb-1 flex flex-wrap gap-x-4 gap-y-1.5 mt-2 max-h-[120px] overflow-y-auto px-1 scrollbar-hide flex-shrink">
+          <div className="shrink min-h-0 bg-transparent relative z-10 w-full mb-1 flex flex-wrap gap-x-4 gap-y-1.5 mt-2 max-h-[120px] overflow-y-auto px-1 scrollbar-hide flex-shrink">
               {series.map((s, i) => {
                 const isHidden = hiddenSeries?.has(s.key);
                 return (
@@ -565,10 +577,20 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                     title={s.name}
                   >
                     <div 
-                      className="w-2.5 h-2.5 rounded-sm flex-shrink-0" 
+                      className="w-2.5 h-2.5 rounded-sm flex-shrink-0 relative group/dot" 
                       style={{ backgroundColor: isHidden ? '#cbd5e1' : getSeriesColor(s) }} 
-                    />
-                    <span className={cn("truncate block min-w-0 flex-1", isHidden ? "text-slate-400 line-through" : "text-slate-600")}>
+                      onClick={(e) => {
+                        if (onColorChangeRequest) {
+                          e.stopPropagation();
+                          onColorChangeRequest(s.metric || s.key, getSeriesColor(s));
+                        }
+                      }}
+                    >
+                      {onColorChangeRequest && (
+                        <div className="absolute inset-0 bg-black/10 dark:bg-white/20 opacity-0 group-hover/dot:opacity-100 transition-opacity rounded-sm" />
+                      )}
+                    </div>
+                    <span className={cn("truncate block min-w-0 flex-1", isHidden ? "text-slate-400 dark:text-slate-500 line-through" : "text-slate-600 dark:text-slate-300")}>
                       {s.name}
                     </span>
                   </div>
@@ -580,9 +602,9 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         {zoomDomain && data && data.length > 0 && (
           <div className="flex items-center gap-2 mt-2 px-2 text-[10px] sm:text-xs">
             <span className="shrink-0 text-slate-500 font-medium hidden sm:inline text-[10px]">Zoom:</span>
-            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden relative shadow-inner pt">
+            <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative pt">
               <div 
-                className="absolute h-full bg-sky-400 rounded-full shadow-sm" 
+                className="absolute h-full bg-sky-400 rounded-full" 
                 style={{ 
                   left: `${Math.max(0, (zoomDomain[0] / data.length) * 100)}%`, 
                   width: `${Math.min(100, ((zoomDomain[1] - zoomDomain[0] + 1) / data.length) * 100)}%` 
