@@ -277,7 +277,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" strokeWidth={0} />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip />} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            <Tooltip content={<CustomTooltip />} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
           </PieChart>
         );
       case 'line':
@@ -293,7 +293,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               minTickGap={30}
             />
             <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Line 
                 isAnimationActive={false}
@@ -352,7 +352,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             />
             {hasLeft && <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, leftUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />}
             {hasRight && <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, rightUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} width={55} />}
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {[...series].sort((a, b) => {
               if (a.metric === 'series1' && b.metric === 'series2') return 1;
               if (a.metric === 'series2' && b.metric === 'series1') return -1;
@@ -437,7 +437,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               minTickGap={30}
             />
             <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Bar 
                 isAnimationActive={false}
@@ -482,7 +482,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               minTickGap={30} 
             />
             <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => {
               const colorValue = getSeriesColor(s);
               const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
