@@ -1834,7 +1834,7 @@ export default function App() {
                 ) : (
                   (() => {
                     const isAggregated = w.chartType !== 'mixed' && w.aggregation !== 'none';
-                    let chartSeries: { key: string; name: string; color?: string; metric?: string; unit?: string }[] = [];
+                    let chartSeries: { key: string; name: string; color?: string; metric?: string; configKey?: string; unit?: string }[] = [];
                     let chartData = data;
 
                     if (w.chartType === 'mixed') {
@@ -1870,6 +1870,7 @@ export default function App() {
                                name: `${m.toUpperCase()} (${aggType === 'sum' ? 'Sum' : 'Avg'})${axisLabel}`,
                                color: getDeterministicColor(aggKey, m),
                                metric: m,
+                               configKey: sKey,
                                unit: u
                              });
                            });
@@ -1884,6 +1885,7 @@ export default function App() {
                                  name: `${m.toUpperCase()} [${h}]${axisLabel}`,
                                  color: getDeterministicColor(key, m),
                                  metric: m,
+                                 configKey: sKey,
                                  unit: u
                                });
                              });
@@ -2201,7 +2203,7 @@ export default function App() {
       hiddenSeries={relevantHiddenSeries}
       toggleSeriesVisibility={toggleSeriesVisibility}
     >
-      <div className="max-w-[1400px] mx-auto space-y-4">
+      <div className="w-full space-y-4">
         {/* Page Title Section Simplified */}
         <div className="flex flex-row items-center justify-between mb-4 flex-wrap gap-4">
           <div className="flex items-center gap-3 min-w-0">

@@ -286,7 +286,7 @@ export function Shell({
           )}
         </nav>
         
-        <div className="shrink-0 border-t border-slate-200 bg-slate-50/50 py-2">
+        <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 py-2">
           <NavItem 
             icon={theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />} 
             label={theme === 'dark' ? 'Dark Mode' : 'Light Mode'} 
@@ -303,13 +303,13 @@ export function Shell({
             } 
             label={
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Active Node</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Node</span>
                 {isDemo ? (
-                  <div className="px-1.5 py-0.5 bg-amber-50 border border-amber-200 rounded text-[9px] font-bold text-amber-700 uppercase tracking-wider shadow-sm">
+                  <div className="px-1.5 py-0.5 bg-amber-50 border border-amber-200 rounded text-[9px] font-bold text-amber-700 uppercase tracking-wider shadow-sm dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400">
                     Demo
                   </div>
                 ) : (
-                  <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-bold text-emerald-700 uppercase tracking-wider shadow-sm">
+                  <div className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded text-[9px] font-bold text-emerald-700 uppercase tracking-wider shadow-sm dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400">
                     Live
                   </div>
                 )}
@@ -348,18 +348,18 @@ function NavItem({ icon, label, active = false, isCollapsed = false, onClick, cl
         "flex items-center transition-all group cursor-pointer",
         isCollapsed ? "justify-center mx-auto w-10 h-10 rounded-md my-0.5" : "px-4 py-3 border-l-[3px]",
         active ? 
-          (isCollapsed ? 'bg-[#f0f4f9] text-[#0055d4] shadow-sm' : 'bg-[#f0f4f9] text-[#0055d4] border-[#0055d4]') : 
-          (isCollapsed ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 border-transparent' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-transparent'),
+          (isCollapsed ? 'bg-[#f0f4f9] dark:bg-blue-500/10 text-[#0055d4] dark:text-blue-400 shadow-sm' : 'bg-[#f0f4f9] dark:bg-blue-500/10 text-[#0055d4] dark:text-blue-400 border-[#0055d4] dark:border-blue-500') : 
+          (isCollapsed ? 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white border-transparent' : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 border-transparent'),
         className
       )}>
       {!isCollapsed && (
-        <div className={cn("flex-1 truncate text-[14px] flex items-center", active ? "font-semibold" : "")}>
+        <div className={cn("flex-1 truncate text-[14px] flex items-center", active ? "font-semibold text-slate-900 dark:text-blue-400" : "")}>
           {label}
         </div>
       )}
       <div className={cn(
         "transition-colors shrink-0 flex items-center justify-center",
-        active ? "text-[#0055d4]" : "text-slate-400 group-hover:text-slate-600 stroke-[1.5]",
+        active ? "text-[#0055d4] dark:text-blue-400" : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 stroke-[1.5]",
         !isCollapsed && "ml-auto"
       )}>
         {icon}

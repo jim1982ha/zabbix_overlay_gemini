@@ -302,12 +302,12 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
 
               <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Model</p>
-                  <p className="text-xs font-medium text-slate-700 mt-0.5">{asset.model}</p>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Model</p>
+                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300 mt-0.5">{asset.model}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Uptime</p>
-                  <p className="text-xs font-semibold text-blue-600 mt-0.5 tabular-nums tracking-tight">{asset.uptime}</p>
+                  <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Uptime</p>
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mt-0.5 tabular-nums tracking-tight">{asset.uptime}</p>
                 </div>
               </div>
 
@@ -337,7 +337,7 @@ function UsageBar({ label, value, icon }: any) {
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between items-center px-1">
-        <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+        <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
           {icon}
           {label}
         </div>

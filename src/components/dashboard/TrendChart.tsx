@@ -33,6 +33,7 @@ interface LegendItem {
   name: string;
   color?: string;
   metric?: string; // added to identify parent metric for mixed config
+  configKey?: string; // added to identify seriesConfig key (series1, series2)
   unit?: string;
 }
 
@@ -253,6 +254,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Line 
+                isAnimationActive={false}
                 key={s.key} 
                 hide={hiddenSeries?.has(s.key)} 
                 name={s.name} 
@@ -272,20 +274,20 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         );
       case 'mixed':
         const hasRight = series.some(s => {
-          const metric = s.metric || s.key.split('_')[0];
-          return seriesConfig?.[metric]?.yAxis === 'right';
+          const configKey = s.configKey || s.key.split('_')[0];
+          return seriesConfig?.[configKey]?.yAxis === 'right';
         });
         const hasLeft = series.some(s => {
-          const metric = s.metric || s.key.split('_')[0];
-          return (seriesConfig?.[metric]?.yAxis || 'left') === 'left';
+          const configKey = s.configKey || s.key.split('_')[0];
+          return (seriesConfig?.[configKey]?.yAxis || 'left') === 'left';
         });
 
         return (
           <ComposedChart data={displayedData} margin={{ top: 10, right: hasRight ? 20 : 20, left: 10, bottom: 0 }} {...dragProps}>
             <defs>
               {series.map((s, i) => {
-                const metric = s.metric || s.key.split('_')[0];
-                const type = seriesConfig?.[metric]?.chartType || 'line';
+                const configKey = s.configKey || s.key.split('_')[0];
+                const type = seriesConfig?.[configKey]?.chartType || 'line';
                 if (type !== 'area') return null;
                 const colorValue = getSeriesColor(s);
                 const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
@@ -314,21 +316,22 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               if (a.metric === 'series2' && b.metric === 'series1') return -1;
               return 0;
             }).map((s, i) => {
-              const metric = s.metric || s.key.split('_')[0];
-              const conf = seriesConfig?.[metric] || { chartType: 'line', yAxis: 'left', stacked: false };
+              const configKey = s.configKey || s.key.split('_')[0];
+              const conf = seriesConfig?.[configKey] || { chartType: 'line', yAxis: 'left', stacked: false };
               const t = conf.chartType;
               const yId = conf.yAxis || 'left';
               
               if (t === 'bar') {
                 return (
                   <Bar 
+                    isAnimationActive={false}
                     key={s.key} 
                     hide={hiddenSeries?.has(s.key)} 
                     name={s.name} 
                     dataKey={s.key} 
                     fill={getSeriesColor(s)} 
                     fillOpacity={0.85}
-                    stackId={conf.stacked ? `stack-${metric}` : undefined} 
+                    stackId={conf.stacked ? `stack-${configKey}` : undefined} 
                     unit={unit} 
                     radius={[4, 4, 0, 0]} 
                     yAxisId={yId}
@@ -339,13 +342,14 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
                 return (
                   <Area 
+                    isAnimationActive={false}
                     key={s.key} 
                     hide={hiddenSeries?.has(s.key)} 
                     name={s.name} 
                     type="monotone" 
                     dataKey={s.key} 
                     stroke={colorValue} 
-                    stackId={conf.stacked ? `stack-${metric}` : undefined} 
+                    stackId={conf.stacked ? `stack-${configKey}` : undefined} 
                     strokeWidth={2.5} 
                     fillOpacity={1} 
                     fill={`url(#${safeId})`} 
@@ -357,6 +361,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               } else {
                 return (
                   <Line 
+                    isAnimationActive={false}
                     key={s.key} 
                     hide={hiddenSeries?.has(s.key)} 
                     name={s.name} 
@@ -393,6 +398,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Bar 
+                isAnimationActive={false}
                 key={s.key} 
                 hide={hiddenSeries?.has(s.key)} 
                 name={s.name} 
@@ -440,6 +446,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
               return (
               <Area 
+                isAnimationActive={false}
                 key={s.key} 
                 hide={hiddenSeries?.has(s.key)} 
                 name={s.name} 
@@ -463,17 +470,28 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
     }
   };
 
+  if (!data || data.length === 0) {
+    return (
+      <div 
+        className={`bg-white dark:bg-slate-900 h-full flex flex-col items-center justify-center @container transition-colors duration-300 border border-slate-200 dark:border-slate-800 p-4 @[400px]:p-6`}
+      >
+        <div className="flex gap-3 items-center">
+          <motion.div className="w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600" animate={{ backgroundColor: ['#2563eb', '#cbd5e1', '#cbd5e1'], y: [-3, 0, 0] }} transition={{ duration: 1.5, repeat: Infinity, times: [0, 0.2, 1] }} />
+          <motion.div className="w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600" animate={{ backgroundColor: ['#cbd5e1', '#2563eb', '#cbd5e1'], y: [0, -3, 0] }} transition={{ duration: 1.5, repeat: Infinity, times: [0, 0.2, 1] }} />
+          <motion.div className="w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600" animate={{ backgroundColor: ['#cbd5e1', '#cbd5e1', '#2563eb'], y: [0, 0, -3] }} transition={{ duration: 1.5, repeat: Infinity, times: [0, 0.2, 1] }} />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
+    <div 
       className={`bg-white dark:bg-slate-900 h-full flex flex-col @container transition-colors duration-300 ${zoomDomain ? 'border-[3px] border-sky-300 ring-2 ring-sky-100 ring-offset-1 p-[13px] @[400px]:p-[21px]' : 'border border-slate-200 dark:border-slate-800 dark:border-slate-800 p-4 @[400px]:p-6'}`}
     >
       <div className="flex justify-between items-start mb-6 transition-all duration-300 group-hover:pl-[34px]">
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between mb-2 gap-4">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="w-1.5 h-5 bg-blue-600 rounded-full shrink-0" />
               <h3 className="text-base @[400px]:text-lg font-semibold text-slate-800 dark:text-slate-200 dark:text-slate-100 tracking-tight truncate">{title}</h3>
               {stacked && (
                 <span className="text-xs px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-sky-400 rounded font-medium border border-blue-200 dark:border-blue-500/20 shrink-0 hidden @[250px]:flex">Stacked</span>
@@ -617,6 +635,6 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
