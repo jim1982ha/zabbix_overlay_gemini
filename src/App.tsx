@@ -1374,7 +1374,7 @@ export default function App() {
                     {/* 4. Delete */}
                     <button 
                       onClick={() => handleRemoveWidget(w.id)}
-                      className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded-lg hover:bg-rose-600 shadow-sm transition-all backdrop-blur-md h-[40px] w-[30px] flex items-center justify-center opacity-60 hover:opacity-100 shrink-0"
+                      className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded-lg hover:bg-rose-600 shadow-sm transition-all backdrop-blur-md h-[26px] w-[26px] flex items-center justify-center opacity-60 hover:opacity-100 shrink-0"
                       title="Remove Widget"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -2046,7 +2046,7 @@ export default function App() {
     <>
     <Shell 
       topBar={
-        <div className="flex items-center justify-between w-full h-full text-slate-800 dark:text-slate-200 gap-2 sm:gap-4 lg:gap-8">
+        <div className="flex items-center justify-between w-full h-full text-slate-800 dark:text-slate-200 gap-2 sm:gap-4 lg:gap-8 min-w-0 max-w-full overflow-hidden">
           {view !== 'config' ? (
             <div className="hidden md:flex items-center w-[25%] md:max-w-[70px] lg:max-w-[100px] xl:max-w-[220px] h-[40px] pr-1 lg:pr-2 shrink transition-all min-w-[50px]">
               <Search className="w-5 h-5 text-slate-800 dark:text-slate-400 shrink-0 mr-2 md:mr-3 stroke-[2.5]" />
@@ -2064,7 +2064,7 @@ export default function App() {
             {['dashboard', 'network', 'infra'].includes(view) && (
               <div className="w-full h-full max-w-full min-w-0">
                <ScrollableBar>
-                  <div className="flex flex-nowrap items-center gap-1 sm:gap-4 py-1 h-full pt-1.5 shrink-0 px-2 sm:px-0 min-w-max md:ml-auto">
+                  <div className="flex flex-nowrap items-center gap-1 sm:gap-4 py-1 h-full pt-1.5 shrink-0 px-6 sm:px-2 md:sm:px-0 min-w-max md:ml-auto">
                     {filters.mode === 'live' ? (
                       <>
                         <div className="flex items-center min-w-[120px] h-full shrink-0">

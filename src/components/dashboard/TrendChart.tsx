@@ -21,6 +21,7 @@ import {
   Brush
 } from 'recharts';
 import { motion } from 'motion/react';
+import { Download } from 'lucide-react';
 import { cn, formatValue } from '../../lib/utils';
 
 interface DataPoint {
@@ -76,6 +77,47 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
   if (zoomDomain) {
     displayedData = data.slice(zoomDomain[0], zoomDomain[1] + 1);
   }
+
+  const handleDownloadCSV = () => {
+    if (!displayedData || displayedData.length === 0) return;
+
+    // Filter series to only those that are not hidden
+    const activeSeries = series.filter(s => !hiddenSeries?.has(s.key));
+    if (activeSeries.length === 0) return;
+
+    // Build header row
+    const headers = ['Timestamp', ...activeSeries.map(s => s.name)];
+    
+    // Build data rows
+    const rows = displayedData.map(point => {
+      const timeVal = point.time;
+      const values = activeSeries.map(s => {
+        const val = point[s.key];
+        return val !== undefined ? String(val) : '';
+      });
+      return [timeVal, ...values];
+    });
+
+    // Combine headers and rows into CSV string
+    const csvContent = [
+      headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    // Create a blob and push to download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Sanitize title for filename
+    const safeTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+    link.setAttribute('download', `${safeTitle || 'chart_data'}_export.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleMouseDown = (e: any) => {
     if (chartType === 'pie' || !e || !e.activeLabel) return;
@@ -488,8 +530,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
     <div 
       className={`bg-white dark:bg-slate-900 h-full flex flex-col group @container transition-colors duration-300 ${zoomDomain ? 'border-[3px] border-sky-300 ring-2 ring-sky-100 ring-offset-1 p-[13px] @[400px]:p-[21px]' : 'border border-slate-200 dark:border-slate-800 p-4 @[400px]:p-6'}`}
     >
-      <div className="flex justify-between items-start mb-6">
-        <div className="min-w-0 flex-1 pr-6 lg:group-hover:pr-10 transition-all duration-300">
+      <div className="flex justify-between items-start mb-6 gap-2">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between mb-2 gap-4">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <h3 className="text-base @[400px]:text-lg font-semibold text-slate-800 dark:text-slate-200 dark:text-slate-100 tracking-tight truncate">{title}</h3>
@@ -523,6 +565,13 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             )}
           </div>
         </div>
+        <button
+          onClick={handleDownloadCSV}
+          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800/85 transition-all shadow-sm shrink-0 flex items-center justify-center cursor-pointer mt-0.5"
+          title="Download as CSV"
+        >
+          <Download className="w-4 h-4" />
+        </button>
       </div>
 
       <div className={cn(

@@ -9,8 +9,8 @@ export function ScrollableBar({ children }: { children: ReactNode }) {
   const checkScroll = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(Math.ceil(scrollLeft) > 0);
-      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth - 1);
+      setCanScrollLeft(scrollLeft > 2);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 3);
     }
   }, []);
 
@@ -45,10 +45,10 @@ export function ScrollableBar({ children }: { children: ReactNode }) {
               scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
             }
           }}
-          className="absolute left-0 z-20 w-8 h-full flex items-center justify-start bg-gradient-to-r from-white dark:from-slate-900 from-50% to-transparent pointer-events-auto"
+          className="absolute left-0 z-20 w-10 h-[40px] flex items-center justify-start bg-gradient-to-r from-white dark:from-slate-900 from-30% to-transparent pointer-events-auto cursor-pointer"
         >
-          <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-700 hover:shadow transition-all">
-            <ChevronLeft className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white dark:hover:bg-slate-700 hover:scale-105 active:scale-95 transition-all">
+            <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
           </div>
         </button>
       )}
@@ -68,10 +68,10 @@ export function ScrollableBar({ children }: { children: ReactNode }) {
               scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
             }
           }}
-          className="absolute right-0 z-20 w-8 h-full flex items-center justify-end bg-gradient-to-l from-white dark:from-slate-900 from-50% to-transparent pointer-events-auto"
+          className="absolute right-0 z-20 w-10 h-[40px] flex items-center justify-end bg-gradient-to-l from-white dark:from-slate-900 from-30% to-transparent pointer-events-auto cursor-pointer"
         >
-          <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-700 hover:shadow transition-all">
-            <ChevronRight className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white dark:hover:bg-slate-700 hover:scale-105 active:scale-95 transition-all">
+            <ChevronRight className="w-5 h-5 stroke-[2.5]" />
           </div>
         </button>
       )}
