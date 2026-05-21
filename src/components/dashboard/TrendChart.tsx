@@ -530,7 +530,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
     <div 
       className={`bg-white dark:bg-slate-900 h-full flex flex-col group @container transition-colors duration-300 ${zoomDomain ? 'border-[3px] border-sky-300 ring-2 ring-sky-100 ring-offset-1 p-[13px] @[400px]:p-[21px]' : 'border border-slate-200 dark:border-slate-800 p-4 @[400px]:p-6'}`}
     >
-      <div className="flex justify-between items-start mb-6 gap-2">
+      <div className="mb-6">
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between mb-2 gap-4">
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -540,7 +540,14 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-1.5 items-center pl-3.5">
+          <div className="flex flex-wrap gap-1.5 items-center pl-3.5 pt-0.5">
+            <button
+              onClick={handleDownloadCSV}
+              className="p-1 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/85 transition-all shadow-sm shrink-0 flex items-center justify-center cursor-pointer mr-1 relative z-10"
+              title="Download as CSV"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </button>
             {hosts.map(h => {
               const hostSeries = series.filter(s => s.key.endsWith(`_${h}`));
               const isFiltered = hostSeries.length > 0 && hostSeries.every(s => hiddenSeries?.has(s.key));
@@ -565,13 +572,6 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             )}
           </div>
         </div>
-        <button
-          onClick={handleDownloadCSV}
-          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800/85 transition-all shadow-sm shrink-0 flex items-center justify-center cursor-pointer mt-0.5"
-          title="Download as CSV"
-        >
-          <Download className="w-4 h-4" />
-        </button>
       </div>
 
       <div className={cn(
