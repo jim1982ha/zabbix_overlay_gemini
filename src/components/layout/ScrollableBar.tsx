@@ -9,8 +9,8 @@ export function ScrollableBar({ children }: { children: ReactNode }) {
   const checkScroll = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
+      setCanScrollLeft(Math.ceil(scrollLeft) > 0);
+      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth - 1);
     }
   }, []);
 

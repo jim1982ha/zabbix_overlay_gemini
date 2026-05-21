@@ -1278,8 +1278,9 @@ export default function App() {
                     {/* 2. Drag Handle */}
                     {!isMobile && (
                       <div 
-                        className="flex items-center justify-center p-1.5 bg-white/90 backdrop-blur-md rounded-lg shadow-sm border border-slate-200/50 text-slate-400 cursor-grab active:cursor-grabbing hover:bg-slate-50 hover:text-slate-600 transition-colors h-[26px] w-[26px] shrink-0"
+                        className="flex items-center justify-center p-1.5 bg-white/90 backdrop-blur-md rounded-lg shadow-sm border border-slate-200/50 text-slate-400 cursor-grab active:cursor-grabbing hover:bg-slate-50 hover:text-slate-600 transition-colors h-[26px] w-[26px] shrink-0 select-none"
                         onMouseDown={(e) => {
+                          e.preventDefault(); // Prevent text selection
                           // Only trigger drag if we are not clicking a button
                           if ((e.target as HTMLElement).closest('button')) return;
                           
@@ -1287,6 +1288,7 @@ export default function App() {
                           const startY = e.clientY;
                           let isDragging = false;
                           const dragThreshold = 5;
+                          let lastSwapTime = 0;
 
                           const handleGlobalMouseMove = (moveEvent: MouseEvent) => {
                             const dist = Math.sqrt(Math.pow(moveEvent.clientX - startX, 2) + Math.pow(moveEvent.clientY - startY, 2));
@@ -1298,6 +1300,9 @@ export default function App() {
                             }
 
                             if (isDragging) {
+                              const now = Date.now();
+                              if (now - lastSwapTime < 150) return; // Throttle swaps for smoothness
+
                               // Find element under cursor
                               const elements = document.elementsFromPoint(moveEvent.clientX, moveEvent.clientY);
                               const hoveredWidget = elements.find(el => 
@@ -1307,6 +1312,7 @@ export default function App() {
                               if (hoveredWidget) {
                                 const targetId = hoveredWidget.getAttribute('data-widget-id');
                                 if (targetId) {
+                                  lastSwapTime = now;
                                   setWidgets(currentWidgets => {
                                     const fromIndex = currentWidgets.findIndex(item => item.id === w.id);
                                     const toIndex = currentWidgets.findIndex(item => item.id === targetId);
@@ -1339,34 +1345,36 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* 3. Move up-down (was left-right) */}
-                    <div className="flex flex-col bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-lg overflow-hidden shadow-sm shrink-0">
+                    {/* 3. Move left-right */}
+                    <div className="flex flex-col bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-lg overflow-hidden shadow-sm shrink-0 select-none">
                       <button 
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleMoveWidget(w.id, 'left')} 
                         className={cn(
-                          "p-1 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors border-b border-slate-200/50 flex items-center justify-center",
+                          "p-1.5 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors border-b border-slate-200/50 flex items-center justify-center",
                           index === 0 && "opacity-20 pointer-events-none"
                         )} 
-                        title="Move Up"
+                        title="Move Left"
                       >
-                        <ChevronUp className="w-3 h-3" />
+                        <ChevronLeft className="w-3.5 h-3.5" />
                       </button>
                       <button 
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleMoveWidget(w.id, 'right')} 
                         className={cn(
-                          "p-1 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors flex items-center justify-center",
+                          "p-1.5 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors flex items-center justify-center",
                           index === widgets.length - 1 && "opacity-20 pointer-events-none"
                         )} 
-                        title="Move Down"
+                        title="Move Right"
                       >
-                        <ChevronDown className="w-3 h-3" />
+                        <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
                     {/* 4. Delete */}
                     <button 
                       onClick={() => handleRemoveWidget(w.id)}
-                      className="p-1.5 bg-white/90 hover:bg-rose-50 border border-slate-200/50 hover:border-rose-200 text-slate-400 hover:text-rose-600 rounded-lg shadow-sm transition-all backdrop-blur-md h-[26px] w-[26px] flex items-center justify-center opacity-60 hover:opacity-100 shrink-0"
+                      className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded-lg hover:bg-rose-600 shadow-sm transition-all backdrop-blur-md h-[40px] w-[30px] flex items-center justify-center opacity-60 hover:opacity-100 shrink-0"
                       title="Remove Widget"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -2056,7 +2064,7 @@ export default function App() {
             {['dashboard', 'network', 'infra'].includes(view) && (
               <div className="w-full h-full max-w-full min-w-0">
                <ScrollableBar>
-                  <div className="flex flex-nowrap items-center gap-1 sm:gap-4 py-1 h-full pt-1.5 shrink-0 px-2 sm:px-0 min-w-max ml-auto">
+                  <div className="flex flex-nowrap items-center gap-1 sm:gap-4 py-1 h-full pt-1.5 shrink-0 px-2 sm:px-0 min-w-max md:ml-auto">
                     {filters.mode === 'live' ? (
                       <>
                         <div className="flex items-center min-w-[120px] h-full shrink-0">
