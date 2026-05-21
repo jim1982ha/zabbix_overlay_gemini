@@ -3,6 +3,8 @@ import { ReactNode } from "react";
 import { TrendingUp, TrendingDown, Clock } from "lucide-react";
 import { cn } from "../../lib/utils";
 
+import { Card } from "../ui/Card";
+
 interface StatCardProps {
   title: string;
   value: string | number;
@@ -18,11 +20,11 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
   const isPositive = trend === 'up';
   
   return (
-    <div 
-      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 @[300px]:p-5 flex flex-col justify-between relative overflow-hidden group h-full transition-all duration-300 @container flex-1 hover:-translate-y-0.5"
+    <Card 
+      className="p-4 @[300px]:p-5 flex flex-col justify-between relative overflow-hidden group h-full transition-all duration-300 @container flex-1"
     >
       {/* Header with Title Indicator */}
-      <div className="relative z-10 flex flex-col gap-1.5 shrink-0 transition-all duration-300 group-hover:pl-2">
+      <div className="relative z-10 flex flex-col gap-1.5 shrink-0 pr-6 lg:group-hover:pr-10 transition-all duration-300">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 truncate block w-full" title={tooltip || title}>
               {title}
@@ -78,6 +80,6 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
         )}
 
       </div>
-    </div>
+    </Card>
   );
 }

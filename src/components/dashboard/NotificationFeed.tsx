@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Activity, Shield, AlertTriangle, CheckCircle, Clock, X, ExternalLink, Zap, ChevronRight } from 'lucide-react';
+import { Bell, Activity, Shield, AlertTriangle, CheckCircle, Clock, X, ExternalLink, Zap } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import axios from 'axios';
+import { FilterBar, FilterButton } from "../ui/FilterBar";
+import { STDL_LIST_CARD_CLASS } from "../ui/Card";
 
 interface Notification {
   id: number;
@@ -136,33 +138,70 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
     return zabbixBaseUrl;
   };
 
+  const counts = useMemo(() => {
+    const res = { all: 0, critical: 0, warning: 0, info: 0, success: 0 };
+    notificationsList.forEach(n => {
+      res.all++;
+      if (n.severity in res) {
+        res[n.severity as keyof typeof res]++;
+      }
+    });
+    return res;
+  }, [notificationsList]);
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        <div className="flex gap-2 flex-wrap">
-            {['all', 'critical', 'warning', 'info', 'success'].map(sev => (
-                <button
-                    key={sev}
-                    onClick={() => setSeverityFilter(sev as any)}
-                    className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all border",
-                        severityFilter === sev 
-                            ? "bg-slate-800 text-white border-slate-800 shadow-sm" 
-                            : "bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800 dark:border-slate-800 hover:bg-slate-50 dark:bg-slate-900 dark:bg-slate-950"
-                    )}
-                >
-                    {sev}
-                </button>
-            ))}
+    <div className="space-y-6">
+      <FilterBar>
+        <div className="flex gap-2 flex-1 overflow-x-auto scrollbar-hide scroll-smooth pb-1 sm:pb-0">
+          <FilterButton 
+            onClick={() => setSeverityFilter('all')}
+            active={severityFilter === 'all'}
+            activeVariant="slate"
+            badge={counts.all}
+          >
+            All
+          </FilterButton>
+          <FilterButton 
+            onClick={() => setSeverityFilter('critical')}
+            active={severityFilter === 'critical'}
+            activeVariant="rose"
+            badge={counts.critical}
+          >
+            Critical
+          </FilterButton>
+          <FilterButton 
+            onClick={() => setSeverityFilter('warning')}
+            active={severityFilter === 'warning'}
+            activeVariant="amber"
+            badge={counts.warning}
+          >
+            Warning
+          </FilterButton>
+          <FilterButton 
+            onClick={() => setSeverityFilter('info')}
+            active={severityFilter === 'info'}
+            activeVariant="blue"
+            badge={counts.info}
+          >
+            Info
+          </FilterButton>
+          <FilterButton 
+            onClick={() => setSeverityFilter('success')}
+            active={severityFilter === 'success'}
+            activeVariant="emerald"
+            badge={counts.success}
+          >
+            Success
+          </FilterButton>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0 ml-auto">
             {globalSearch && (
-                <span className="text-xs text-blue-600 font-medium bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
-                    Search: {globalSearch}
+                <span className="text-xs text-slate-500 font-semibold px-3 py-1.5 flex items-center">
+                    Filtering for: "{globalSearch}"
                 </span>
             )}
         </div>
-      </div>
+      </FilterBar>
 
       <div className="space-y-4">
         {filteredNotifications.length === 0 ? (
@@ -177,10 +216,10 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.1 }}
             onClick={() => setSelectedNotification(n)}
-            className="bg-white dark:bg-slate-900 border border-slate-200 p-5 flex gap-5 hover:border-blue-500/30 transition-all group cursor-pointer relative overflow-hidden shadow-sm"
+            className={cn(STDL_LIST_CARD_CLASS, "p-5 flex gap-5 hover:border-blue-300 dark:hover:border-blue-800/40 cursor-pointer")}
           >
             <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+              "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
               n.severity === 'critical' ? "bg-rose-50 text-rose-600 border border-rose-100" :
               n.severity === 'warning' ? "bg-amber-50 text-amber-600 border border-amber-100" :
               n.severity === 'success' ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
@@ -211,13 +250,10 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
             <div className="flex flex-col justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                <button 
                   onClick={(e) => handleDismiss(n.id, e)}
-                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 dark:bg-slate-800 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-all"
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-all"
                 >
                   <X className="w-4 h-4" />
                </button>
-               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center transition-colors">
-                  <ChevronRight className="w-4 h-4 text-slate-600" />
-               </div>
             </div>
           </motion.div>
         ))}

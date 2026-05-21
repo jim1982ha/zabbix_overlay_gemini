@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Server, Cpu, HardDrive, Database, Zap, Activity, ChevronRight, ChevronLeft, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { FilterBar, FilterButton } from '../ui/FilterBar';
+import { STDL_LIST_CARD_CLASS } from '../ui/Card';
 import axios from 'axios';
 
 export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showToast }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void }) {
@@ -159,8 +161,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
 
   return (
     <div className="space-y-6">
-      {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 dark:border-slate-800 p-2 shadow-sm relative overflow-hidden">
+      <FilterBar>
         {globalSearch && (
           <div className="flex items-center px-2 sm:px-4 shrink-0">
               <span className="text-xs font-semibold text-slate-500">
@@ -176,9 +177,9 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                   scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
                 }
               }}
-              className="absolute left-0 z-10 w-8 h-full flex items-center justify-start bg-gradient-to-r from-white dark:from-slate-900 from-50% to-transparent pointer-events-auto"
+              className="absolute left-0 z-10 w-8 h-full flex items-center justify-start bg-gradient-to-r from-white dark:from-slate-900 from-50% to-transparent pointer-events-auto border-none outline-none"
             >
-              <div className="w-6 h-6 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-200 hover:shadow transition-all">
+              <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-200 hover:shadow transition-all">
                  <ChevronLeft className="w-4 h-4" />
               </div>
             </button>
@@ -187,40 +188,26 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
           <div 
             ref={scrollContainerRef}
             onScroll={checkScroll}
-            className="flex gap-2 flex-1 overflow-x-auto no-scrollbar scroll-smooth pb-1 sm:pb-0"
+            className="flex gap-2 flex-1 overflow-x-auto scrollbar-hide scroll-smooth pb-1 sm:pb-0"
           >
-            <button 
+            <FilterButton 
               onClick={() => setActiveHostGroup('all')}
-              className={cn(
-                "px-4 py-2 text-sm font-semibold transition-all rounded-lg whitespace-nowrap flex items-center gap-2",
-                activeHostGroup === 'all' ? "bg-slate-100 dark:bg-slate-800 dark:bg-slate-800 text-slate-800" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:bg-slate-950"
-              )}
+              active={activeHostGroup === 'all'}
+              activeVariant="slate"
+              badge={allAssets.length}
             >
               All
-              <span className={cn(
-                "px-1.5 py-0.5 rounded-md text-[10px] font-bold",
-                activeHostGroup === 'all' ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-500"
-              )}>
-                {allAssets.length}
-              </span>
-            </button>
+            </FilterButton>
             {hostGroupsWithCounts.map(group => (
-              <button 
+              <FilterButton 
                 key={group.name}
                 onClick={() => setActiveHostGroup(group.name)}
-                className={cn(
-                  "px-4 py-2 text-sm font-semibold transition-all rounded-lg whitespace-nowrap flex items-center gap-2",
-                  activeHostGroup === group.name ? "bg-blue-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                )}
+                active={activeHostGroup === group.name}
+                activeVariant="blue"
+                badge={group.count}
               >
                 {group.name}
-                <span className={cn(
-                  "px-1.5 py-0.5 rounded-md text-[10px] font-bold",
-                  activeHostGroup === group.name ? "bg-blue-400 text-white" : "bg-slate-100 text-slate-500"
-                )}>
-                  {group.count}
-                </span>
-              </button>
+              </FilterButton>
             ))}
           </div>
 
@@ -231,15 +218,15 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                   scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
                 }
               }}
-              className="absolute right-0 z-10 w-8 h-full flex items-center justify-end bg-gradient-to-l from-white from-50% to-transparent pointer-events-auto"
+              className="absolute right-0 z-10 w-8 h-full flex items-center justify-end bg-gradient-to-l from-white dark:from-slate-900 from-50% to-transparent pointer-events-auto border-none outline-none"
             >
-              <div className="w-6 h-6 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:shadow transition-all">
+              <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-200 hover:shadow transition-all">
                 <ChevronRight className="w-4 h-4" />
               </div>
             </button>
           )}
         </div>
-      </div>
+      </FilterBar>
 
       {filteredAssets.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -265,7 +252,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                 const zBase = baseUrl.includes('api_jsonrpc.php') ? baseUrl.replace('/api_jsonrpc.php', '') : baseUrl;
                 window.open(`${zBase}/zabbix.php?action=latest.view&hostids[]=${asset.hostid}`, '_blank', 'noopener,noreferrer');
               }}
-              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 group hover:border-blue-200 cursor-pointer transition-all relative overflow-hidden shadow-sm hover:shadow-md"
+              className={cn(STDL_LIST_CARD_CLASS, "p-6 group hover:border-blue-300 cursor-pointer")}
             >
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">

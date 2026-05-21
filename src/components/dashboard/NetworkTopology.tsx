@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Activity, Globe, Zap, Shield, ArrowUpRight, ArrowDownRight, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { Card } from "../ui/Card";
+import { FilterBar, FilterButton } from "../ui/FilterBar";
 import axios from 'axios';
 
 export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string } }) {
@@ -200,39 +202,33 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 dark:bg-slate-800 p-1 w-fit rounded-lg">
-          <button 
+      <FilterBar>
+        <div className="flex gap-2 flex-1 overflow-x-auto scrollbar-hide scroll-smooth pb-1 sm:pb-0">
+          <FilterButton 
             onClick={() => setGroupingMode('none')}
-            className={cn(
-              "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
-              groupingMode === 'none' ? "bg-white dark:bg-slate-900 dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-            )}
+            active={groupingMode === 'none'}
+            activeVariant="slate"
           >
             Organic
-          </button>
-          <button 
+          </FilterButton>
+          <FilterButton 
             onClick={() => setGroupingMode('hostGroup')}
-            className={cn(
-              "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
-              groupingMode === 'hostGroup' ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-            )}
+            active={groupingMode === 'hostGroup'}
+            activeVariant="slate"
           >
             Host Groups
-          </button>
-          <button 
+          </FilterButton>
+          <FilterButton 
             onClick={() => setGroupingMode('status')}
-            className={cn(
-              "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all",
-              groupingMode === 'status' ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-            )}
+            active={groupingMode === 'status'}
+            activeVariant="slate"
           >
             Status
-          </button>
+          </FilterButton>
         </div>
-      </div>
+      </FilterBar>
       <div className="flex flex-col gap-6">
-        <div ref={containerRef} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-4 relative min-h-[450px] overflow-x-auto shadow-sm custom-scrollbar block rounded-xl">
+        <Card ref={containerRef} className="p-4 relative min-h-[450px] overflow-x-auto shadow-none block rounded-none border-slate-200">
           {/* SVG Topology Graph */}
           {(() => {
             const maxY = nodes.length > 0 ? Math.max(...nodes.map(n => n.y)) : 300;
@@ -405,7 +401,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
 
 
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(2,132,199,0.02),transparent)] pointer-events-none" />
-        </div>
+        </Card>
       </div>
       
       {/* Tooltip Overlay */}

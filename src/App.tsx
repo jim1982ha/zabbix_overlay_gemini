@@ -16,6 +16,9 @@ import { TrendChart } from "./components/dashboard/TrendChart";
 import { RangePicker } from "./components/dashboard/RangePicker";
 import { NetworkTopology } from "./components/dashboard/NetworkTopology";
 import { InfraInventory } from "./components/dashboard/InfraInventory";
+import { ScrollableBar } from "./components/layout/ScrollableBar";
+import { PortalMenu } from "./components/dashboard/PortalMenu";
+import { Card } from "./components/ui/Card";
 import { NotificationFeed } from "./components/dashboard/NotificationFeed";
 import { ImportModal } from "./components/dashboard/ImportModal";
 import { 
@@ -40,6 +43,7 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronDown,
+  ChevronUp,
   Bell,
   Search,
   X,
@@ -47,6 +51,9 @@ import {
   ZoomOut,
   GripVertical,
   ArrowUpDown,
+  TrendingUp,
+  BarChart3,
+  Hash,
   Info
 } from "lucide-react";
 import axios from "axios";
@@ -985,6 +992,33 @@ export default function App() {
 
   const [showRangeMenu, setShowRangeMenu] = useState(false);
   const [showGranMenu, setShowGranMenu] = useState(false);
+  const [showModeMenu, setShowModeMenu] = useState(false);
+
+  const rangeMenuBtnRef = useRef<HTMLButtonElement>(null);
+  const granMenuBtnRef = useRef<HTMLButtonElement>(null);
+  const modeMenuBtnRef = useRef<HTMLButtonElement>(null);
+
+  const filterScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollFiltersLeft, setCanScrollFiltersLeft] = useState(false);
+  const [canScrollFiltersRight, setCanScrollFiltersRight] = useState(false);
+
+  const checkFilterScroll = useCallback(() => {
+    if (filterScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = filterScrollRef.current;
+      setCanScrollFiltersLeft(scrollLeft > 1);
+      setCanScrollFiltersRight(scrollLeft + clientWidth < scrollWidth - 2);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Add brief delay to ensure rendering completes
+    const timer = setTimeout(checkFilterScroll, 100);
+    window.addEventListener('resize', checkFilterScroll);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkFilterScroll);
+    };
+  }, [checkFilterScroll, view, filters]);
 
   const renderContent = () => {
     if (view === "network") {
@@ -1002,9 +1036,9 @@ export default function App() {
 
     if (view === "config") {
       return (
-        <div className="w-full flex-1 flex flex-col items-center justify-center min-h-[400px] py-12">
+        <div className="w-full flex-1 flex flex-col items-center py-1 sm:py-2">
           <div className="w-full max-w-3xl space-y-6">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm p-6 sm:p-8 rounded-xl">
+            <Card className="p-6 sm:p-8">
               <div className="space-y-6">
               {zabbixConfig.isPreconfigured ? (
                  <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400">
@@ -1109,7 +1143,7 @@ export default function App() {
             <p className="text-xs text-slate-500 text-center font-medium mt-6">
               Authentication is handled server-side via the HA Gateway Proxy.
             </p>
-          </div>
+          </Card>
         </div>
         </div>
       );
@@ -1218,12 +1252,22 @@ export default function App() {
                   "absolute inset-0 z-30 pointer-events-none opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200",
                   draggingWidgetId === w.id && "opacity-0"
                 )}>
-                  <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start pointer-events-auto">
+                  <div className="absolute top-3 right-3 flex flex-col justify-start gap-1.5 items-end pointer-events-auto z-50">
+                      {widgetZoomDomains[w.id] && (
+                        <button 
+                          onClick={() => handleZoomOut(w.id)}
+                          className="flex items-center gap-1.5 px-2 py-1.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 hover:text-sky-700 hover:border-sky-300 rounded-lg shadow-sm transition-all backdrop-blur-md text-[10px] font-bold uppercase tracking-wider h-[26px]"
+                          title="Zoom Out"
+                        >
+                          <ZoomOut className="w-3 h-3" />
+                          <span className="hidden sm:inline">Reset Zoom</span>
+                        </button>
+                      )}
                     {/* 1. Edit */}
                     <button 
                       onClick={() => setEditingWidgetId(editingWidgetId === w.id ? null : w.id)}
                       className={cn(
-                        "p-1.5 rounded-lg border transition-all shadow-sm backdrop-blur-md h-[26px] w-[26px] flex items-center justify-center",
+                        "p-1.5 rounded-lg border transition-all shadow-sm backdrop-blur-md h-[26px] w-[26px] flex items-center justify-center shrink-0",
                         editingWidgetId === w.id ? "bg-blue-600 border-blue-500 text-white" : "bg-white/90 border-slate-200/50 text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                       )}
                       title="Edit Widget"
@@ -1234,7 +1278,7 @@ export default function App() {
                     {/* 2. Drag Handle */}
                     {!isMobile && (
                       <div 
-                        className="flex items-center justify-center p-1.5 bg-white/90 backdrop-blur-md rounded-lg shadow-sm border border-slate-200/50 text-slate-400 cursor-grab active:cursor-grabbing hover:bg-slate-50 hover:text-slate-600 transition-colors h-[26px] w-[26px]"
+                        className="flex items-center justify-center p-1.5 bg-white/90 backdrop-blur-md rounded-lg shadow-sm border border-slate-200/50 text-slate-400 cursor-grab active:cursor-grabbing hover:bg-slate-50 hover:text-slate-600 transition-colors h-[26px] w-[26px] shrink-0"
                         onMouseDown={(e) => {
                           // Only trigger drag if we are not clicking a button
                           if ((e.target as HTMLElement).closest('button')) return;
@@ -1295,52 +1339,38 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* 3. Move left-right */}
-                    <div className="flex flex-col bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-lg overflow-hidden shadow-sm w-[26px]">
+                    {/* 3. Move up-down (was left-right) */}
+                    <div className="flex flex-col bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-lg overflow-hidden shadow-sm shrink-0">
                       <button 
                         onClick={() => handleMoveWidget(w.id, 'left')} 
                         className={cn(
-                          "py-1 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors border-b border-slate-200/50 flex items-center justify-center w-full",
+                          "p-1 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors border-b border-slate-200/50 flex items-center justify-center",
                           index === 0 && "opacity-20 pointer-events-none"
                         )} 
-                        title="Move Backwards"
+                        title="Move Up"
                       >
-                        <ChevronLeft className="w-3 h-3" />
+                        <ChevronUp className="w-3 h-3" />
                       </button>
                       <button 
                         onClick={() => handleMoveWidget(w.id, 'right')} 
                         className={cn(
-                          "py-1 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors flex items-center justify-center w-full",
+                          "p-1 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors flex items-center justify-center",
                           index === widgets.length - 1 && "opacity-20 pointer-events-none"
                         )} 
-                        title="Move Forwards"
+                        title="Move Down"
                       >
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronDown className="w-3 h-3" />
                       </button>
                     </div>
 
                     {/* 4. Delete */}
                     <button 
                       onClick={() => handleRemoveWidget(w.id)}
-                      className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded-lg hover:bg-rose-600 shadow-sm transition-all backdrop-blur-md h-[26px] w-[26px] flex items-center justify-center opacity-60 hover:opacity-100"
+                      className="p-1.5 bg-white/90 hover:bg-rose-50 border border-slate-200/50 hover:border-rose-200 text-slate-400 hover:text-rose-600 rounded-lg shadow-sm transition-all backdrop-blur-md h-[26px] w-[26px] flex items-center justify-center opacity-60 hover:opacity-100 shrink-0"
                       title="Remove Widget"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                  </div>
-
-                  {/* Widget Actions (Top Right) */}
-                  <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end pointer-events-auto">
-                      {widgetZoomDomains[w.id] && (
-                        <button 
-                          onClick={() => handleZoomOut(w.id)}
-                          className="flex items-center gap-1.5 px-2 py-1.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 hover:text-sky-700 hover:border-sky-300 rounded-lg shadow-sm transition-all backdrop-blur-md text-[10px] font-bold uppercase tracking-wider h-[26px]"
-                          title="Zoom Out"
-                        >
-                          <ZoomOut className="w-3 h-3" />
-                          Reset Zoom
-                        </button>
-                      )}
                   </div>
 
                 {/* Resize Handles (Hidden on small screens) */}
@@ -1797,22 +1827,18 @@ export default function App() {
                     let timestampStr: string | undefined = undefined;
                     if (lastPoint?.time) {
                        const d = new Date(lastPoint.time);
-                       if (filters.mode === 'live') {
-                           let d2: Date | null = null;
-                           if (filters.granularity === '1h') d2 = new Date(d.getTime() + 60 * 60 * 1000);
-                           else if (filters.granularity === '1m') d2 = new Date(d.getTime() + 60 * 1000);
-                           else if (filters.granularity === '5m') d2 = new Date(d.getTime() + 5 * 60 * 1000);
-                           else if (filters.granularity === '15m') d2 = new Date(d.getTime() + 15 * 60 * 1000);
-                           else if (filters.granularity === '30m') d2 = new Date(d.getTime() + 30 * 60 * 1000);
-                           
-                           if (d2) {
-                               timestampStr = `${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-                           } else if (filters.granularity === '1d') {
-                               const dNext = new Date(d.getTime() + 24 * 60 * 60 * 1000);
-                               timestampStr = `${d.toLocaleDateString()} - ${dNext.toLocaleDateString()}`;
-                           } else {
-                               timestampStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                           }
+                       let d2: Date | null = null;
+                       if (filters.granularity === '1h') d2 = new Date(d.getTime() + 60 * 60 * 1000);
+                       else if (filters.granularity === '1m') d2 = new Date(d.getTime() + 60 * 1000);
+                       else if (filters.granularity === '5m') d2 = new Date(d.getTime() + 5 * 60 * 1000);
+                       else if (filters.granularity === '15m') d2 = new Date(d.getTime() + 15 * 60 * 1000);
+                       else if (filters.granularity === '30m') d2 = new Date(d.getTime() + 30 * 60 * 1000);
+                       
+                       if (d2) {
+                           timestampStr = `${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                       } else if (filters.granularity === '1d') {
+                           const dNext = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+                           timestampStr = `${d.toLocaleDateString()} - ${dNext.toLocaleDateString()}`;
                        } else {
                            timestampStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                        }
@@ -2012,181 +2038,175 @@ export default function App() {
     <>
     <Shell 
       topBar={
-        <div className="flex items-center justify-between w-full h-full text-slate-800 dark:text-slate-200 px-4">
+        <div className="flex items-center justify-between w-full h-full text-slate-800 dark:text-slate-200 gap-2 sm:gap-4 lg:gap-8">
           {view !== 'config' ? (
-            <div className="flex items-center w-full max-w-sm h-[40px] pr-4">
-              <Search className="w-5 h-5 text-slate-800 dark:text-slate-400 shrink-0 mr-3 stroke-[2.5]" />
+            <div className="hidden md:flex items-center w-[25%] md:max-w-[70px] lg:max-w-[100px] xl:max-w-[220px] h-[40px] pr-1 lg:pr-2 shrink transition-all min-w-[50px]">
+              <Search className="w-5 h-5 text-slate-800 dark:text-slate-400 shrink-0 mr-2 md:mr-3 stroke-[2.5]" />
               <input 
                 type="text" 
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
                 placeholder="Search" 
-                className="w-full bg-transparent text-[15px] font-semibold text-slate-800 dark:text-slate-200 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500" 
+                className="w-full bg-transparent text-[15px] font-semibold text-slate-800 dark:text-slate-200 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 min-w-[30px]" 
               />
             </div>
           ) : <div />}
 
-          <div className="flex items-center h-full gap-4">
+          <div className="flex-1 min-w-0 flex items-center h-full justify-end select-none">
             {['dashboard', 'network', 'infra'].includes(view) && (
-              <div className="flex px-2 py-1 shrink-0 h-[36px] items-center gap-2 sm:gap-4">
-              {filters.mode === 'live' ? (
-                <div className="flex items-center gap-2 sm:gap-4 h-full">
-                  <div className="flex items-center min-w-[120px] relative h-full">
-                    <button 
-                      onClick={() => setShowRangeMenu(!showRangeMenu)}
-                      className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-slate-500 font-normal hidden xl:inline">Rolling:</span>
-                        <span className="font-semibold text-blue-600 dark:text-sky-400">
-                          {filters.range === '1h' ? 'Last Hour' : 
-                          filters.range === '6h' ? 'Last 6 Hours' : 
-                          filters.range === '24h' ? 'Last 24 Hours' : 'Last 7 Days'}
-                        </span>
-                      </span>
-                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
-                    </button>
-                    {showRangeMenu && (
+              <div className="w-full h-full max-w-full min-w-0">
+               <ScrollableBar>
+                  <div className="flex flex-nowrap items-center gap-1 sm:gap-4 py-1 h-full pt-1.5 shrink-0 px-2 sm:px-0 min-w-max ml-auto">
+                    {filters.mode === 'live' ? (
                       <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowRangeMenu(false)} />
-                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                          {['1h', '6h', '24h', '7d'].map((r) => (
-                            <button 
-                              key={r}
-                              onClick={() => {
-                                setFilters({...filters, range: r});
-                                setShowRangeMenu(false);
-                              }}
-                              className={cn(
-                                "w-full px-3 py-2 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-                                filters.range === r ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
-                              )}
-                            >
-                              {r === '1h' ? 'Last Hour' : 
-                               r === '6h' ? '6 Hours' : 
-                               r === '24h' ? '24 Hours' : '7 Days'}
-                            </button>
-                          ))}
+                        <div className="flex items-center min-w-[120px] h-full shrink-0">
+                          <button 
+                            ref={rangeMenuBtnRef}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowRangeMenu(!showRangeMenu); }}
+                            className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full rounded"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-slate-500 font-normal hidden xl:inline">Rolling:</span>
+                              <span className="font-semibold text-blue-600 dark:text-sky-400">
+                                {filters.range === '1h' ? 'Last Hour' : 
+                                filters.range === '6h' ? 'Last 6 Hours' : 
+                                filters.range === '24h' ? 'Last 24 Hours' : 'Last 7 Days'}
+                              </span>
+                            </span>
+                            <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                          </button>
+                        </div>
+                        <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 shrink-0" />
+                        <div className="flex items-center min-w-[120px] h-full shrink-0">
+                          <button 
+                            ref={granMenuBtnRef}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowGranMenu(!showGranMenu); }}
+                            className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full rounded"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-slate-500 font-normal hidden xl:inline">Granularity:</span>
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                {filters.granularity === '1m' ? '1 Min' :
+                                filters.granularity === '5m' ? '5 Min' :
+                                filters.granularity === '15m' ? '15 Min' : '1 Hour'}
+                              </span>
+                            </span>
+                            <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <RangePicker 
+                          range={{ start: filters.start, end: filters.end }}
+                          onChange={(newVal) => setFilters({...filters, ...newVal})}
+                        />
+                        <div className="hidden sm:block w-[1px] h-4 bg-slate-200 dark:bg-slate-800 shrink-0" />
+                        <div className="flex items-center min-w-[100px] h-full shrink-0">
+                          <button 
+                            ref={granMenuBtnRef}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowGranMenu(!showGranMenu); }}
+                            className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full rounded"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-slate-500 font-normal hidden xl:inline">Resolution:</span>
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                {filters.granularity === '5m' ? '5 Min' :
+                                filters.granularity === '30m' ? '30 Min' :
+                                filters.granularity === '1d' ? '1 Day' : '1 Hour'}
+                              </span>
+                            </span>
+                            <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                          </button>
                         </div>
                       </>
                     )}
-                  </div>
-                  <div className="hidden sm:block w-[1px] h-4 bg-slate-200 dark:bg-slate-800" />
-                  <div className="flex items-center min-w-[100px] relative h-full">
-                    <button 
-                      onClick={() => setShowGranMenu(!showGranMenu)}
-                      className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-slate-500 font-normal hidden xl:inline">Granularity:</span>
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                          {filters.granularity === '1m' ? '1 Min' :
-                          filters.granularity === '5m' ? '5 Min' :
-                          filters.granularity === '15m' ? '15 Min' : '1 Hour'}
+                    <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 block shrink-0" />
+                    <div className="flex items-center min-w-[80px] sm:min-w-[100px] h-full shrink-0">
+                      <button 
+                        ref={modeMenuBtnRef}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowModeMenu(!showModeMenu); }}
+                        className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full rounded relative overflow-hidden"
+                      >
+                        <span className="flex items-center gap-2 relative z-10 w-full h-full justify-between">
+                          <span className="font-semibold text-slate-700 dark:text-slate-200">
+                            {filters.mode === 'live' ? 'Live' : 'Historical'}
+                          </span>
+                          <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
                         </span>
-                      </span>
-                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
-                    </button>
-                    {showGranMenu && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowGranMenu(false)} />
-                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                          {['1m', '5m', '15m', '1h'].map((g) => (
-                            <button 
-                              key={g}
-                              onClick={() => {
-                                setFilters({...filters, granularity: g});
-                                setShowGranMenu(false);
-                              }}
-                              className={cn(
-                                "w-full px-3 py-2 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-                                filters.granularity === g ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10" : "text-slate-600 dark:text-slate-400"
-                              )}
-                            >
-                              {g === '1m' ? '1 Minute' : g === '5m' ? '5 Minutes' : g === '15m' ? '15 Min' : '1 Hour'}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                        {filters.mode === 'live' && (
+                            <div 
+                              className="absolute bottom-0 left-0 h-[3px] bg-blue-600 transition-all duration-1000 ease-linear pointer-events-none rounded-b" 
+                              style={{ width: `${refreshProgress}%` }} 
+                            />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 sm:gap-4 h-full">
-                  <RangePicker 
-                    range={{ start: filters.start, end: filters.end }}
-                    onChange={(newVal) => setFilters({...filters, ...newVal})}
-                  />
-                  <div className="hidden sm:block w-[1px] h-4 bg-slate-200 dark:bg-slate-800" />
-                  <div className="flex items-center min-w-[100px] relative h-full">
-                    <button 
-                      onClick={() => setShowGranMenu(!showGranMenu)}
-                      className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-slate-500 font-normal hidden xl:inline">Resolution:</span>
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                          {filters.granularity === '5m' ? '5 Min' :
-                          filters.granularity === '30m' ? '30 Min' :
-                          filters.granularity === '1d' ? '1 Day' : '1 Hour'}
-                        </span>
-                      </span>
-                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
-                    </button>
-                    {showGranMenu && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowGranMenu(false)} />
-                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                          {['5m', '30m', '1h', '1d'].map((g) => (
-                            <button 
-                              key={g}
-                              onClick={() => {
-                                setFilters({...filters, granularity: g});
-                                setShowGranMenu(false);
-                              }}
-                              className={cn(
-                                "w-full px-3 py-2 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-                                filters.granularity === g ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10" : "text-slate-600 dark:text-slate-400"
-                              )}
-                            >
-                              {g === '5m' ? '5 Minutes' : g === '30m' ? '30 Minutes' : g === '1d' ? '1 Day' : '1 Hour'}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-                  <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 block" />
-                  <div className="flex h-full items-center p-0.5">
-                    <button 
-                      onClick={() => setFilters({...filters, mode: 'live'})}
-                      className={cn(
-                        "relative overflow-hidden px-2 sm:px-3 py-1 text-[11px] sm:text-xs font-medium transition-all h-full flex items-center justify-center min-w-[50px] sm:min-w-[70px]",
-                        filters.mode === 'live' ? "bg-black dark:bg-white text-white dark:text-black shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
-                      )}
-                    >
-                      {filters.mode === 'live' && (
-                          <div 
-                            className="absolute bottom-0 left-0 h-full bg-blue-600 transition-all duration-1000 ease-linear pointer-events-none" 
-                            style={{ width: `${refreshProgress}%` }} 
-                          />
-                      )}
-                      <span className="relative z-10">Live</span>
-                    </button>
-                    <button 
-                      onClick={() => setFilters({...filters, mode: 'historical'})}
-                      className={cn(
-                        "px-2 sm:px-3 py-1 text-[11px] sm:text-xs font-medium transition-all h-full flex items-center justify-center min-w-[50px] sm:min-w-[70px]",
-                        filters.mode === 'historical' ? "bg-black dark:bg-white text-white dark:text-black shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
-                      )}
-                    >
-                      Historical
-                    </button>
-                  </div>
+               </ScrollableBar>
               </div>
             )}
+            
+            {/* Popups */}
+            <PortalMenu isOpen={showRangeMenu} onClose={() => setShowRangeMenu(false)} anchorRef={rangeMenuBtnRef}>
+               {['1h', '6h', '24h', '7d'].map((r) => (
+                 <button 
+                   key={r}
+                   onClick={() => {
+                     setFilters({...filters, range: r});
+                     setShowRangeMenu(false);
+                   }}
+                   className={cn(
+                     "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                     filters.range === r ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
+                   )}
+                 >
+                   {r === '1h' ? 'Last Hour' : 
+                    r === '6h' ? '6 Hours' : 
+                    r === '24h' ? '24 Hours' : '7 Days'}
+                 </button>
+               ))}
+            </PortalMenu>
+
+            <PortalMenu isOpen={showGranMenu} onClose={() => setShowGranMenu(false)} anchorRef={granMenuBtnRef}>
+               {(filters.mode === 'live' ? ['1m', '5m', '15m', '1h'] : ['5m', '30m', '1h', '1d']).map((g) => (
+                 <button 
+                   key={g}
+                   onClick={() => {
+                     setFilters({...filters, granularity: g});
+                     setShowGranMenu(false);
+                   }}
+                   className={cn(
+                     "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                     filters.granularity === g ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-500/10" : "text-slate-600 dark:text-slate-400"
+                   )}
+                 >
+                   {g === '1m' ? '1 Minute' : g === '5m' ? '5 Minutes' : g === '15m' ? '15 Minutes' : g === '30m' ? '30 Minutes' : g === '1d' ? '1 Day' : '1 Hour'}
+                 </button>
+               ))}
+            </PortalMenu>
+
+            <PortalMenu isOpen={showModeMenu} onClose={() => setShowModeMenu(false)} anchorRef={modeMenuBtnRef} align="right">
+               <button
+                 onClick={() => { setFilters({...filters, mode: 'live'}); setShowModeMenu(false); }}
+                 className={cn(
+                   "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                   filters.mode === 'live' ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
+                 )}
+               >
+                 Live
+               </button>
+               <button
+                 onClick={() => { setFilters({...filters, mode: 'historical'}); setShowModeMenu(false); }}
+                 className={cn(
+                   "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                   filters.mode === 'historical' ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
+                 )}
+               >
+                 Historical
+               </button>
+            </PortalMenu>
+            
           </div>
         </div>
       }
@@ -2266,11 +2286,11 @@ export default function App() {
             <div className="flex items-center gap-2 sm:gap-3 justify-end shrink-0 ml-auto">
                <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none p-1 gap-1 h-[40px] items-center">
                   <button onClick={() => handleAddWidget('kpi')} className="px-2 sm:px-4 py-1 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 rounded-none flex items-center gap-2 transition-all">
-                      <Plus className="w-4 h-4 text-blue-600 dark:text-sky-500" /> <span className="hidden sm:inline">KPI</span>
+                      <Hash className="w-4 h-4 text-blue-600 dark:text-sky-500" /> <span className="hidden sm:inline">KPI</span>
                     </button>
                     <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
                     <button onClick={() => handleAddWidget('chart')} className="px-2 sm:px-4 py-1 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 rounded-none flex items-center gap-2 transition-all">
-                      <Plus className="w-4 h-4 text-blue-600 dark:text-sky-500" /> <span className="hidden sm:inline">CHART</span>
+                      <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> <span className="hidden sm:inline">CHART</span>
                     </button>
                     <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
                     <button onClick={handleExportDashboard} className="px-2 sm:px-3 py-1 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-500 hover:text-blue-600 dark:hover:text-sky-400 rounded-none flex items-center gap-2 transition-all" title="Export Dashboard">

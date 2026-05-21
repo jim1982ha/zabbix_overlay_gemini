@@ -486,10 +486,10 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
 
   return (
     <div 
-      className={`bg-white dark:bg-slate-900 h-full flex flex-col @container transition-colors duration-300 ${zoomDomain ? 'border-[3px] border-sky-300 ring-2 ring-sky-100 ring-offset-1 p-[13px] @[400px]:p-[21px]' : 'border border-slate-200 dark:border-slate-800 dark:border-slate-800 p-4 @[400px]:p-6'}`}
+      className={`bg-white dark:bg-slate-900 h-full flex flex-col group @container transition-colors duration-300 ${zoomDomain ? 'border-[3px] border-sky-300 ring-2 ring-sky-100 ring-offset-1 p-[13px] @[400px]:p-[21px]' : 'border border-slate-200 dark:border-slate-800 p-4 @[400px]:p-6'}`}
     >
-      <div className="flex justify-between items-start mb-6 transition-all duration-300 group-hover:pl-[34px]">
-        <div className="min-w-0 flex-1">
+      <div className="flex justify-between items-start mb-6">
+        <div className="min-w-0 flex-1 pr-6 lg:group-hover:pr-10 transition-all duration-300">
           <div className="flex items-center justify-between mb-2 gap-4">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <h3 className="text-base @[400px]:text-lg font-semibold text-slate-800 dark:text-slate-200 dark:text-slate-100 tracking-tight truncate">{title}</h3>

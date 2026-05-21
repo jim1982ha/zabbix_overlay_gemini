@@ -55,12 +55,13 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         setCoords({
-          top: rect.top + window.scrollY,
-          bottom: rect.bottom + window.scrollY,
-          left: rect.left + window.scrollX,
+          top: rect.top,
+          bottom: rect.bottom,
+          left: rect.left,
           width: rect.width,
           height: rect.height,
-          windowHeight: window.innerHeight
+          windowHeight: window.innerHeight,
+          windowWidth: window.innerWidth
         });
       }
     }
@@ -131,15 +132,15 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
     : "Select Period";
 
   return (
-    <div className="relative flex-1 min-w-full sm:min-w-[200px] h-full" ref={containerRef}>
+    <div className="relative shrink-0 h-full min-w-max" ref={containerRef}>
        <button 
         onClick={() => setIsOpen(!isOpen)}
         className="bg-transparent hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-800 rounded-none py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full"
        >
-         <span className="flex items-center gap-2 truncate">
-           <span className="text-slate-500 font-normal">Analysis Period:</span>
+         <span className="flex items-center gap-2 whitespace-nowrap">
+           <span className="text-slate-500 font-normal hidden xl:inline">Analysis Period:</span>
            <CalendarIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-           <span className="truncate font-semibold text-slate-800 dark:text-slate-200 dark:text-slate-200">{displayText}</span>
+           <span className="font-semibold text-slate-800 dark:text-slate-200">{displayText}</span>
          </span>
          <ChevronDown className={cn("w-4 h-4 text-slate-400 shrink-0 transition-transform duration-300", isOpen && "-rotate-180")} />
        </button>
@@ -148,16 +149,16 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
            <motion.div 
               ref={popoverRef}
               style={{ 
-                ...(coords.bottom - window.scrollY + 400 > coords.windowHeight && coords.top - window.scrollY - 400 > 0
+                ...(coords.bottom + 400 > coords.windowHeight && coords.top - 400 > 0
                   ? { top: coords.top - 400 } // approximate rendering above
                   : { top: coords.bottom + 8 }),
-                left: Math.max(16, coords.left + coords.width - 340), // Prefer right alignment relative to button
+                left: Math.max(16, Math.min(coords.left + coords.width - 340, window.innerWidth - 356)), // Prevent overflow on both sides
                 maxHeight: 'calc(100vh - 32px)',
               }}
               initial={{ opacity: 0, y: 5, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 5, scale: 0.98 }}
-              className="absolute z-[1001] bg-white dark:bg-slate-900 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 dark:border-slate-800 rounded-none shadow-xl p-4 w-[340px] flex flex-col gap-4 pointer-events-auto overflow-y-auto"
+              className="fixed z-[1001] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-xl p-4 w-[calc(100vw-32px)] sm:w-[340px] max-w-[340px] flex flex-col gap-4 pointer-events-auto overflow-y-auto"
             >
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
