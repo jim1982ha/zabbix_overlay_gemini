@@ -545,7 +545,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                     onClick={(e) => {
                       if (onColorChangeRequest) {
                         e.stopPropagation();
-                        onColorChangeRequest(s.metric || s.key, getSeriesColor(s));
+                        onColorChangeRequest(s.key, getSeriesColor(s));
                       }
                     }}
                   >
@@ -582,7 +582,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                       onClick={(e) => {
                         if (onColorChangeRequest) {
                           e.stopPropagation();
-                          onColorChangeRequest(s.metric || s.key, getSeriesColor(s));
+                          onColorChangeRequest(s.key, getSeriesColor(s));
                         }
                       }}
                     >

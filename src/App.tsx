@@ -1868,8 +1868,8 @@ export default function App() {
                              chartSeries.push({
                                key: aggKey,
                                name: `${m.toUpperCase()} (${aggType === 'sum' ? 'Sum' : 'Avg'})${axisLabel}`,
-                               color: getDeterministicColor(`${m}_${shosts.includes('all') ? availableHosts[0] : shosts[0]}`),
-                               metric: sKey,
+                               color: getDeterministicColor(aggKey, m),
+                               metric: m,
                                unit: u
                              });
                            });
@@ -1883,7 +1883,7 @@ export default function App() {
                                  key,
                                  name: `${m.toUpperCase()} [${h}]${axisLabel}`,
                                  color: getDeterministicColor(key, m),
-                                 metric: sKey,
+                                 metric: m,
                                  unit: u
                                });
                              });
