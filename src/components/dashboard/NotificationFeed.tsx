@@ -37,103 +37,69 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
   const fetchZabbixProblems = useCallback(async () => {
     if (isDemo) return;
     try {
-      // 1. Fetch active problems
-      const probRes = await axios.post("/api/zabbix", {
-        url: zabbixConfig.url,
-        token: zabbixConfig.token,
-        method: "problem.get",
-        params: {
-          output: "extend",
-          selectAcknowledges: "extend",
-          selectTags: "extend",
-          source: 0, // 0 = trigger created
-          object: 0, // 0 = trigger
-          recent: false, // only currently active problems
-          sortfield: ["eventid"],
-          sortorder: "DESC",
-          limit: 100
-        }
-      });
-      
-      if (probRes.data.error) {
-         console.error("Zabbix API Error:", probRes.data.error);
-         if (showToast) showToast(`Zabbix Error: ${probRes.data.error.data || probRes.data.error.message}`, "error");
-         return;
-      }
-      
-      const problems = probRes.data.result || [];
-      if (problems.length === 0) {
-         setZabbixNotifications([]);
-         return;
-      }
-
-      // 2. Fetch associated trigger details and hosts to get the human-readable text
-      const triggerIds = Array.from(new Set(problems.map((p: any) => p.objectid)));
-      
-      const trigRes = await axios.post("/api/zabbix", {
+      const response = await axios.post("/api/zabbix", {
         url: zabbixConfig.url,
         token: zabbixConfig.token,
         method: "trigger.get",
         params: {
-          output: ["description", "comments", "priority"],
-          triggerids: triggerIds,
-          selectHosts: ["name", "host"],
+          output: "extend",
+          selectHosts: ["host", "name"],
+          selectLastEvent: "extend",
           expandDescription: true,
-          expandComment: true
+          expandComment: true,
+          monitored: true,
+          skipDependent: true,
+          filter: { value: "1" },
+          limit: 100,
+          sortfield: "lastchange",
+          sortorder: "DESC"
         }
       });
       
-      if (trigRes.data.error) {
-         console.error("Zabbix API Error:", trigRes.data.error);
-         if (showToast) showToast(`Zabbix Error: ${trigRes.data.error.data || trigRes.data.error.message}`, "error");
+      if (response.data.error) {
+         console.error("Zabbix API Error:", response.data.error);
+         if (showToast) showToast(`Zabbix Error: ${response.data.error.data || response.data.error.message}`, "error");
          return;
       }
       
-      const triggersArr = trigRes.data.result || [];
-      const triggersMap: Record<string, any> = {};
-      triggersArr.forEach((t: any) => triggersMap[t.triggerid] = t);
+      if (response.data.result) {
+        const mapped = response.data.result.map((t: any) => {
+          let severity: 'info' | 'warning' | 'critical' | 'success' = 'info';
+          if (t.priority > 3) severity = 'critical';
+          else if (t.priority > 1) severity = 'warning';
+          
+          const durationSeconds = Math.floor(Date.now() / 1000) - parseInt(t.lastchange, 10);
+          let durationStr = '';
+          if (durationSeconds < 60) durationStr = `${durationSeconds}s`;
+          else if (durationSeconds < 3600) durationStr = `${Math.floor(durationSeconds / 60)}m`;
+          else if (durationSeconds < 86400) durationStr = `${Math.floor(durationSeconds / 3600)}h ${Math.floor((durationSeconds % 3600) / 60)}m`;
+          else durationStr = `${Math.floor(durationSeconds / 86400)}d ${Math.floor((durationSeconds % 86400) / 3600)}h`;
 
-      // 3. Map into Notification format
-      const mapped = problems.map((p: any) => {
-        const t = triggersMap[p.objectid];
-        
-        let severity: 'info' | 'warning' | 'critical' | 'success' = 'info';
-        const pSev = parseInt(p.severity || t?.priority || '0', 10);
-        if (pSev >= 4) severity = 'critical';
-        else if (pSev >= 2) severity = 'warning';
-        
-        const durationSeconds = Math.floor(Date.now() / 1000) - parseInt(p.clock, 10);
-        let durationStr = '';
-        if (durationSeconds < 60) durationStr = `${durationSeconds}s`;
-        else if (durationSeconds < 3600) durationStr = `${Math.floor(durationSeconds / 60)}m`;
-        else if (durationSeconds < 86400) durationStr = `${Math.floor(durationSeconds / 3600)}h ${Math.floor((durationSeconds % 3600) / 60)}m`;
-        else durationStr = `${Math.floor(durationSeconds / 86400)}d ${Math.floor((durationSeconds % 86400) / 3600)}h`;
+          let cleanDesc = t.comments || `Trigger active on host: ${t.hosts?.[0]?.name || t.hosts?.[0]?.host || 'Unknown'}`;
+          if (t.lastEvent?.name) {
+              const usedPercentMatch = t.lastEvent.name.match(/used > (\d+(?:\.\d+)?)%/);
+              if (usedPercentMatch) {
+                  cleanDesc = cleanDesc.replace(/\{\$[^:]+?MAX\.(?:WARN|CRIT)[^\}]*\}/g, usedPercentMatch[1]);
+              }
+          }
+          cleanDesc = cleanDesc.replace(/\{\$[A-Z0-9_\.]+(?::[^}]+)?\}/g, "configured");
 
-        let cleanDesc = t?.comments || `Trigger active on host: ${t?.hosts?.[0]?.name || t?.hosts?.[0]?.host || 'Unknown'}`;
-        if (p.name) {
-            const usedPercentMatch = p.name.match(/used > (\d+(?:\.\d+)?)%/);
-            if (usedPercentMatch) {
-                cleanDesc = cleanDesc.replace(/\{\$[^:]+?MAX\.(?:WARN|CRIT)[^\}]*\}/g, usedPercentMatch[1]);
-            }
-        }
-        cleanDesc = cleanDesc.replace(/\{\$[A-Z0-9_\.]+(?::[^}]+)?\}/g, "configured");
-
-        return {
-           id: parseInt(p.eventid, 10),
-           type: 'alert',
-           title: p.name || t?.description || "Unknown Problem",
-           description: cleanDesc,
-           eventName: p.name,
-           time: new Date(parseInt(p.clock, 10) * 1000).toLocaleTimeString(),
-           duration: durationStr,
-           severity,
-           itemId: p.objectid, // triggerid
-           eventId: p.eventid,
-           host: t?.hosts?.[0]?.name || t?.hosts?.[0]?.host || 'Unknown'
-        };
-      });
-      
-      setZabbixNotifications(mapped);
+          return {
+             id: t.lastEvent?.eventid ? parseInt(t.lastEvent.eventid, 10) : parseInt(t.triggerid, 10),
+             type: 'alert',
+             title: t.lastEvent?.name || t.description || "Unknown Problem",
+             description: cleanDesc,
+             eventName: t.lastEvent?.name,
+             time: new Date(parseInt(t.lastchange, 10) * 1000).toLocaleTimeString(),
+             duration: durationStr,
+             severity,
+             itemId: t.triggerid,
+             eventId: t.lastEvent?.eventid,
+             host: t.hosts?.[0]?.name || t.hosts?.[0]?.host || 'Unknown'
+          };
+        });
+        setZabbixNotifications(mapped);
+      }
 
     } catch (e) {
       console.error("Failed to fetch problems from Zabbix", e);
