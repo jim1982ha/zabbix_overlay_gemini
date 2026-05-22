@@ -141,22 +141,32 @@ export function DashboardGrid({
     }
 
     let timestampStr: string | undefined = undefined;
-    if (lastPoint?.time) {
-       const d = new Date(lastPoint.time);
-       let d2: Date | null = null;
-       if (filters.granularity === '1h') d2 = new Date(d.getTime() + 60 * 60 * 1000);
-       else if (filters.granularity === '1m') d2 = new Date(d.getTime() + 60 * 1000);
-       else if (filters.granularity === '5m') d2 = new Date(d.getTime() + 5 * 60 * 1000);
-       else if (filters.granularity === '15m') d2 = new Date(d.getTime() + 15 * 60 * 1000);
-       else if (filters.granularity === '30m') d2 = new Date(d.getTime() + 30 * 60 * 1000);
-       
-       if (d2) {
-           timestampStr = `${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-       } else if (filters.granularity === '1d') {
-           const dNext = new Date(d.getTime() + 24 * 60 * 60 * 1000);
-           timestampStr = `${d.toLocaleDateString()} - ${dNext.toLocaleDateString()}`;
-       } else {
-           timestampStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (data && data.length > 0) {
+       const firstPoint = data[0];
+       const lastPointData = data[data.length - 1];
+       if (firstPoint?.time && lastPointData?.time) {
+          const d1 = new Date(firstPoint.time);
+          const d2 = new Date(lastPointData.time);
+          
+          let d2End = new Date(d2.getTime());
+          if (filters.granularity === '1h') d2End = new Date(d2.getTime() + 60 * 60 * 1000);
+          else if (filters.granularity === '1m') d2End = new Date(d2.getTime() + 60 * 1000);
+          else if (filters.granularity === '5m') d2End = new Date(d2.getTime() + 5 * 60 * 1000);
+          else if (filters.granularity === '15m') d2End = new Date(d2.getTime() + 15 * 60 * 1000);
+          else if (filters.granularity === '30m') d2End = new Date(d2.getTime() + 30 * 60 * 1000);
+          else if (filters.granularity === '1d') d2End = new Date(d2.getTime() + 24 * 60 * 60 * 1000);
+
+          if (filters.granularity === '1d') {
+              timestampStr = d1.toLocaleDateString() === d2End.toLocaleDateString() 
+                 ? d1.toLocaleDateString() 
+                 : `${d1.toLocaleDateString()} - ${d2End.toLocaleDateString()}`;
+          } else {
+              if (d1.toLocaleDateString() === d2End.toLocaleDateString()) {
+                  timestampStr = `${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+              } else {
+                  timestampStr = `${d1.toLocaleDateString()} ${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleDateString()} ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+              }
+          }
        }
     }
 
@@ -180,23 +190,30 @@ export function DashboardGrid({
     
     let timestampStr: string | undefined = undefined;
     if (w.chartType === 'pie' && chartData && chartData.length > 0) {
-      const lastPoint = chartData[chartData.length - 1];
-      if (lastPoint?.time) {
-         const d = new Date(lastPoint.time);
-         let d2: Date | null = null;
-         if (filters.granularity === '1h') d2 = new Date(d.getTime() + 60 * 60 * 1000);
-         else if (filters.granularity === '1m') d2 = new Date(d.getTime() + 60 * 1000);
-         else if (filters.granularity === '5m') d2 = new Date(d.getTime() + 5 * 60 * 1000);
-         else if (filters.granularity === '15m') d2 = new Date(d.getTime() + 15 * 60 * 1000);
-         else if (filters.granularity === '30m') d2 = new Date(d.getTime() + 30 * 60 * 1000);
+      const firstPoint = chartData[0];
+      const lastPointData = chartData[chartData.length - 1];
+      if (firstPoint?.time && lastPointData?.time) {
+         const d1 = new Date(firstPoint.time);
+         const d2 = new Date(lastPointData.time);
          
-         if (d2) {
-             timestampStr = `${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-         } else if (filters.granularity === '1d') {
-             const dNext = new Date(d.getTime() + 24 * 60 * 60 * 1000);
-             timestampStr = `${d.toLocaleDateString()} - ${dNext.toLocaleDateString()}`;
+         let d2End = new Date(d2.getTime());
+         if (filters.granularity === '1h') d2End = new Date(d2.getTime() + 60 * 60 * 1000);
+         else if (filters.granularity === '1m') d2End = new Date(d2.getTime() + 60 * 1000);
+         else if (filters.granularity === '5m') d2End = new Date(d2.getTime() + 5 * 60 * 1000);
+         else if (filters.granularity === '15m') d2End = new Date(d2.getTime() + 15 * 60 * 1000);
+         else if (filters.granularity === '30m') d2End = new Date(d2.getTime() + 30 * 60 * 1000);
+         else if (filters.granularity === '1d') d2End = new Date(d2.getTime() + 24 * 60 * 60 * 1000);
+
+         if (filters.granularity === '1d') {
+             timestampStr = d1.toLocaleDateString() === d2End.toLocaleDateString() 
+                ? d1.toLocaleDateString() 
+                : `${d1.toLocaleDateString()} - ${d2End.toLocaleDateString()}`;
          } else {
-             timestampStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+             if (d1.toLocaleDateString() === d2End.toLocaleDateString()) {
+                 timestampStr = `${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+             } else {
+                 timestampStr = `${d1.toLocaleDateString()} ${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleDateString()} ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+             }
          }
       }
     }

@@ -297,7 +297,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               isAnimationActive={false}
             >
               {pieData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" strokeWidth={0} />
+                <Cell key={`cell-${index}-${entry.dataKey}-${entry.color}`} fill={entry.color} stroke="transparent" strokeWidth={0} />
               ))}
             </Pie>
             <Tooltip content={<CustomTooltip />} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
@@ -320,7 +320,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             {series.map((s, i) => (
               <Line 
                 isAnimationActive={false}
-                key={s.key} 
+                key={s.key + '-' + getSeriesColor(s)} 
                 hide={hiddenSeries?.has(s.key)} 
                 name={s.name} 
                 type="monotone" 
@@ -357,7 +357,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 const colorValue = getSeriesColor(s);
                 const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
                 return (
-                <linearGradient key={`mixed-grad-${s.key}`} id={safeId} x1="0" y1="0" x2="0" y2="1">
+                <linearGradient key={`mixed-grad-${s.key}-${colorValue}`} id={safeId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={colorValue} stopOpacity={0.4}/>
                   <stop offset="95%" stopColor={colorValue} stopOpacity={0.05}/>
                 </linearGradient>
@@ -390,7 +390,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 return (
                   <Bar 
                     isAnimationActive={false}
-                    key={s.key} 
+                    key={s.key + '-' + getSeriesColor(s)} 
                     hide={hiddenSeries?.has(s.key)} 
                     name={s.name} 
                     dataKey={s.key} 
@@ -408,7 +408,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 return (
                   <Area 
                     isAnimationActive={false}
-                    key={s.key} 
+                    key={s.key + '-' + colorValue} 
                     hide={hiddenSeries?.has(s.key)} 
                     name={s.name} 
                     type="monotone" 
@@ -427,7 +427,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 return (
                   <Line 
                     isAnimationActive={false}
-                    key={s.key} 
+                    key={s.key + '-' + getSeriesColor(s)} 
                     hide={hiddenSeries?.has(s.key)} 
                     name={s.name} 
                     type="monotone" 
@@ -464,7 +464,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             {series.map((s, i) => (
               <Bar 
                 isAnimationActive={false}
-                key={s.key} 
+                key={s.key + '-' + getSeriesColor(s)} 
                 hide={hiddenSeries?.has(s.key)} 
                 name={s.name} 
                 dataKey={s.key} 
@@ -488,7 +488,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 const colorValue = getSeriesColor(s);
                 const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
                 return (
-                <linearGradient key={s.key} id={safeId} x1="0" y1="0" x2="0" y2="1">
+                <linearGradient key={`${s.key}-${colorValue}`} id={safeId} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={colorValue} stopOpacity={0.4}/>
                   <stop offset="95%" stopColor={colorValue} stopOpacity={0.05}/>
                 </linearGradient>
@@ -512,7 +512,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               return (
               <Area 
                 isAnimationActive={false}
-                key={s.key} 
+                key={s.key + '-' + colorValue} 
                 hide={hiddenSeries?.has(s.key)} 
                 name={s.name} 
                 type="monotone" 
@@ -607,19 +607,13 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             {aggregation && aggregation !== 'none' && (
               <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded font-medium border border-emerald-200">{aggregation}</span>
             )}
-            {chartType === 'pie' && timestamp && (
-              <div className="flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-xs text-slate-400 dark:text-slate-500 font-medium px-1.5 @[200px]:px-2 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full shrink-0 min-w-0 max-w-full truncate ml-2">
-                <Clock className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3 shrink-0" />
-                <span className="truncate">{timestamp}</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
       <div className={cn(
         "flex-1 w-full relative min-h-0 flex", 
-        chartType === 'pie' ? "flex-col @[450px]:flex-row items-center justify-center gap-3" : "flex-col"
+        chartType === 'pie' ? "flex-col @[450px]:flex-row items-center @[450px]:items-stretch justify-center gap-3" : "flex-col"
       )}>
         <div className={cn(
           "flex-1 w-full relative select-none cursor-crosshair",
@@ -727,6 +721,15 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
           </div>
         )}
       </div>
+
+      {chartType === 'pie' && timestamp && (
+        <div className="relative z-10 flex flex-row items-center justify-between pt-1 shrink-0 mt-auto w-full min-w-0 gap-2">
+          <div className="flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-xs text-slate-400 dark:text-slate-500 font-medium px-1.5 @[200px]:px-2 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full shrink-0 min-w-0 max-w-[70%] truncate">
+            <Clock className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3 shrink-0" />
+            <span className="truncate">{timestamp}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

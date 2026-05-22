@@ -105,7 +105,14 @@ function DashboardApp() {
   const [requiresSecureToken, setRequiresSecureToken] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState(0);
   const [colorPickerTarget, setColorPickerTarget] = useState<{ metric: string, current: string } | null>(null);
+  const [colorMapToggle, setColorMapToggle] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleColorMapChange = () => setColorMapToggle(prev => !prev);
+    window.addEventListener('ha_color_map_changed', handleColorMapChange);
+    return () => window.removeEventListener('ha_color_map_changed', handleColorMapChange);
+  }, []);
 
   const [zabbixConfig, setZabbixConfig] = useState<{url: string, token: string, isPreconfigured: boolean}>({
     url: sessionStorage.getItem('hareporting_zabbix_url') || '',
@@ -698,7 +705,7 @@ function DashboardApp() {
       }
     });
     return mapping;
-  }, [data, widgets, hiddenSeries, availableHosts, metricUnitsMap]);
+  }, [data, widgets, hiddenSeries, availableHosts, metricUnitsMap, colorMapToggle]);
 
   const relevantHiddenSeries = useMemo(() => {
     if (view !== 'dashboard') return new Set<string>();
@@ -1038,8 +1045,6 @@ function DashboardApp() {
               onClick={() => {
                 updateMetricColor(colorPickerTarget.metric, colorPickerTarget.current);
                 setColorPickerTarget(null);
-                // Trigger event to redraw
-                window.dispatchEvent(new Event('ha_color_map_changed'));
               }}
               className="px-4 py-2 font-semibold text-sm bg-blue-600 hover:bg-blue-700 text-white rounded shadow-sm transition-colors"
             >

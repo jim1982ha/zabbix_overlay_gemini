@@ -48,9 +48,9 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
           expandComment: true,
           expandDescription: true,
           monitored: true,
-          only_true: true,
           skipDependent: true,
-          limit: 50,
+          filter: { value: "1" },
+          limit: 100,
           sortfield: "lastchange",
           sortorder: "DESC"
         }

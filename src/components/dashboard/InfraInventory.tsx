@@ -246,7 +246,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                 }
                 const baseUrl = zabbixConfig.url.endsWith('/') ? zabbixConfig.url.slice(0, -1) : zabbixConfig.url;
                 const zBase = baseUrl.includes('api_jsonrpc.php') ? baseUrl.replace('/api_jsonrpc.php', '') : baseUrl;
-                window.open(`${zBase}/zabbix.php?action=latest.view&hostids[]=${asset.hostid}`, '_blank', 'noopener,noreferrer');
+                window.open(`${zBase}/zabbix.php?action=latest.view&filter_rst=1&filter_hostids%5B%5D=${asset.hostid}&filter_set=1`, '_blank', 'noopener,noreferrer');
               }}
               className={cn(STDL_LIST_CARD_CLASS, "p-6 group hover:border-blue-300 cursor-pointer")}
             >
