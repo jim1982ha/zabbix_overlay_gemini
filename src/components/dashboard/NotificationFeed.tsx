@@ -46,10 +46,9 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
           selectHosts: ["host", "name"],
           selectLastEvent: "extend",
           expandDescription: true,
-          expandComment: true,
           monitored: true,
           skipDependent: true,
-          only_true: true,
+          filter: { value: "1" },
           limit: 100,
           sortfield: "lastchange",
           sortorder: "DESC"
