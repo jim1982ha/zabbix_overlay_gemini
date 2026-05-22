@@ -21,7 +21,7 @@ import {
   Brush
 } from 'recharts';
 import { motion } from 'motion/react';
-import { Download } from 'lucide-react';
+import { Download, ZoomIn } from 'lucide-react';
 import { cn, formatValue } from '../../lib/utils';
 
 interface DataPoint {
@@ -72,6 +72,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
 
   const [refAreaLeft, setRefAreaLeft] = useState<string | null>(null);
   const [refAreaRight, setRefAreaRight] = useState<string | null>(null);
+  const [autoScaleY, setAutoScaleY] = useState(false);
 
   const displayedData = React.useMemo(() => {
     let result = data;
@@ -93,7 +94,22 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
     
     // Build data rows
     const rows = displayedData.map(point => {
-      const timeVal = point.time;
+      let timeVal = point.time;
+      try {
+        const date = new Date(point.time);
+        if (!isNaN(date.getTime())) {
+          timeVal = date.toLocaleString([], { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit', 
+            hour12: false 
+          });
+        }
+      } catch (e) {}
+
       const values = activeSeries.map(s => {
         const val = point[s.key];
         return val !== undefined ? String(val) : '';
@@ -298,7 +314,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
+            <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Line 
@@ -356,8 +372,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            {hasLeft && <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, leftUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />}
-            {hasRight && <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, rightUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} width={55} />}
+            {hasLeft && <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} yAxisId="left" orientation="left" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, leftUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />}
+            {hasRight && <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, rightUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} width={55} />}
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {[...series].sort((a, b) => {
               if (a.metric === 'series1' && b.metric === 'series2') return 1;
@@ -442,7 +458,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30}
             />
-            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
+            <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Bar 
@@ -487,7 +503,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               tickFormatter={formatXAxis}
               minTickGap={30} 
             />
-            <YAxis axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
+            <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => {
               const colorValue = getSeriesColor(s);
@@ -547,6 +563,18 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5 items-center pl-3.5 pt-0.5">
+            <button
+              onClick={() => setAutoScaleY(!autoScaleY)}
+              className={cn(
+                "p-1 rounded border transition-all shadow-sm shrink-0 flex items-center justify-center cursor-pointer mr-1 relative z-10",
+                autoScaleY 
+                  ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400" 
+                  : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/85"
+              )}
+              title={autoScaleY ? "Scale from 0" : "Auto-scale Y-Axis"}
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
             <button
               onClick={handleDownloadCSV}
               className="p-1 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/85 transition-all shadow-sm shrink-0 flex items-center justify-center cursor-pointer mr-1 relative z-10"
