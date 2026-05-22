@@ -251,26 +251,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                 const baseUrl = zabbixConfig.url.endsWith('/') ? zabbixConfig.url.slice(0, -1) : zabbixConfig.url;
                 const zBase = baseUrl.includes('api_jsonrpc.php') ? baseUrl.replace('/api_jsonrpc.php', '') : baseUrl;
                 let qs = `from=now-1h&to=now&action=charts.view`;
-                
-                let targetHostIds: string[] = [];
-                if (filters.hosts && typeof filters.hosts === 'string' && filters.hosts.trim() !== "") {
-                  const arr = filters.hosts.split(',').map((s: string) => s.trim()).filter(Boolean);
-                  arr.forEach((hName: string) => {
-                     const found = allAssets.find((a: any) => a.id === hName || a.host === hName);
-                     if (found && found.hostid) {
-                         targetHostIds.push(found.hostid);
-                     }
-                  });
-                }
-                
-                if (targetHostIds.length > 0) {
-                    targetHostIds.forEach((id, idx) => {
-                        qs += `&filter_hostids%5B${idx}%5D=${id}`;
-                    });
-                } else if (asset.hostid) {
-                    qs += `&filter_hostids%5B0%5D=${asset.hostid}`;
-                }
-
+                if (asset.hostid) qs += `&filter_hostids%5B0%5D=${asset.hostid}`;
                 if (asset.id) qs += `&filter_name=${encodeURIComponent(asset.id)}`;
                 qs += `&filter_show=0&filter_set=1`;
                 window.open(`${zBase}/zabbix.php?${qs}`, '_blank', 'noopener,noreferrer');
@@ -370,3 +351,4 @@ function UsageBar({ label, value, icon }: any) {
     </div>
   );
 }
+
