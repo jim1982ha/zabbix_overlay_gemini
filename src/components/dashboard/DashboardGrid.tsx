@@ -177,6 +177,30 @@ export function DashboardGrid({
   // Render the trend chart visualization
   const renderTrendChart = (w: Widget) => {
     const { chartData = data, chartSeries = [] } = widgetDataMapping[w.id] || {};
+    
+    let timestampStr: string | undefined = undefined;
+    if (w.chartType === 'pie' && chartData && chartData.length > 0) {
+      const lastPoint = chartData[chartData.length - 1];
+      if (lastPoint?.time) {
+         const d = new Date(lastPoint.time);
+         let d2: Date | null = null;
+         if (filters.granularity === '1h') d2 = new Date(d.getTime() + 60 * 60 * 1000);
+         else if (filters.granularity === '1m') d2 = new Date(d.getTime() + 60 * 1000);
+         else if (filters.granularity === '5m') d2 = new Date(d.getTime() + 5 * 60 * 1000);
+         else if (filters.granularity === '15m') d2 = new Date(d.getTime() + 15 * 60 * 1000);
+         else if (filters.granularity === '30m') d2 = new Date(d.getTime() + 30 * 60 * 1000);
+         
+         if (d2) {
+             timestampStr = `${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+         } else if (filters.granularity === '1d') {
+             const dNext = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+             timestampStr = `${d.toLocaleDateString()} - ${dNext.toLocaleDateString()}`;
+         } else {
+             timestampStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+         }
+      }
+    }
+
     return (
       <TrendChart 
         title={w.title} 
@@ -185,6 +209,7 @@ export function DashboardGrid({
         hosts={w.hosts}
         stacked={w.stacked}
         chartType={w.chartType}
+        timestamp={timestampStr}
         seriesConfig={w.seriesConfig as any}
         unit={metricUnitsMap[w.metrics[0]] ? (metricUnitsMap[w.metrics[0]] === '%' ? '%' : ` ${metricUnitsMap[w.metrics[0]]}`) : ''} 
         leftUnit={(() => {

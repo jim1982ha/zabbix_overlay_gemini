@@ -21,7 +21,7 @@ import {
   Brush
 } from 'recharts';
 import { motion } from 'motion/react';
-import { Download, ZoomIn } from 'lucide-react';
+import { Download, ZoomIn, Clock } from 'lucide-react';
 import { cn, formatValue } from '../../lib/utils';
 
 interface DataPoint {
@@ -64,9 +64,10 @@ interface TrendChartProps {
   onHostClick?: (host: string) => void;
   zoomDomain?: [number, number] | null;
   onZoomDomainChange?: (domain: [number, number] | null) => void;
+  timestamp?: string; // Add timestamp to show pie chart's current time bin
 }
 
-export function TrendChart({ title, data, series, hosts, chartType = 'area', seriesConfig, stacked = false, unit, leftUnit, rightUnit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onColorChangeRequest, onHostClick, zoomDomain, onZoomDomainChange }: TrendChartProps) {
+export function TrendChart({ title, data, series, hosts, chartType = 'area', seriesConfig, stacked = false, unit, leftUnit, rightUnit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onColorChangeRequest, onHostClick, zoomDomain, onZoomDomainChange, timestamp }: TrendChartProps) {
   const defaultColors = ['#0284c7', '#4f46e5', '#7c3aed', '#db2777', '#d97706', '#059669', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#06b6d4'];
   const chartColors = color ? [color, ...defaultColors.filter(c => c !== color)] : defaultColors;
 
@@ -606,6 +607,12 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             {aggregation && aggregation !== 'none' && (
               <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded font-medium border border-emerald-200">{aggregation}</span>
             )}
+            {chartType === 'pie' && timestamp && (
+              <div className="flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-xs text-slate-400 dark:text-slate-500 font-medium px-1.5 @[200px]:px-2 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full shrink-0 min-w-0 max-w-full truncate ml-2">
+                <Clock className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3 shrink-0" />
+                <span className="truncate">{timestamp}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -627,8 +634,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         
         {chartType === 'pie' && (
           <div className={cn(
-            "shrink-0 min-h-0 bg-transparent relative z-10",
-            "flex flex-row @[450px]:flex-col flex-wrap @[450px]:flex-nowrap justify-center gap-x-3 gap-y-1.5 w-full @[450px]:w-auto @[450px]:min-w-[120px] @[450px]:max-w-[40%] @[450px]:ml-4 max-h-[80px] @[450px]:max-h-[160px] overflow-y-auto px-2 scrollbar-hide" 
+            "shrink-0 min-h-0 bg-transparent relative z-10 py-1",
+            "flex flex-row @[450px]:flex-col flex-wrap @[450px]:flex-nowrap justify-center @[450px]:justify-start gap-x-3 gap-y-1.5 w-full @[450px]:w-auto @[450px]:min-w-[120px] @[450px]:max-w-[50%] @[450px]:ml-4 max-h-[100px] @[450px]:max-h-full overflow-y-auto px-2 scrollbar-hide" 
           )}>
             {series.map((s, i) => {
               const isHidden = hiddenSeries?.has(s.key);
