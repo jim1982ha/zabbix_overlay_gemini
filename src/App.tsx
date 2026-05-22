@@ -21,6 +21,12 @@ import { PortalMenu } from "./components/dashboard/PortalMenu";
 import { Card } from "./components/ui/Card";
 import { NotificationFeed } from "./components/dashboard/NotificationFeed";
 import { ImportModal } from "./components/dashboard/ImportModal";
+import { ConfigView } from "./components/dashboard/ConfigView";
+import { WidgetEditor } from "./components/dashboard/WidgetEditor";
+import { useZabbixDiscovery } from "./hooks/useZabbixDiscovery";
+import { useTimeseries } from "./hooks/useTimeseries";
+import { DashboardProvider, useDashboard } from "./contexts/DashboardContext";
+import type { Widget, Dashboard, ZabbixHost, ZabbixItem } from "./types/zabbix";
 import { 
   Activity,   Cpu, 
   HardDrive, 
@@ -60,36 +66,6 @@ import axios from "axios";
 import { cn, getDeterministicColor, formatValue, updateMetricColor } from "./lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 
-interface Widget {
-  id: string;
-  title: string;
-  type: 'kpi' | 'chart';
-  chartType: 'area' | 'line' | 'bar' | 'pie' | 'mixed';
-  metrics: string[];
-  hosts: string[];
-  aggregation: 'none' | 'sum' | 'avg';
-  stacked: boolean;
-  cols: number;
-  rows: number;
-  forceNewline?: boolean;
-  seriesConfig?: Record<string, {
-    metric?: string;
-    host?: string;
-    metrics?: string[];
-    hosts?: string[];
-    yAxis: 'left' | 'right';
-    chartType: 'area' | 'line' | 'bar';
-    aggregation: 'none' | 'sum' | 'avg';
-    stacked: boolean;
-  }>;
-}
-
-interface Dashboard {
-  id: string;
-  name: string;
-  widgets: Widget[];
-}
-
 type View = "dashboard" | "network" | "infra" | "config" | "notifications";
 
 declare global {
@@ -99,21 +75,16 @@ declare global {
   }
 }
 
-export default function App() {
-  const [data, setData] = useState<any[]>([]);
+function DashboardApp() {
+  const { filters, setFilters, widgets, setWidgets, editingWidgetId, setEditingWidgetId, draggingWidgetId, setDraggingWidgetId } = useDashboard();
+  const [data, setData] = useState<Record<string, any>[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("dashboard");
   const [isDiscovering, setIsDiscovering] = useState(false);
-  const [filters, setFilters] = useState<any>({ 
-    mode: 'live',
-    range: '24h',
-    granularity: '1h',
-    start: new Date(Date.now() - 86400000).toISOString().substring(0, 16),
-    end: new Date().toISOString().substring(0, 16)
-  });
+  
   const [savedDashboards, setSavedDashboards] = useState<Dashboard[]>([]);
   const [activeDashboardId, setActiveDashboardId] = useState<string | undefined>();
-  const [widgets, setWidgets] = useState<Widget[]>([]);
+  
   const [globalSearch, setGlobalSearch] = useState("");
   const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' | 'warning' | 'error' } | null>(null);
 
@@ -131,8 +102,8 @@ export default function App() {
   const [discoveryStatus, setDiscoveryStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [dashboardName, setDashboardName] = useState<string>('Executive Overview');
   const [lastSync, setLastSync] = useState<Date>(new Date());
-  const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
-  const [draggingWidgetId, setDraggingWidgetId] = useState<string | null>(null);
+  
+  
   const [widgetZoomDomains, setWidgetZoomDomains] = useState<Record<string, [number, number] | null>>({});
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -208,7 +179,7 @@ export default function App() {
           
           return new Promise((resolve, reject) => {
             window._resolveToken = () => {
-                const token = localStorage.getItem("hareporting_app_secure_token");
+                const token = sessionStorage.getItem("hareporting_app_secure_token");
                 processQueue(null, token);
                 isRefreshing = false;
                 originalRequest.headers['Authorization'] = `Bearer ${token}`;
@@ -226,7 +197,7 @@ export default function App() {
     );
 
     const reqInterceptor = axios.interceptors.request.use(config => {
-      const token = localStorage.getItem("hareporting_app_secure_token");
+      const token = sessionStorage.getItem("hareporting_app_secure_token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -320,13 +291,13 @@ export default function App() {
   };
 
   const [zabbixConfig, setZabbixConfig] = useState<{url: string, token: string, isPreconfigured: boolean}>({
-    url: localStorage.getItem('hareporting_zabbix_url') || '',
-    token: localStorage.getItem('hareporting_zabbix_token') || '',
+    url: sessionStorage.getItem('hareporting_zabbix_url') || '',
+    token: sessionStorage.getItem('hareporting_zabbix_token') || '',
     isPreconfigured: false
   });
 
   const [savedZabbixUrl, setSavedZabbixUrl] = useState<string>(
-    localStorage.getItem('hareporting_zabbix_url') || ''
+    sessionStorage.getItem('hareporting_zabbix_url') || ''
   );
 
   const dashboardStorageKey = useMemo(() => {
@@ -355,7 +326,7 @@ export default function App() {
         const res = await axios.get("/api/config");
         if (res.data) {
           setRequiresSecureToken(res.data.requiresSecureToken);
-          if (res.data.requiresSecureToken && !localStorage.getItem("hareporting_app_secure_token")) {
+          if (res.data.requiresSecureToken && !sessionStorage.getItem("hareporting_app_secure_token")) {
              setSecureTokenPrompt(true);
           }
           setZabbixConfig(prev => {
@@ -653,7 +624,121 @@ export default function App() {
     return Array.from(s).sort().join(',');
   }, [widgets]);
 
-  const activeHostsStr = useMemo(() => {
+  
+  const widgetDataMapping = useMemo(() => {
+    const mapping: Record<string, any> = {};
+    widgets.forEach(w => {
+      if (w.type === 'chart') {
+        const isAggregated = w.chartType !== 'mixed' && w.aggregation !== 'none';
+        let chartSeries: { key: string; name: string; color?: string; metric?: string; configKey?: string; unit?: string }[] = [];
+        let chartData = data;
+
+        if (w.chartType === 'mixed') {
+          let mixedData = data.map(point => ({ ...point }));
+          ['series1', 'series2'].forEach(sKey => {
+            const sConf = w.seriesConfig?.[sKey];
+            if (!sConf) return;
+            
+            const smetrics = sConf.metrics || (sConf.metric ? [sConf.metric] : []);
+            const shosts = sConf.hosts || (sConf.host ? [sConf.host] : []);
+            const axisLabel = sConf.yAxis === 'right' ? ' (Right)' : ' (Left)';
+            
+            const aggType = sConf.aggregation || 'none';
+            
+            if (aggType !== 'none') {
+               smetrics.forEach(m => {
+                 const aggKey = `${sKey}_${m}_agg`;
+                 const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
+                 mixedData = mixedData.map(point => {
+                   let vals: number[] = [];
+                   const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
+                   hostsToUse.forEach(h => {
+                     const key = `${m}_${h}`;
+                     if (!hiddenSeries.has(key) && point[key] !== undefined) vals.push(Number(point[key]));
+                   });
+                   const sum = vals.reduce((a,b)=>a+b, 0);
+                   const val = aggType === 'avg' && vals.length > 0 ? sum/vals.length : sum;
+                   return { ...point, [aggKey]: val };
+                 });
+                 chartSeries.push({
+                   key: aggKey,
+                   name: `${m.toUpperCase()} (${aggType === 'sum' ? 'Sum' : 'Avg'})${axisLabel}`,
+                   color: getDeterministicColor(aggKey, m),
+                   metric: m,
+                   configKey: sKey,
+                   unit: u
+                 });
+               });
+            } else {
+               smetrics.forEach(m => {
+                 const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
+                 const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
+                 hostsToUse.forEach(h => {
+                   const key = `${m}_${h}`;
+                   chartSeries.push({
+                     key,
+                     name: `${m.toUpperCase()} [${h}]${axisLabel}`,
+                     color: getDeterministicColor(key, m),
+                     metric: m,
+                     configKey: sKey,
+                     unit: u
+                   });
+                 });
+               });
+            }
+          });
+          chartData = mixedData;
+        } else if (isAggregated) {
+           const label = w.aggregation === 'sum' ? 'Aggregate Sum' : 'Aggregate Mean';
+           const m = w.metrics[0];
+           const u = m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
+           chartSeries = [{ key: 'agg_val', name: label, color: getDeterministicColor('agg_val', m), unit: u }];
+          
+          chartData = data.map(point => {
+            let vals: number[] = [];
+            w.metrics.forEach(m => {
+              const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+              hostsToUse.forEach(h => {
+                const key = `${m}_${h}`;
+                if (!hiddenSeries.has(key) && point[key] !== undefined) {
+                  vals.push(Number(point[key]));
+                }
+              });
+            });
+            
+            const sum = vals.reduce((a, b) => a + b, 0);
+            const val = w.aggregation === 'avg' && vals.length > 0 ? sum / vals.length : sum;
+            
+            return {
+              ...point,
+              agg_val: val
+            };
+          });
+        } else {
+          w.metrics.forEach((m: string) => {
+            const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
+            const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+            hostsToUse.forEach((h: string) => {
+              const key = `${m}_${h}`;
+              const hostLabel = h;
+              const metricLabel = m.toUpperCase();
+              chartSeries.push({
+                key,
+                name: (w.hosts.length > 1 || w.hosts.includes('all') || w.metrics.length > 1) ? `${metricLabel} [${hostLabel}]` : metricLabel,
+                color: getDeterministicColor(key, m),
+                metric: m,
+                unit: u
+              });
+            });
+          });
+        }
+        mapping[w.id] = { chartData, chartSeries };
+      }
+    });
+    return mapping;
+  }, [data, widgets, hiddenSeries, availableHosts, metricUnitsMap, getDeterministicColor]);
+
+const activeHostsStr = useMemo(() => {
     const s = new Set<string>();
     widgets.forEach(w => w.hosts.forEach(h => s.add(h)));
     return Array.from(s).sort().join(',');
@@ -858,9 +943,27 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportSuccess = (json: any) => {
-    setWidgets(json.widgets);
-    if (json.name) setDashboardName(json.name);
+  const handleImportSuccess = (json: unknown) => {
+    if (!json || typeof json !== 'object' || Array.isArray(json)) {
+      showToast("Invalid dashboard file format.", "error");
+      return;
+    }
+    const payload = json as Record<string, unknown>;
+    
+    if (!Array.isArray(payload.widgets)) {
+      showToast("Invalid dashboard structure: Missing widgets array.", "error");
+      return;
+    }
+
+    // Basic sanitization
+    const sanitizedWidgets = payload.widgets.filter((w: any) => 
+      w && typeof w === 'object' && w.id && w.type && w.cols && w.rows
+    );
+
+    setWidgets(sanitizedWidgets as Widget[]);
+    if (typeof payload.name === 'string') {
+      setDashboardName(payload.name);
+    }
   };
 
   const discoverZabbixAssets = useCallback(async (manual = false, overrideConfig?: {url: string, token: string}) => {
@@ -887,7 +990,7 @@ export default function App() {
       });
       
       if (hostRes.data.result) {
-        const hosts = hostRes.data.result.map((h: any) => h.name || h.host);
+        const hosts = hostRes.data.result.map((h: ZabbixHost) => h.name || h.host);
         setAvailableHosts(hosts);
       }
 
@@ -908,11 +1011,11 @@ export default function App() {
         const units: Record<string, string> = {};
         const mapping: Record<string, string[]> = {};
         const dict: Record<string, {itemid: string, value_type: string, lastvalue: string}> = {};
-        itemRes.data.result.forEach((i: any) => {
+        itemRes.data.result.forEach((i: ZabbixItem) => {
           const base = i.name;
           if (i.units) units[base] = i.units;
           if (i.hosts && i.hosts.length > 0) {
-            i.hosts.forEach((h: any) => {
+            i.hosts.forEach((h: ZabbixHost) => {
               const hostName = h.name || h.host;
               if (!mapping[hostName]) mapping[hostName] = [];
               mapping[hostName].push(base);
@@ -928,7 +1031,7 @@ export default function App() {
         }
         setHostMetricsMap(mapping);
         
-        const metrics = Array.from(new Set(itemRes.data.result.map((i: any) => i.name)));
+        const metrics = Array.from(new Set(itemRes.data.result.map((i: ZabbixItem) => i.name)));
         setAvailableMetrics(metrics as string[]);
       }
       
@@ -941,7 +1044,11 @@ export default function App() {
       }
     } catch (e: any) {
       console.error("Zabbix Discovery Failed", e);
-      const msg = e.response?.data?.error || e.message || "Zabbix Discovery Failed";
+      let msg = e.response?.data?.error || e.message || "Zabbix Discovery Failed";
+      if (typeof msg === 'string') {
+        msg = msg.split('\n')[0]; // Strip multi-line traces
+        msg = msg.replace(/Trace ID: .*/, '').trim(); // Remove Trace ID info
+      }
       if (manual) setDiscoveryStatus({ type: 'error', message: msg });
     } finally {
       if (manual) setIsDiscovering(false);
@@ -971,8 +1078,8 @@ export default function App() {
 
   const handleSaveZabbixConfig = () => {
     setZabbixConfig(draftZabbixConfig);
-    localStorage.setItem('hareporting_zabbix_url', draftZabbixConfig.url);
-    localStorage.setItem('hareporting_zabbix_token', draftZabbixConfig.token);
+    sessionStorage.setItem('hareporting_zabbix_url', draftZabbixConfig.url);
+    sessionStorage.setItem('hareporting_zabbix_token', draftZabbixConfig.token);
     setSavedZabbixUrl(draftZabbixConfig.url);
     
     setDiscoveryStatus({ type: 'success', message: "Configuration saved." });
@@ -982,8 +1089,8 @@ export default function App() {
     const simConfig = { url: '', token: '', isPreconfigured: false };
     setDraftZabbixConfig(simConfig);
     setZabbixConfig(simConfig);
-    localStorage.setItem('hareporting_zabbix_url', '');
-    localStorage.setItem('hareporting_zabbix_token', '');
+    sessionStorage.setItem('hareporting_zabbix_url', '');
+    sessionStorage.setItem('hareporting_zabbix_token', '');
     setSavedZabbixUrl('');
     setDiscoveryStatus({ type: 'success', message: "Reverted to Demo Mode." });
     setAvailableHosts(['srv-prod-01', 'sql-db-primary', 'gateway-02']);
@@ -1036,116 +1143,18 @@ export default function App() {
 
     if (view === "config") {
       return (
-        <div className="w-full flex-1 flex flex-col items-center py-1 sm:py-2">
-          <div className="w-full max-w-3xl space-y-6">
-            <Card className="p-6 sm:p-8">
-              <div className="space-y-6">
-              {zabbixConfig.isPreconfigured ? (
-                 <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400">
-                   <p className="font-semibold mb-2 flex items-center gap-2">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-check"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-                     Connected via Server Environment
-                   </p>
-                   <p className="text-sm opacity-90">
-                     This instance is securely configured via server environment variables. You cannot override the endpoint URL or API token from the UI.
-                   </p>
-                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 block mb-2">Zabbix Endpoint</label>
-                    <input 
-                      type="text" 
-                      value={draftZabbixConfig.url} 
-                      onChange={e => setDraftZabbixConfig({...draftZabbixConfig, url: e.target.value})}
-                      placeholder="https://your-zabbix.com/zabbix/api_jsonrpc.php"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 font-mono focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 block mb-2">Zabbix API Token</label>
-                    <input 
-                      type="password" 
-                      value={draftZabbixConfig.token} 
-                      onChange={e => setDraftZabbixConfig({...draftZabbixConfig, token: e.target.value})}
-                      placeholder="Your Zabbix API Token..."
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 font-mono focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-sm" 
-                    />
-                  </div>
-                </div>
-              )}
-              
-              {requiresSecureToken && (
-                <div className={cn("pt-6 border-t", zabbixConfig.isPreconfigured ? "border-slate-200 dark:border-slate-800" : "border-slate-200 dark:border-slate-800")}>
-                  <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-400 mb-2 flex items-center gap-2">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                     Secure Application Access
-                  </p>
-                  <p className="text-xs text-indigo-700 dark:text-indigo-300 opacity-90 mb-4">
-                     This application requires an access token. Ensure this is configured if you intend to trigger a discovery or save your options.
-                  </p>
-                  <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 block mb-2">Access Token</label>
-                  <input 
-                    type="password" 
-                    defaultValue=""
-                    onChange={e => localStorage.setItem('hareporting_app_secure_token', e.target.value)}
-                    placeholder={localStorage.getItem('hareporting_app_secure_token') ? "Token is set. Enter a new one to update..." : "Your APP_SECURE_TOKEN..."}
-                    className="w-full bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 font-mono focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm" 
-                  />
-                </div>
-              )}
-            </div>
-            
-            <div className={cn("grid gap-4 mt-8", (!isDemo && !zabbixConfig.isPreconfigured) ? "grid-cols-3" : "grid-cols-2")}>
-              {!zabbixConfig.isPreconfigured && (
-                <button 
-                  onClick={handleSaveZabbixConfig}
-                  className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-blue-500 transition-all active:scale-95"
-                >
-                  Save Configuration
-                </button>
-              )}
-              <button 
-                onClick={async () => {
-                  if (!zabbixConfig.isPreconfigured) {
-                    setZabbixConfig(draftZabbixConfig);
-                    await discoverZabbixAssets(true, draftZabbixConfig);
-                  } else {
-                    await discoverZabbixAssets(true);
-                  }
-                }}
-                className={cn(
-                  "w-full py-3 bg-slate-800 text-white rounded-xl font-semibold text-sm shadow-md hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                )}
-                disabled={(!zabbixConfig.isPreconfigured && (!draftZabbixConfig.url || !draftZabbixConfig.token)) || isDiscovering}
-              >
-                <RefreshCw className={cn("w-4 h-4", isDiscovering && "animate-spin")} /> {isDiscovering ? 'Discovering...' : 'Trigger Discovery'}
-              </button>
-              {!isDemo && (
-                <button 
-                  onClick={handleDemoMode}
-                  className={cn(
-                    "w-full py-3 bg-rose-100 text-rose-700 rounded-xl font-semibold text-sm shadow-md hover:bg-rose-200 transition-all active:scale-95 flex items-center justify-center gap-2"
-                  )}
-                >
-                  Switch to DEMO Mode
-                </button>
-              )}
-            </div>
-            {discoveryStatus && (
-              <div className={cn(
-                "p-4 rounded-xl border text-sm font-medium mt-4",
-                discoveryStatus.type === 'success' ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
-              )}>
-                {discoveryStatus.message}
-              </div>
-            )}
-            <p className="text-xs text-slate-500 text-center font-medium mt-6">
-              Authentication is handled server-side via the HA Gateway Proxy.
-            </p>
-          </Card>
-        </div>
-        </div>
+        <ConfigView
+          zabbixConfig={zabbixConfig}
+          requiresSecureToken={requiresSecureToken}
+          isDemo={isDemo}
+          isDiscovering={isDiscovering}
+          draftZabbixConfig={draftZabbixConfig}
+          setDraftZabbixConfig={setDraftZabbixConfig}
+          handleSaveZabbixConfig={handleSaveZabbixConfig}
+          discoverZabbixAssets={discoverZabbixAssets}
+          handleDemoMode={handleDemoMode}
+          discoveryStatus={discoveryStatus}
+        />
       );
     }
 
@@ -1449,320 +1458,18 @@ export default function App() {
                 </div>
               </div>
 
-              {editingWidgetId === w.id ? createPortal(
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                  <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={handleCancelEdit} />
-                  <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-10 shadow-2xl rounded-xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
-                    <div className="flex justify-between items-center mb-6 sm:mb-10">
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                          <Settings2 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight truncate">Widget Configuration</h4>
-                          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 truncate">ID: {w.id}</p>
-                        </div>
-                      </div>
-                      <button onClick={handleCancelEdit} className="p-2 sm:p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors shrink-0">
-                        <X className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 hover:text-slate-900 dark:hover:text-white" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-8 sm:space-y-10">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12">
-                        <div className="space-y-6">
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <label className="text-sm font-semibold text-slate-400 block">Title</label>
-                              <label className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer select-none transition-colors">
-                                <input 
-                                  type="checkbox" 
-                                  checked={!!w.forceNewline} 
-                                  onChange={e => handleUpdateWidget(w.id, { forceNewline: e.target.checked })} 
-                                  className="w-3.5 h-3.5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-blue-600 dark:text-sky-500 focus:ring-blue-500/20 dark:focus:ring-sky-500/20" 
-                                /> 
-                                Force New Line
-                              </label>
-                            </div>
-                            <input 
-                              type="text" 
-                              value={w.title} 
-                              onChange={e => handleUpdateWidget(w.id, { title: e.target.value })} 
-                              className={cn(
-                                "w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border outline-none transition-all shadow-inner text-slate-900 dark:text-white",
-                                !w.title.trim() ? "border-rose-500/50 focus:border-rose-500" : "border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500"
-                              )} 
-                              placeholder="Widget Title"
-                            />
-                            {!w.title.trim() && (
-                              <p className="text-[10px] text-rose-500 font-semibold mt-1.5 uppercase tracking-wider animate-in fade-in slide-in-from-top-1">
-                                Identification Label Required
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                            {w.type === 'chart' && (
-                              <div>
-                                <label className="text-sm font-semibold text-slate-400 block mb-2">Visualization</label>
-                                <select 
-                                  value={w.chartType} 
-                                  onChange={e => handleUpdateWidget(w.id, { chartType: e.target.value as any })} 
-                                  className="w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all text-slate-900 dark:text-white"
-                                >
-                                  <option value="area">Area Map</option>
-                                  <option value="line">Line Chart</option>
-                                  <option value="bar">Bar Chart</option>
-                                  <option value="pie">Pie Chart</option>
-                                  <option value="mixed">Mixed (Dual Axis)</option>
-                                </select>
-                              </div>
-                            )}
-
-                            {w.chartType !== 'mixed' && (
-                              <div>
-                                <label className="text-sm font-semibold text-slate-400 block mb-2">Aggregation</label>
-                                <select 
-                                  value={w.type === 'kpi' && w.aggregation === 'none' ? 'avg' : w.aggregation} 
-                                  onChange={e => handleUpdateWidget(w.id, { aggregation: e.target.value as any })} 
-                                  className="w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all text-slate-900 dark:text-white"
-                                >
-                                  {w.type !== 'kpi' && <option value="none">Detailed Multi-Series</option>}
-                                  <option value="sum">Sum</option>
-                                  <option value="avg">Average</option>
-                                </select>
-                              </div>
-                            )}
-                          </div>
-
-                          {w.type === 'chart' && w.chartType !== 'mixed' && (
-                            <div>
-                              <label className="text-sm font-semibold text-slate-400 block mb-2">Display Mode</label>
-                              <label className="flex items-center gap-3 sm:gap-4 w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 focus-within:border-blue-500 dark:focus-within:border-sky-500 outline-none transition-all text-slate-800 dark:text-white cursor-pointer select-none">
-                                <input 
-                                  type="checkbox" 
-                                  checked={w.stacked} 
-                                  onChange={e => handleUpdateWidget(w.id, { stacked: e.target.checked })} 
-                                  className="w-4 h-4 sm:w-5 sm:h-5 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-blue-600 dark:text-sky-500 focus:ring-blue-500/20 dark:focus:ring-sky-500/20" 
-                                /> 
-                                Stack Series
-                              </label>
-                            </div>
-                          )}
-                        </div>
-
-                        {w.chartType !== 'mixed' && (
-                          <div className="space-y-6">
-                            <MultiSelect 
-                              label="Hostname" 
-                              options={availableHosts} 
-                              selected={w.hosts} 
-                              onChange={(h) => handleUpdateWidget(w.id, { hosts: h })} 
-                              metricUnitsMap={{}}
-                            />
-
-                            {(() => {
-                              let optionsForWidget = isDemo ? availableMetrics : [];
-                              if (!isDemo) {
-                                if (w.hosts.length === 0) {
-                                  optionsForWidget = availableMetrics;
-                                } else {
-                                  const metricItems = new Set<string>();
-                                  w.hosts.forEach(h => {
-                                    const m = hostMetricsMap[h];
-                                    if (m) m.forEach(x => metricItems.add(x));
-                                  });
-                                  optionsForWidget = Array.from(metricItems);
-                                }
-                              }
-                              return (
-                                <div className="space-y-6">
-                                  <MultiSelect 
-                                    label="Telemetry Metric Stream" 
-                                    options={(!isDemo && w.hosts.length > 0) ? optionsForWidget : availableMetrics} 
-                                    selected={w.metrics} 
-                                    onChange={(m) => handleUpdateWidget(w.id, { metrics: m })} 
-                                    metricUnitsMap={metricUnitsMap}
-                                  />
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </div>
-
-                      {w.chartType === 'mixed' && (
-                        <div className="mt-8 space-y-6">
-                          <h5 className="text-sm font-semibold text-slate-400">Series Configuration (Max 2 metrics for Mixed)</h5>
-                          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 flex flex-col gap-6 relative">
-                            {['series1', 'series2'].map((seriesKey, idx) => {
-                              const sConf = w.seriesConfig?.[seriesKey] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: idx === 0 ? 'left' : 'right', chartType: 'line', aggregation: 'none', stacked: false };
-                              
-                              const generateOption = (val: string, lbl: string) => <option value={val} key={val}>{lbl}</option>;
-                              
-                              return (
-                                <React.Fragment key={seriesKey}>
-                                  {idx === 1 && (
-                                    <div className="flex justify-center relative z-10 w-full my-6">
-                                      <div className="absolute inset-x-0 h-[1px] bg-slate-200 dark:bg-slate-800 top-1/2 -translate-y-1/2 -mx-6 sm:-mx-8" />
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const prevSeries1 = w.seriesConfig?.['series1'] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: 'left', chartType: 'line', aggregation: 'none', stacked: false };
-                                          const prevSeries2 = w.seriesConfig?.['series2'] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: 'right', chartType: 'line', aggregation: 'none', stacked: false };
-                                          const allMetrics = Array.from(new Set([...(prevSeries2.metrics || (prevSeries2.metric ? [prevSeries2.metric] : [])), ...(prevSeries1.metrics || (prevSeries1.metric ? [prevSeries1.metric] : []))]));
-                                          const allHosts = Array.from(new Set([...(prevSeries2.hosts || (prevSeries2.host ? [prevSeries2.host] : [])), ...(prevSeries1.hosts || (prevSeries1.host ? [prevSeries1.host] : []))]));
-                                          handleUpdateWidget(w.id, { 
-                                            seriesConfig: { ...w.seriesConfig, series1: prevSeries2, series2: prevSeries1 },
-                                            metrics: allMetrics,
-                                            hosts: allHosts
-                                          });
-                                        }}
-                                        className="relative p-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all transform hover:scale-110 shadow-md"
-                                        title="Swap Series"
-                                      >
-                                        <ArrowUpDown className="w-5 h-5" />
-                                      </button>
-                                    </div>
-                                  )}
-                                  <div className="space-y-4">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-sm font-bold text-blue-600 dark:text-sky-400 capitalize">Series {idx + 1}</span>
-                                    </div>
-                                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                                    <div className="col-span-2 md:col-span-3">
-                                      <MultiSelect 
-                                        label="Hosts" 
-                                        options={['all', ...availableHosts]} 
-                                        selected={sConf.hosts || (sConf.host ? [sConf.host] : ['all'])}
-                                        onChange={(hosts) => {
-                                          const selectedHosts = hosts.length === 0 ? ['all'] : hosts;
-                                          const newConf = { ...w.seriesConfig, [seriesKey]: { ...sConf, hosts: selectedHosts, host: undefined } };
-                                          const allMetrics = Array.from(new Set([...(newConf.series1?.metrics || (newConf.series1?.metric ? [newConf.series1.metric] : [])), ...(newConf.series2?.metrics || (newConf.series2?.metric ? [newConf.series2.metric] : []))]));
-                                          const allHosts = Array.from(new Set([...(newConf.series1?.hosts || (newConf.series1?.host ? [newConf.series1.host] : [])), ...(newConf.series2?.hosts || (newConf.series2?.host ? [newConf.series2.host] : []))]));
-                                          handleUpdateWidget(w.id, { seriesConfig: newConf, metrics: allMetrics, hosts: allHosts });
-                                        }}
-                                        metricUnitsMap={metricUnitsMap}
-                                      />
-                                    </div>
-                                    <div className="col-span-2 md:col-span-3">
-                                      <MultiSelect 
-                                        label="Metrics" 
-                                        options={availableMetrics} 
-                                        selected={sConf.metrics || (sConf.metric ? [sConf.metric] : (availableMetrics[0] ? [availableMetrics[0]] : []))}
-                                        onChange={(metrics) => {
-                                          const newConf = { ...w.seriesConfig, [seriesKey]: { ...sConf, metrics: metrics, metric: undefined } };
-                                          const allMetrics = Array.from(new Set([...(newConf.series1?.metrics || (newConf.series1?.metric ? [newConf.series1.metric] : [])), ...(newConf.series2?.metrics || (newConf.series2?.metric ? [newConf.series2.metric] : []))]));
-                                          const allHosts = Array.from(new Set([...(newConf.series1?.hosts || (newConf.series1?.host ? [newConf.series1.host] : [])), ...(newConf.series2?.hosts || (newConf.series2?.host ? [newConf.series2.host] : []))]));
-                                          handleUpdateWidget(w.id, { seriesConfig: newConf, metrics: allMetrics, hosts: allHosts });
-                                        }}
-                                        metricUnitsMap={metricUnitsMap}
-                                      />
-                                    </div>
-                                    <div className="col-span-2 md:col-span-6 flex flex-col sm:flex-row gap-4 mt-2">
-                                      <div className="flex-1">
-                                        <label className="text-xs font-semibold text-slate-500 mb-1 block">Axis</label>
-                                        <div className="relative">
-                                          <select 
-                                            value={sConf.yAxis} 
-                                            onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, yAxis: e.target.value as any } } })}
-                                            className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
-                                          >
-                                            <option value="left">Primary (Left)</option>
-                                            <option value="right">Secondary (Right)</option>
-                                          </select>
-                                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="flex-1">
-                                        <label className="text-xs font-semibold text-slate-500 mb-1 block">Visual</label>
-                                        <div className="relative">
-                                          <select 
-                                            value={sConf.chartType} 
-                                            onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, chartType: e.target.value as any } } })}
-                                            className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
-                                          >
-                                            <option value="line">Line</option>
-                                            <option value="area">Area</option>
-                                            <option value="bar">Bar</option>
-                                          </select>
-                                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="flex-1">
-                                        <label className="text-xs font-semibold text-slate-500 mb-1 block">Aggregation</label>
-                                        <div className="relative">
-                                          <select 
-                                            value={sConf.aggregation} 
-                                            onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, aggregation: e.target.value as any } } })}
-                                            className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
-                                          >
-                                            <option value="none">Multi-Series</option>
-                                            <option value="sum">Sum</option>
-                                            <option value="avg">Avg</option>
-                                          </select>
-                                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="flex-1">
-                                        <label className="text-xs font-semibold text-slate-500 mb-1 block">Stacking</label>
-                                        <div className="relative">
-                                          <select 
-                                            value={sConf.stacked ? 'true' : 'false'} 
-                                            onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, stacked: e.target.value === 'true' } } })}
-                                            className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
-                                          >
-                                            <option value="false">Off</option>
-                                            <option value="true">On</option>
-                                          </select>
-                                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  </div>
-                                </React.Fragment>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="pt-6 sm:pt-8 flex flex-col sm:flex-row justify-end gap-3 mt-2">
-                        <button 
-                          onClick={handleCancelEdit}
-                          className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-sm rounded-lg sm:rounded-xl transition-all border border-slate-200 dark:border-slate-700"
-                        >
-                          Cancel
-                        </button>
-                        <button 
-                          onClick={() => {
-                            if (w.title.trim()) {
-                              setEditingWidgetId(null);
-                            }
-                          }}
-                          disabled={!w.title.trim()}
-                          className={cn(
-                            "w-full sm:w-auto px-8 sm:px-10 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm font-semibold transition-all shadow-md active:scale-95",
-                            !w.title.trim() 
-                              ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
-                              : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                          )}
-                        >
-                          Save configuration
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>, document.body
+              {editingWidgetId === w.id ? (
+                <WidgetEditor
+                  widget={w}
+                  isDemo={isDemo}
+                  availableMetrics={availableMetrics as string[]}
+                  availableHosts={availableHosts}
+                  hostMetricsMap={hostMetricsMap}
+                  metricUnitsMap={metricUnitsMap}
+                  handleCancelEdit={handleCancelEdit}
+                  handleUpdateWidget={handleUpdateWidget}
+                  setEditingWidgetId={setEditingWidgetId}
+                />
               ) : (
                 w.type === 'kpi' ? (
                   (() => {
@@ -1867,111 +1574,7 @@ export default function App() {
                   })()
                 ) : (
                   (() => {
-                    const isAggregated = w.chartType !== 'mixed' && w.aggregation !== 'none';
-                    let chartSeries: { key: string; name: string; color?: string; metric?: string; configKey?: string; unit?: string }[] = [];
-                    let chartData = data;
-
-                    if (w.chartType === 'mixed') {
-                      let mixedData = data.map(point => ({ ...point }));
-                      ['series1', 'series2'].forEach(sKey => {
-                        const sConf = w.seriesConfig?.[sKey];
-                        if (!sConf) return;
-                        
-                        const smetrics = sConf.metrics || (sConf.metric ? [sConf.metric] : []);
-                        const shosts = sConf.hosts || (sConf.host ? [sConf.host] : []);
-                        const axisLabel = sConf.yAxis === 'right' ? ' (Right)' : ' (Left)';
-                        
-                        const aggType = sConf.aggregation || 'none';
-                        
-                        if (aggType !== 'none') {
-                           // Aggregate all selected hosts for each selected metric
-                           smetrics.forEach(m => {
-                             const aggKey = `${sKey}_${m}_agg`;
-                             const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
-                             mixedData = mixedData.map(point => {
-                               let vals: number[] = [];
-                               const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
-                               hostsToUse.forEach(h => {
-                                 const key = `${m}_${h}`;
-                                 if (!hiddenSeries.has(key) && point[key] !== undefined) vals.push(Number(point[key]));
-                               });
-                               const sum = vals.reduce((a,b)=>a+b, 0);
-                               const val = aggType === 'avg' && vals.length > 0 ? sum/vals.length : sum;
-                               return { ...point, [aggKey]: val };
-                             });
-                             chartSeries.push({
-                               key: aggKey,
-                               name: `${m.toUpperCase()} (${aggType === 'sum' ? 'Sum' : 'Avg'})${axisLabel}`,
-                               color: getDeterministicColor(aggKey, m),
-                               metric: m,
-                               configKey: sKey,
-                               unit: u
-                             });
-                           });
-                        } else {
-                           smetrics.forEach(m => {
-                             const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
-                             const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
-                             hostsToUse.forEach(h => {
-                               const key = `${m}_${h}`;
-                               chartSeries.push({
-                                 key,
-                                 name: `${m.toUpperCase()} [${h}]${axisLabel}`,
-                                 color: getDeterministicColor(key, m),
-                                 metric: m,
-                                 configKey: sKey,
-                                 unit: u
-                               });
-                             });
-                           });
-                        }
-                      });
-                      chartData = mixedData;
-                    } else if (isAggregated) {
-                       const label = w.aggregation === 'sum' ? 'Aggregate Sum' : 'Aggregate Mean';
-                       const m = w.metrics[0];
-                       const u = m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
-                       chartSeries = [{ key: 'agg_val', name: label, color: getDeterministicColor('agg_val', w.metrics[0]), unit: u }];
-                      
-                      chartData = data.map(point => {
-                        let values: number[] = [];
-                        w.metrics.forEach(m => {
-                          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
-                          hostsToUse.forEach(h => {
-                            const key = `${m}_${h}`;
-                            if (!hiddenSeries.has(key) && point[key] !== undefined) {
-                              values.push(Number(point[key]));
-                            }
-                          });
-                        });
-                        
-                        const sum = values.reduce((a, b) => a + b, 0);
-                        const val = w.aggregation === 'avg' && values.length > 0 ? sum / values.length : sum;
-                        
-                        return {
-                          ...point,
-                          agg_val: val
-                        };
-                      });
-                    } else {
-                      w.metrics.forEach(m => {
-                        const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
-                        const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
-                        hostsToUse.forEach(h => {
-                          const key = `${m}_${h}`;
-                          const hostLabel = h;
-                          const metricLabel = m.toUpperCase();
-                          chartSeries.push({
-                            key,
-                            name: (w.hosts.length > 1 || w.hosts.includes('all') || w.metrics.length > 1) ? `${metricLabel} [${hostLabel}]` : metricLabel,
-                            color: getDeterministicColor(key, m),
-                            metric: m,
-                            unit: u
-                          });
-                        });
-                      });
-                    }
-
+                    const { chartData = data, chartSeries = [] } = widgetDataMapping[w.id] || {};
                     return (
                       <TrendChart 
                         title={w.title} 
@@ -2353,7 +1956,7 @@ export default function App() {
             </p>
             <form onSubmit={e => {
               e.preventDefault();
-              localStorage.setItem("hareporting_app_secure_token", secureTokenInput);
+              sessionStorage.setItem("hareporting_app_secure_token", secureTokenInput);
               setSecureTokenPrompt(false);
               if (window._resolveToken) {
                  window._resolveToken();
@@ -2383,8 +1986,8 @@ export default function App() {
                   setSecureTokenPrompt(false);
                   setZabbixConfig({url: '', token: '', isPreconfigured: false});
                   setDraftZabbixConfig({url: '', token: '', isPreconfigured: false});
-                  localStorage.setItem('hareporting_zabbix_url', '');
-                  localStorage.setItem('hareporting_zabbix_token', '');
+                  sessionStorage.setItem('hareporting_zabbix_url', '');
+                  sessionStorage.setItem('hareporting_zabbix_token', '');
                   if (window._rejectToken) {
                      window._rejectToken(new Error("Switched to Demo Mode"));
                      window._resolveToken = undefined;
@@ -2508,115 +2111,12 @@ export default function App() {
   );
 }
 
-function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { options: string[], selected: string[], onChange: (val: string[]) => void, label: string, metricUnitsMap: Record<string, string> }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
-  const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const sortedOptions = [...options].sort((a, b) => a.localeCompare(b));
-  const filteredOptions = sortedOptions.filter(opt => opt.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const toggleOpen = () => {
-    if (!isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const fitsBelow = window.innerHeight - rect.bottom > 250;
-      setDropdownPos({
-        top: fitsBelow ? rect.bottom + 8 : rect.top - 232, // approximately menu height + gap
-        left: rect.left,
-        width: rect.width
-      });
-    }
-    setIsOpen(!isOpen);
-  };
-
+export default function App() {
   return (
-    <div className="relative">
-      <label className="text-sm font-semibold text-slate-400 block mb-2">{label}</label>
-      <button 
-        ref={buttonRef}
-        onClick={toggleOpen}
-        className={cn(
-          "w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all flex justify-between items-center group",
-          isOpen ? "border-blue-500 dark:border-sky-500 ring-1 ring-blue-500/50 dark:ring-sky-500/50" : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-900 dark:text-white"
-        )}
-      >
-        <span className={cn("truncate font-medium flex-1 text-left", selected.length > 0 ? "text-blue-600 dark:text-sky-400 font-semibold" : "text-slate-400 dark:text-slate-500")}>
-           {selected.length > 0 ? selected.map(s => {
-             const unit = metricUnitsMap?.[s];
-             return unit ? `${s} (${unit})` : s;
-           }).join(', ') : 'None selected'}
-        </span>
-        <ChevronDown className={cn("w-4 h-4 transition-all duration-300 ml-2 shrink-0", isOpen ? "rotate-180 text-blue-500 dark:text-sky-500" : "opacity-30 group-hover:opacity-60 text-slate-400")} />
-      </button>
-      {isOpen && typeof window !== 'undefined' && createPortal(
-        <>
-          <div className="fixed inset-0 z-[120]" onClick={() => setIsOpen(false)} />
-          <div 
-            className="fixed z-[130] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in duration-200 scrollbar-hide flex flex-col"
-            style={{
-              top: dropdownPos.top,
-              left: dropdownPos.left,
-              width: dropdownPos.width,
-            }}
-          >
-            <div className="sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10 p-1 flex gap-2">
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)} 
-                className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-950 dark:text-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:border-blue-500 dark:focus:border-sky-500 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500"
-              />
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange([]); }}
-                className="px-3 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all whitespace-nowrap opacity-75 hover:opacity-100"
-              >
-                Clear All
-              </button>
-            </div>
-            {filteredOptions.length === 0 && <div className="text-xs text-slate-500 text-center py-4">No results</div>}
-            {filteredOptions.slice(0, 100).map((opt, i) => {
-              const unit = metricUnitsMap?.[opt];
-              return (
-                <label 
-                  key={opt} 
-                  className={cn(
-                    "flex items-center gap-3 p-2.5 rounded-md cursor-pointer group transition-all",
-                    selected.includes(opt) ? "bg-blue-50 dark:bg-sky-500/10 hover:bg-blue-100 dark:hover:bg-sky-500/20" : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200"
-                  )}
-                >
-                  <div className="relative flex items-center justify-center">
-                    <input 
-                      type="checkbox" 
-                      checked={selected.includes(opt)}
-                      onChange={(e) => {
-                        const next = e.target.checked ? [...selected, opt] : selected.filter(s => s !== opt);
-                        onChange(next);
-                      }}
-                      className="w-4 h-4 rounded-md bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-blue-600 dark:text-sky-500 focus:ring-0 transition-all cursor-pointer appearance-none border checked:bg-blue-600 dark:checked:bg-sky-500 checked:border-blue-500 dark:checked:border-sky-400"
-                    />
-                    {selected.includes(opt) && <Check className="absolute w-3 h-3 text-white pointer-events-none" />}
-                  </div>
-                  <span className={cn(
-                    "text-sm font-medium transition-colors text-left",
-                    selected.includes(opt) ? "text-blue-600 dark:text-sky-400" : "text-slate-700 dark:text-slate-300 group-hover:text-slate-950 dark:group-hover:text-slate-100"
-                  )}>
-                    {opt} {unit && <span className="opacity-50 text-xs ml-1">({unit})</span>}
-                  </span>
-                </label>
-              );
-            })}
-            {filteredOptions.length > 100 && (
-              <div className="text-xs text-slate-500 text-center py-2 mt-1 border-t border-slate-150 dark:border-slate-800">
-                Showing 100 of {filteredOptions.length} results. Use search to refine.
-              </div>
-            )}
-          </div>
-        </>,
-        document.body
-      )}
-    </div>
+    <DashboardProvider>
+      <DashboardApp />
+    </DashboardProvider>
   );
 }
-

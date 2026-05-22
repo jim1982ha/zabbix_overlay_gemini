@@ -73,10 +73,13 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
   const [refAreaLeft, setRefAreaLeft] = useState<string | null>(null);
   const [refAreaRight, setRefAreaRight] = useState<string | null>(null);
 
-  let displayedData = data;
-  if (zoomDomain) {
-    displayedData = data.slice(zoomDomain[0], zoomDomain[1] + 1);
-  }
+  const displayedData = React.useMemo(() => {
+    let result = data;
+    if (zoomDomain) {
+      result = data.slice(zoomDomain[0], zoomDomain[1] + 1);
+    }
+    return result;
+  }, [data, zoomDomain]);
 
   const handleDownloadCSV = () => {
     if (!displayedData || displayedData.length === 0) return;
@@ -157,16 +160,19 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
   };
 
   // For Pie charts, we aggregate the latest values for each series
-  const pieData = chartType === 'pie' ? series.map((s, i) => {
-    const latest = data[data.length - 1]?.[s.key] || 0;
-    const isHidden = hiddenSeries?.has(s.key);
-    return { 
-      name: s.name, 
-      value: isHidden ? 0 : (typeof latest === 'number' ? latest : 0), 
-      color: isHidden ? '#e2e8f0' : getSeriesColor(s),
-      dataKey: s.key // pass dataKey so we know which one was clicked
-    };
-  }).sort((a, b) => b.value - a.value) : [];
+  const pieData = React.useMemo(() => {
+    if (chartType !== 'pie') return [];
+    return series.map((s, i) => {
+      const latest = data[data.length - 1]?.[s.key] || 0;
+      const isHidden = hiddenSeries?.has(s.key);
+      return { 
+        name: s.name, 
+        value: isHidden ? 0 : (typeof latest === 'number' ? latest : 0), 
+        color: isHidden ? '#e2e8f0' : getSeriesColor(s),
+        dataKey: s.key // pass dataKey so we know which one was clicked
+      };
+    }).sort((a, b) => b.value - a.value);
+  }, [chartType, series, data, hiddenSeries]);
 
   const formatXAxis = (tickItem: string) => {
     try {
