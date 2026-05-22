@@ -247,10 +247,9 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                 }
                 const baseUrl = zabbixConfig.url.endsWith('/') ? zabbixConfig.url.slice(0, -1) : zabbixConfig.url;
                 const zBase = baseUrl.includes('api_jsonrpc.php') ? baseUrl.replace('/api_jsonrpc.php', '') : baseUrl;
-                let qs = `action=latest.view`;
-                if (asset.groupid) qs += `&groupids%5B%5D=${asset.groupid}`;
-                if (asset.hostid) qs += `&hostids%5B%5D=${asset.hostid}`;
-                qs += `&filter_set=1`;
+                let qs = `from=now-1h&to=now&action=charts.view&filter_show=0&filter_set=1`;
+                if (asset.hostid) qs += `&filter_hostids%5B0%5D=${asset.hostid}`;
+                if (asset.id) qs += `&filter_name=${encodeURIComponent(asset.id)}`;
                 window.open(`${zBase}/zabbix.php?${qs}`, '_blank', 'noopener,noreferrer');
               }}
               className={cn(STDL_LIST_CARD_CLASS, "p-6 group hover:border-blue-300 cursor-pointer")}
