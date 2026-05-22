@@ -46,21 +46,19 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
           selectHosts: ["host", "name"],
           selectLastEvent: "extend",
           expandDescription: true,
-          expandComment: true,
+          monitored: true,
           skipDependent: true,
-          filter: { value: "1", status: "0" },
+          only_true: true,
           limit: 100,
           sortfield: "lastchange",
           sortorder: "DESC"
         }
       });
-      
       if (response.data.error) {
          console.error("Zabbix API Error:", response.data.error);
          if (showToast) showToast(`Zabbix Error: ${response.data.error.data || response.data.error.message}`, "error");
          return;
       }
-      
       if (response.data.result) {
         const mapped = response.data.result.map((t: any) => {
           let severity: 'info' | 'warning' | 'critical' | 'success' = 'info';
@@ -74,7 +72,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
           else if (durationSeconds < 86400) durationStr = `${Math.floor(durationSeconds / 3600)}h ${Math.floor((durationSeconds % 3600) / 60)}m`;
           else durationStr = `${Math.floor(durationSeconds / 86400)}d ${Math.floor((durationSeconds % 86400) / 3600)}h`;
 
-          let cleanDesc = t.comments || `Trigger active on host: ${t.hosts?.[0]?.host || t.hosts?.[0]?.name || 'Unknown'}`;
+          let cleanDesc = t.comments || `Trigger active on host: ${t.hosts?.[0]?.host}`;
           if (t.lastEvent?.name) {
               const usedPercentMatch = t.lastEvent.name.match(/used > (\d+(?:\.\d+)?)%/);
               if (usedPercentMatch) {
@@ -86,7 +84,7 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
           return {
              id: parseInt(t.triggerid, 10),
              type: 'alert',
-             title: t.lastEvent?.name || t.description || "Unknown Problem",
+             title: t.lastEvent?.name || t.description,
              description: cleanDesc,
              eventName: t.lastEvent?.name,
              time: new Date(parseInt(t.lastchange, 10) * 1000).toLocaleTimeString(),
@@ -94,23 +92,18 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
              severity,
              itemId: t.triggerid,
              eventId: t.lastEvent?.eventid,
-             host: t.hosts?.[0]?.host || t.hosts?.[0]?.name || 'Unknown'
+             host: t.hosts?.[0]?.host
           };
         });
         setZabbixNotifications(mapped);
       }
-
     } catch (e) {
       console.error("Failed to fetch triggers from Zabbix", e);
     }
-  }, [zabbixConfig, isDemo, showToast]);
+  }, [zabbixConfig, isDemo]);
 
   useEffect(() => {
     fetchZabbixTriggers();
-    
-    // Auto-refresh triggers every 30s
-    const interval = setInterval(fetchZabbixTriggers, 30000);
-    return () => clearInterval(interval);
   }, [fetchZabbixTriggers]);
 
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);

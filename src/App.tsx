@@ -109,7 +109,6 @@ function DashboardApp() {
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   useEffect(() => {
-    // legacy listener clean up if any
     const handleColorMapChange = () => setColorMapToggle(prev => prev + 1);
     window.addEventListener('ha_color_map_changed', handleColorMapChange);
     return () => window.removeEventListener('ha_color_map_changed', handleColorMapChange);
@@ -1045,7 +1044,6 @@ function DashboardApp() {
             <button
               onClick={() => {
                 updateMetricColor(colorPickerTarget.metric, colorPickerTarget.current);
-                setColorMapToggle(prev => prev + 1);
                 setColorPickerTarget(null);
               }}
               className="px-4 py-2 font-semibold text-sm bg-blue-600 hover:bg-blue-700 text-white rounded shadow-sm transition-colors"

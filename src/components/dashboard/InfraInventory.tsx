@@ -37,11 +37,8 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
         }
       });
       if (response.data.result) {
-        console.log("InfraInventory hosts:", response.data.result);
         const mapped = response.data.result.map((h: any) => ({
           id: h.name || h.host,
-          host: h.host,
-          name: h.name,
           hostid: h.hostid,
           groupid: h.hostgroups && h.hostgroups.length > 0 ? h.hostgroups[0].groupid : null,
           hostGroup: h.hostgroups && h.hostgroups.length > 0 ? h.hostgroups[0].name : 'Uncategorized',
@@ -250,10 +247,10 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                 }
                 const baseUrl = zabbixConfig.url.endsWith('/') ? zabbixConfig.url.slice(0, -1) : zabbixConfig.url;
                 const zBase = baseUrl.includes('api_jsonrpc.php') ? baseUrl.replace('/api_jsonrpc.php', '') : baseUrl;
-                let qs = `from=now-1h&to=now&action=charts.view`;
-                if (asset.hostid) qs += `&filter_hostids%5B0%5D=${asset.hostid}`;
-                if (asset.id) qs += `&filter_name=${encodeURIComponent(asset.id)}`;
-                qs += `&filter_show=0&filter_set=1`;
+                let qs = `action=latest.view`;
+                if (asset.groupid) qs += `&groupids%5B%5D=${asset.groupid}`;
+                if (asset.hostid) qs += `&hostids%5B%5D=${asset.hostid}`;
+                qs += `&filter_set=1`;
                 window.open(`${zBase}/zabbix.php?${qs}`, '_blank', 'noopener,noreferrer');
               }}
               className={cn(STDL_LIST_CARD_CLASS, "p-6 group hover:border-blue-300 cursor-pointer")}
