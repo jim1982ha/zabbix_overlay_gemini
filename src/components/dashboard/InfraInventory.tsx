@@ -33,13 +33,14 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
         method: "host.get",
         params: {
           output: ["hostid", "host", "name", "status", "description"],
-          selectHostGroups: ["name"]
+          selectHostGroups: ["groupid", "name"]
         }
       });
       if (response.data.result) {
         const mapped = response.data.result.map((h: any) => ({
           id: h.name || h.host,
           hostid: h.hostid,
+          groupid: h.hostgroups && h.hostgroups.length > 0 ? h.hostgroups[0].groupid : null,
           hostGroup: h.hostgroups && h.hostgroups.length > 0 ? h.hostgroups[0].name : 'Uncategorized',
           type: 'Zabbix Host',
           status: h.status === '0' ? 'optimal' : 'offline',
@@ -246,7 +247,11 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                 }
                 const baseUrl = zabbixConfig.url.endsWith('/') ? zabbixConfig.url.slice(0, -1) : zabbixConfig.url;
                 const zBase = baseUrl.includes('api_jsonrpc.php') ? baseUrl.replace('/api_jsonrpc.php', '') : baseUrl;
-                window.open(`${zBase}/zabbix.php?action=latest.view&filter_rst=1&filter_hostids%5B%5D=${asset.hostid}&filter_set=1`, '_blank', 'noopener,noreferrer');
+                let qs = `action=latest.view`;
+                if (asset.groupid) qs += `&groupids%5B%5D=${asset.groupid}`;
+                if (asset.hostid) qs += `&hostids%5B%5D=${asset.hostid}`;
+                qs += `&filter_set=1`;
+                window.open(`${zBase}/zabbix.php?${qs}`, '_blank', 'noopener,noreferrer');
               }}
               className={cn(STDL_LIST_CARD_CLASS, "p-6 group hover:border-blue-300 cursor-pointer")}
             >

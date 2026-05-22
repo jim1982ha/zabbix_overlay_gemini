@@ -43,18 +43,22 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
         method: "trigger.get",
         params: {
           output: "extend",
-          selectHosts: ["host"],
+          selectHosts: ["host", "name"],
           selectLastEvent: "extend",
-          expandComment: true,
           expandDescription: true,
           monitored: true,
           skipDependent: true,
-          filter: { value: "1" },
+          only_true: true,
           limit: 100,
           sortfield: "lastchange",
           sortorder: "DESC"
         }
       });
+      if (response.data.error) {
+         console.error("Zabbix API Error:", response.data.error);
+         if (showToast) showToast(`Zabbix Error: ${response.data.error.data || response.data.error.message}`, "error");
+         return;
+      }
       if (response.data.result) {
         const mapped = response.data.result.map((t: any) => {
           let severity: 'info' | 'warning' | 'critical' | 'success' = 'info';
