@@ -1,0 +1,225 @@
+import React, { useState, useRef } from "react";
+import { 
+  ChevronDown, 
+  Search, 
+  RefreshCw,
+  Shield,
+  ShieldAlert,
+  Server,
+  Activity
+} from "lucide-react";
+import { ScrollableBar } from "../layout/ScrollableBar";
+import { PortalMenu } from "./PortalMenu";
+import { RangePicker } from "./RangePicker";
+import { cn } from "../../lib/utils";
+import { useDashboard } from "../../contexts/DashboardContext";
+
+interface TopNavigationBarProps {
+  globalSearch: string;
+  setGlobalSearch: (val: string) => void;
+  isLoading: boolean;
+  onRefresh: () => void;
+  lastSync: Date;
+  isDemo: boolean;
+  zabbixUrl: string;
+  requiresSecureToken: boolean;
+  onOpenSecureToken: () => void;
+  refreshProgress: number;
+}
+
+export function TopNavigationBar({
+  globalSearch,
+  setGlobalSearch,
+  isLoading,
+  onRefresh,
+  lastSync,
+  isDemo,
+  zabbixUrl,
+  requiresSecureToken,
+  onOpenSecureToken,
+  refreshProgress
+}: TopNavigationBarProps) {
+  const { filters, setFilters } = useDashboard();
+  const [showRangeMenu, setShowRangeMenu] = useState(false);
+  const [showGranMenu, setShowGranMenu] = useState(false);
+  const [showModeMenu, setShowModeMenu] = useState(false);
+
+  const rangeMenuBtnRef = useRef<HTMLButtonElement>(null);
+  const granMenuBtnRef = useRef<HTMLButtonElement>(null);
+  const modeMenuBtnRef = useRef<HTMLButtonElement>(null);
+
+  const formatLastSync = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
+  return (
+    <div className="flex items-center justify-between w-full h-full text-slate-800 dark:text-slate-200 gap-2 sm:gap-4 lg:gap-8 min-w-0 max-w-full overflow-hidden">
+      {/* Search Input Filter */}
+      <div className="hidden md:flex items-center w-[25%] md:max-w-[70px] lg:max-w-[100px] xl:max-w-[220px] h-[40px] pr-1 lg:pr-2 shrink transition-all min-w-[50px]">
+        <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 shrink-0 mr-2 md:mr-3 stroke-[2.5]" />
+        <input 
+          type="text" 
+          value={globalSearch}
+          onChange={(e) => setGlobalSearch(e.target.value)}
+          placeholder="Search Board" 
+          className="w-full bg-transparent text-[15px] font-semibold text-slate-800 dark:text-slate-200 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 min-w-[30px]" 
+        />
+      </div>
+
+      {/* Main Filter Dropdowns */}
+      <div className="flex-1 min-w-0 flex items-center h-full justify-end select-none">
+        <div className="w-full h-full max-w-full min-w-0">
+          <ScrollableBar>
+            <div className="flex flex-nowrap items-center gap-1 sm:gap-4 py-1 h-full pt-1.5 shrink-0 px-6 sm:px-2 md:sm:px-0 min-w-max md:ml-auto justify-end">
+              {filters.mode === 'live' ? (
+                <>
+                  <div className="flex items-center min-w-[120px] h-full shrink-0">
+                    <button 
+                      ref={rangeMenuBtnRef}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowRangeMenu(!showRangeMenu); }}
+                      className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full rounded"
+                    >
+                      <span className="flex items-center gap-2 w-full truncate">
+                        <span className="text-slate-500 font-normal hidden xl:inline shrink-0">Rolling:</span>
+                        <span className="font-semibold text-blue-600 dark:text-sky-400 truncate">
+                          {filters.range === '1h' ? 'Last Hour' : 
+                           filters.range === '6h' ? 'Last 6 Hours' : 
+                           filters.range === '24h' ? 'Last 24 Hours' : 'Last 7 Days'}
+                        </span>
+                      </span>
+                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                    </button>
+                  </div>
+                  <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 shrink-0" />
+                  <div className="flex items-center min-w-[120px] h-full shrink-0">
+                    <button 
+                      ref={granMenuBtnRef}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowGranMenu(!showGranMenu); }}
+                      className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full rounded"
+                    >
+                      <span className="flex items-center gap-2 w-full truncate">
+                        <span className="text-slate-500 font-normal hidden xl:inline shrink-0">Granularity:</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-300 truncate">
+                          {filters.granularity === '1m' ? '1 Min' :
+                           filters.granularity === '5m' ? '5 Min' :
+                           filters.granularity === '15m' ? '15 Min' : '1 Hour'}
+                        </span>
+                      </span>
+                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <RangePicker 
+                    range={{ start: filters.start, end: filters.end }}
+                    onChange={(newVal) => setFilters({...filters, ...newVal})}
+                  />
+                  <div className="hidden sm:block w-[1px] h-4 bg-slate-200 dark:bg-slate-800 shrink-0" />
+                  <div className="flex items-center min-w-[100px] h-full shrink-0">
+                    <button 
+                      ref={granMenuBtnRef}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowGranMenu(!showGranMenu); }}
+                      className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full rounded"
+                    >
+                      <span className="flex items-center gap-2 w-full truncate">
+                        <span className="text-slate-500 font-normal hidden xl:inline shrink-0">Resolution:</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-300 truncate">
+                          {filters.granularity === '5m' ? '5 Min' :
+                           filters.granularity === '30m' ? '30 Min' :
+                           filters.granularity === '1d' ? '1 Day' : '1 Hour'}
+                        </span>
+                      </span>
+                      <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                    </button>
+                  </div>
+                </>
+              )}
+              <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 block shrink-0" />
+              <div className="flex items-center min-w-[80px] sm:min-w-[100px] h-full shrink-0">
+                <button 
+                  ref={modeMenuBtnRef}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowModeMenu(!showModeMenu); }}
+                  className="bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 py-1 px-2 text-sm font-medium text-slate-700 dark:text-slate-300 outline-none transition-all w-full text-left flex items-center justify-between gap-2 h-full rounded relative overflow-hidden"
+                >
+                  <span className="flex items-center gap-2 relative z-10 w-full h-full justify-between">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                      {filters.mode === 'live' ? 'Live' : 'Historical'}
+                    </span>
+                    <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                  </span>
+                  {filters.mode === 'live' && (
+                    <div 
+                      className="absolute bottom-0 left-0 h-[3px] bg-blue-600 transition-all duration-1000 ease-linear pointer-events-none rounded-b" 
+                      style={{ width: `${refreshProgress}%` }} 
+                    />
+                  )}
+                </button>
+              </div>
+            </div>
+          </ScrollableBar>
+        </div>
+
+        {/* Portal Menus */}
+        <PortalMenu isOpen={showRangeMenu} onClose={() => setShowRangeMenu(false)} anchorRef={rangeMenuBtnRef}>
+          {['1h', '6h', '24h', '7d'].map((r) => (
+            <button 
+              key={r}
+              onClick={() => {
+                setFilters({...filters, range: r});
+                setShowRangeMenu(false);
+              }}
+              className={cn(
+                "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors block",
+                filters.range === r ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
+              )}
+            >
+              {r === '1h' ? 'Last Hour' : 
+               r === '6h' ? '6 Hours' : 
+               r === '24h' ? '24 Hours' : '7 Days'}
+            </button>
+          ))}
+        </PortalMenu>
+
+        <PortalMenu isOpen={showGranMenu} onClose={() => setShowGranMenu(false)} anchorRef={granMenuBtnRef}>
+          {(filters.mode === 'live' ? ['1m', '5m', '15m', '1h'] : ['5m', '30m', '1h', '1d']).map((g) => (
+            <button 
+              key={g}
+              onClick={() => {
+                setFilters({...filters, granularity: g as any});
+                setShowGranMenu(false);
+              }}
+              className={cn(
+                "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors block",
+                filters.granularity === g ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-500/10" : "text-slate-600 dark:text-slate-400"
+              )}
+            >
+              {g === '1m' ? '1 Minute' : g === '5m' ? '5 Minutes' : g === '15m' ? '15 Minutes' : g === '30m' ? '30 Minutes' : g === '1d' ? '1 Day' : '1 Hour'}
+            </button>
+          ))}
+        </PortalMenu>
+
+        <PortalMenu isOpen={showModeMenu} onClose={() => setShowModeMenu(false)} anchorRef={modeMenuBtnRef} align="right">
+          <button
+            onClick={() => { setFilters({...filters, mode: 'live'}); setShowModeMenu(false); }}
+            className={cn(
+              "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors block",
+              filters.mode === 'live' ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
+            )}
+          >
+            Live
+          </button>
+          <button
+            onClick={() => { setFilters({...filters, mode: 'historical'}); setShowModeMenu(false); }}
+            className={cn(
+              "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors block",
+              filters.mode === 'historical' ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
+            )}
+          >
+            Historical
+          </button>
+        </PortalMenu>
+      </div>
+    </div>
+  );
+}

@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { Bell, Activity, Shield, AlertTriangle, CheckCircle, Clock, X, ExternalLink, Zap } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import axios from 'axios';
@@ -210,11 +209,8 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                 <p className="text-sm font-semibold text-slate-500">No notifications matching criteria</p>
             </div>
         ) : filteredNotifications.map((n, i) => (
-          <motion.div 
+          <div 
             key={n.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.1 }}
             onClick={() => setSelectedNotification(n)}
             className={cn(STDL_LIST_CARD_CLASS, "p-5 flex gap-5 hover:border-blue-300 dark:hover:border-blue-800/40 cursor-pointer")}
           >
@@ -255,25 +251,19 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                   <X className="w-4 h-4" />
                </button>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
 
       {/* Drill-down Modal */}
-      <AnimatePresence>
+      <>
         {selectedNotification && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                <div 
                     onClick={() => setSelectedNotification(null)}
                     className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" 
                 />
-                <motion.div 
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                <div 
                     className="relative w-full max-w-lg bg-white border border-slate-200 overflow-hidden shadow-2xl"
                 >
                     <div className={cn(
@@ -367,10 +357,10 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
                             </div>
                         </div>
                     </div>
-                </motion.div>
+                </div>
             </div>
         )}
-      </AnimatePresence>
+      </>
     </div>
   );
 }

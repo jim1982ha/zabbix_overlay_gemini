@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
 import { Server, Cpu, HardDrive, Database, Zap, Activity, ChevronRight, ChevronLeft, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { FilterBar, FilterButton } from '../ui/FilterBar';
@@ -231,11 +230,8 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
       {filteredAssets.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAssets.map((asset, i) => (
-            <motion.div 
+            <div 
               key={asset.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.1 }}
               onClick={() => {
                 if (isDemo || !asset.hostid || !zabbixConfig?.url) {
                   const errorMsg = asset.hostid 
@@ -274,7 +270,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                 <div className={cn(
                   "px-2.5 py-1 rounded-md text-xs font-semibold capitalize border shadow-sm",
                   asset.status === 'optimal' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                  asset.status === 'high_load' ? "bg-rose-50 text-rose-700 border-rose-200 animate-pulse" :
+                  asset.status === 'high_load' ? "bg-rose-50 text-rose-700 border-rose-200" :
                   "bg-slate-50 text-slate-600 border-slate-200"
                 )}>
                   {asset.status.replace('_', ' ')}
@@ -304,7 +300,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                   asset.type.includes('Gateway') ? <Activity className="w-32 h-32" /> : 
                   <Server className="w-32 h-32" />}
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       ) : (
@@ -334,12 +330,10 @@ function UsageBar({ label, value, icon }: any) {
         )}>{value}%</span>
       </div>
       <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-50 flex shadow-inner">
-        <motion.div 
-          initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
-          transition={{ duration: 1, ease: 'easeOut' }}
+        <div 
+          style={{ width: `${value}%` }}
           className={cn(
-            "h-full rounded-full transition-all duration-500",
+            "h-full rounded-full",
             value > 85 ? "bg-rose-500" : 
             value > 60 ? "bg-amber-500" : 
             "bg-blue-500"

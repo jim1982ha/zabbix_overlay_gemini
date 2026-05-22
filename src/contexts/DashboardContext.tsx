@@ -18,6 +18,13 @@ interface DashboardContextType {
   setEditingWidgetId: React.Dispatch<React.SetStateAction<string | null>>;
   draggingWidgetId: string | null;
   setDraggingWidgetId: React.Dispatch<React.SetStateAction<string | null>>;
+  
+  // Centralized Actions
+  addWidget: (newWidget: Widget) => void;
+  deleteWidget: (id: string) => void;
+  updateWidget: (id: string, updates: Partial<Widget>) => void;
+  moveWidget: (id: string, direction: 'left' | 'right') => void;
+  modifyRangeAndGranularity: (updates: Partial<DashboardFilters>) => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -34,6 +41,41 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
   const [draggingWidgetId, setDraggingWidgetId] = useState<string | null>(null);
 
+  const addWidget = (newWidget: Widget) => {
+    setWidgets(prev => [...prev, newWidget]);
+    setEditingWidgetId(newWidget.id);
+  };
+
+  const deleteWidget = (id: string) => {
+    setWidgets(prev => prev.filter(w => w.id !== id));
+    if (editingWidgetId === id) {
+      setEditingWidgetId(null);
+    }
+  };
+
+  const updateWidget = (id: string, updates: Partial<Widget>) => {
+    setWidgets(prev => prev.map(w => w.id === id ? { ...w, ...updates } : w));
+  };
+
+  const moveWidget = (id: string, direction: 'left' | 'right') => {
+    setWidgets(prev => {
+      const index = prev.findIndex(w => w.id === id);
+      if (index === -1) return prev;
+      if ((direction === 'left' && index === 0) || (direction === 'right' && index === prev.length - 1)) return prev;
+      const newWidgets = [...prev];
+      const targetIndex = direction === 'left' ? index - 1 : index + 1;
+      [newWidgets[index], newWidgets[targetIndex]] = [newWidgets[targetIndex], newWidgets[index]];
+      return newWidgets;
+    });
+  };
+
+  const modifyRangeAndGranularity = (updates: Partial<DashboardFilters>) => {
+    setFilters(prev => ({
+      ...prev,
+      ...updates
+    }));
+  };
+
   return (
     <DashboardContext.Provider
       value={{
@@ -44,7 +86,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         editingWidgetId,
         setEditingWidgetId,
         draggingWidgetId,
-        setDraggingWidgetId
+        setDraggingWidgetId,
+        
+        addWidget,
+        deleteWidget,
+        updateWidget,
+        moveWidget,
+        modifyRangeAndGranularity
       }}
     >
       {children}

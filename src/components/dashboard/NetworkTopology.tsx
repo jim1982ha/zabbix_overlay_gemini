@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion } from 'motion/react';
 import { Activity, Globe, Zap, Shield, ArrowUpRight, ArrowDownRight, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Card } from "../ui/Card";
@@ -310,19 +309,6 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
                     stroke="transparent" 
                     strokeWidth="15" 
                   />
-                  <motion.circle
-                    r={isHighlighted ? "2" : "1"}
-                    fill={isHighlighted ? (link.load > 80 ? "#ef4444" : "#0284c7") : "#0284c7"}
-                    initial={{ offsetDistance: "0%" }}
-                    animate={{ offsetDistance: "100%" }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: i * 0.5 }}
-                  >
-                    <animateMotion
-                      path={`M ${fromNode.x} ${fromNode.y} L ${toNode.x} ${toNode.y}`}
-                      dur="2s"
-                      repeatCount="indefinite"
-                    />
-                  </motion.circle>
                 </g>
               );
             })}
@@ -372,7 +358,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
                       cx={node.x} 
                       cy={node.y} 
                       r="18" 
-                      className="fill-none stroke-blue-500/20 stroke-1 animate-ping"
+                      className="fill-none stroke-blue-500/20 stroke-1"
                     />
                   )}
                   <circle 
@@ -413,7 +399,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { 
             top: Math.min(tooltipPos.y + 15, window.innerHeight - 150) 
           }}
         >
-          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border border-slate-200 dark:border-slate-800 dark:border-slate-800 shadow-xl p-3 min-w-[200px] rounded-xl animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
+          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border border-slate-200 dark:border-slate-800 dark:border-slate-800 shadow-xl p-3 min-w-[200px] rounded-xl text-slate-900 dark:text-slate-100">
             {hoveredNode && (() => {
               const node = nodes.find(n => n.id === hoveredNode)!;
               return (

@@ -253,9 +253,34 @@ export function Shell({
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {Array.from(hiddenSeries).map(key => {
-                      const m = key.split('_')[0];
-                      const h = key.substring(m.length + 1);
-                      const displayKey = `${m.toUpperCase()} [${h === 'all' ? 'All' : h}]`;
+                      let displayKey = String(key);
+                      if (key === 'agg_val') {
+                        displayKey = 'Aggregate Value';
+                      } else if (key.endsWith('_agg')) {
+                        const parts = key.split('_');
+                        if (parts.length >= 3) {
+                          displayKey = `${parts[1].toUpperCase()} Auth/Mixed`;
+                        } else {
+                          displayKey = `${parts[0].toUpperCase()} Aggregated`;
+                        }
+                      } else {
+                        const idx = key.indexOf('_');
+                        if (idx !== -1 && !key.startsWith('series')) {
+                          const m = key.substring(0, idx);
+                          const h = key.substring(idx + 1);
+                          displayKey = `${m.toUpperCase()} [${h === 'all' ? 'All' : h}]`;
+                        } else if (key.startsWith('series')) {
+                           const parts = key.split('_');
+                           if (parts.length >= 3) {
+                              displayKey = `${parts[1].toUpperCase()} [${parts.slice(2).join('_').replace('all', 'All')}]`;
+                           } else {
+                              displayKey = key.toUpperCase();
+                           }
+                        } else {
+                          displayKey = key.toUpperCase();
+                        }
+                      }
+
                       return (
                         <div key={key} className="flex items-center gap-1 bg-white border border-amber-200 text-slate-600 text-[10px] pl-1.5 pr-0.5 py-0.5 rounded shadow-sm group">
                           <span className="truncate max-w-[120px] font-medium">{displayKey}</span>
