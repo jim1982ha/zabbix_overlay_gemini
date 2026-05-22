@@ -563,18 +563,20 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             </div>
           </div>
           <div className="flex flex-wrap gap-1.5 items-center pl-3.5 pt-0.5">
-            <button
-              onClick={() => setAutoScaleY(!autoScaleY)}
-              className={cn(
-                "p-1 rounded border transition-all shadow-sm shrink-0 flex items-center justify-center cursor-pointer mr-1 relative z-10",
-                autoScaleY 
-                  ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400" 
-                  : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/85"
-              )}
-              title={autoScaleY ? "Scale from 0" : "Auto-scale Y-Axis"}
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
+            {chartType !== 'pie' && (
+              <button
+                onClick={() => setAutoScaleY(!autoScaleY)}
+                className={cn(
+                  "p-1 rounded border transition-all shadow-sm shrink-0 flex items-center justify-center cursor-pointer mr-1 relative z-10",
+                  autoScaleY 
+                    ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400" 
+                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/85"
+                )}
+                title={autoScaleY ? "Scale from 0" : "Auto-scale Y-Axis"}
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
               onClick={handleDownloadCSV}
               className="p-1 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/85 transition-all shadow-sm shrink-0 flex items-center justify-center cursor-pointer mr-1 relative z-10"
