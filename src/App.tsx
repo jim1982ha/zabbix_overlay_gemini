@@ -105,11 +105,11 @@ function DashboardApp() {
   const [requiresSecureToken, setRequiresSecureToken] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState(0);
   const [colorPickerTarget, setColorPickerTarget] = useState<{ metric: string, current: string } | null>(null);
-  const [colorMapToggle, setColorMapToggle] = useState(false);
+  const [colorMapToggle, setColorMapToggle] = useState(0);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   useEffect(() => {
-    const handleColorMapChange = () => setColorMapToggle(prev => !prev);
+    const handleColorMapChange = () => setColorMapToggle(prev => prev + 1);
     window.addEventListener('ha_color_map_changed', handleColorMapChange);
     return () => window.removeEventListener('ha_color_map_changed', handleColorMapChange);
   }, []);
