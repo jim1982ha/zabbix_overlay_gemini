@@ -109,17 +109,24 @@ timeseriesRouter.post("/", async (req, res) => {
 
         if (Object.keys(itemDict).length > 0) {
            console.log(`[timeseries] Using provided itemDict`);
+           // Create a case-insensitive map of the provided itemDict for robust matching
+           const lowerItemDict: Record<string, any> = {};
+           for (const [k, v] of Object.entries(itemDict)) {
+              if (v) lowerItemDict[k.toLowerCase()] = v;
+           }
+
            metrics.forEach((m: string) => {
               hosts.forEach((h: string) => {
                  const key = `${m}_${h}`;
-                 const info = itemDict[key];
+                 // Search case-insensitively in the itemDict keys
+                 const info = lowerItemDict[key.toLowerCase()];
                  if (info) {
                     itemValueMap[key] = info.lastvalue;
                     const vtype = parseInt(info.value_type, 10);
                     if (!isNaN(vtype)) {
                        if (!itemsToFetchHistory[vtype]) itemsToFetchHistory[vtype] = [];
                        itemsToFetchHistory[vtype].push(info.itemid);
-                       itemIdToKey[info.itemid] = key;
+                       itemIdToKey[info.itemid] = key; // Preserve the requested casing key
                     }
                  }
               });
@@ -139,13 +146,15 @@ timeseriesRouter.post("/", async (req, res) => {
                 const h = item.hosts?.[0]?.name || item.hosts?.[0]?.host;
                 const m = item.name;
                 if (h && m) {
-                   const key = `${m}_${h}`;
+                   // Match case-insensitively with requested metrics to preserve requested casing key
+                   const matchedMetric = metrics.find((reqM: string) => reqM.toLowerCase() === m.toLowerCase()) || m;
+                   const key = `${matchedMetric}_${h}`;
                    itemValueMap[key] = item.lastvalue;
                    const vtype = parseInt(item.value_type, 10);
                    if (!isNaN(vtype)) {
                       if (!itemsToFetchHistory[vtype]) itemsToFetchHistory[vtype] = [];
                       itemsToFetchHistory[vtype].push(item.itemid);
-                      itemIdToKey[item.itemid] = key;
+                      itemIdToKey[item.itemid] = key; // Preserve the requested casing key
                    }
                 }
              });
