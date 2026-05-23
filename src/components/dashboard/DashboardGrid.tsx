@@ -605,13 +605,13 @@ export const DashboardGrid = React.memo(function DashboardGrid({
                 />
               ) : isLoading ? (
                 <div className="flex-1 flex flex-col items-center justify-center min-h-[100px] h-full w-full bg-slate-50/10 dark:bg-slate-900/10">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="flex gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full dot-loading" style={{ animationDelay: '-0.32s' }}></div>
-                      <div className="w-1.5 h-1.5 rounded-full dot-loading" style={{ animationDelay: '-0.16s' }}></div>
-                      <div className="w-1.5 h-1.5 rounded-full dot-loading" style={{ animationDelay: '0s' }}></div>
+                  <div className="flex flex-col items-center gap-[10px]">
+                    <div className="flex gap-[7.5px]">
+                      <div className="w-[7.5px] h-[7.5px] rounded-full dot-loading" style={{ animationDelay: '-0.32s' }}></div>
+                      <div className="w-[7.5px] h-[7.5px] rounded-full dot-loading" style={{ animationDelay: '-0.16s' }}></div>
+                      <div className="w-[7.5px] h-[7.5px] rounded-full dot-loading" style={{ animationDelay: '0s' }}></div>
                     </div>
-                    <span className="text-[11px] font-medium text-slate-500 w-full text-center">Loading data</span>
+                    <span className="text-[13.8px] font-medium text-slate-500 w-full text-center">Loading data</span>
                   </div>
                 </div>
               ) : (
