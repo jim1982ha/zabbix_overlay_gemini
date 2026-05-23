@@ -50,7 +50,7 @@ zabbixRouter.post("/", async (req, res) => {
 
       // STRICT ALLOWLIST: Only permit read-only GET methods to prevent destructive actions or RCE via script.execute
       
-      const allowedMethods = ['host.get', 'item.get', 'history.get', 'trend.get', 'hostgroup.get', 'apiinfo.version'];
+      const allowedMethods = ['host.get', 'item.get', 'history.get', 'trend.get', 'hostgroup.get', 'apiinfo.version', 'trigger.get', 'problem.get'];
       if (typeof method !== 'string' || !allowedMethods.includes(method)) {
 
         return res.status(403).json({ error: "Forbidden: Method not in strict explicit allowlist." });

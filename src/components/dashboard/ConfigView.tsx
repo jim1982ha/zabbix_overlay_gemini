@@ -81,8 +81,8 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
                 <input 
                   type="password" 
                   defaultValue=""
-                  onChange={e => localStorage.setItem('hareporting_app_secure_token', e.target.value)}
-                  placeholder={localStorage.getItem('hareporting_app_secure_token') ? "Token is set. Enter a new one to update..." : "Your APP_SECURE_TOKEN..."}
+                  onChange={e => sessionStorage.setItem('hareporting_app_secure_token', e.target.value)}
+                  placeholder={sessionStorage.getItem('hareporting_app_secure_token') ? "Token is set. Enter a new one to update..." : "Your APP_SECURE_TOKEN..."}
                   className="w-full bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 font-mono focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all shadow-sm" 
                 />
               </div>
