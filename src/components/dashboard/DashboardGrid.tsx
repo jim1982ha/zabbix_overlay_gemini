@@ -108,7 +108,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     }
 
     const rawUnit = metricUnitsMap[w.metrics[0]] || '';
-    const { value: fmtValue, unit: fmtUnit } = finalValue !== null ? formatValue(finalValue, rawUnit, true) : { value: '...', unit: '' };
+    const { value: fmtValue, unit: fmtUnit } = finalValue !== null ? formatValue(finalValue, rawUnit) : { value: '...', unit: '' };
 
     let changePct = 0;
     let trendDir: 'up' | 'down' = 'up';
