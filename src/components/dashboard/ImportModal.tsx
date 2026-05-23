@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from "motion/react";
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (data: any) => void;
+  onImportSuccess: (data: any) => void;
 }
 
-export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) => {
+export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImportSuccess }) => {
   const [activeTab, setActiveTab] = useState<'file' | 'paste'>('file');
   const [pasteContent, setPasteContent] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -19,11 +19,19 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
     setError(null);
     const reader = new FileReader();
     reader.onload = (e) => {
+      let json;
       try {
-        const json = JSON.parse(e.target?.result as string);
+        json = JSON.parse(e.target?.result as string);
+      } catch (err) {
+        console.error("JSON parse error:", err);
+        setError("Failed to parse JSON file. Please ensure it's a valid JSON.");
+        return;
+      }
+      try {
         validateAndImport(json);
       } catch (err) {
-        setError("Failed to parse JSON file. Please ensure it's a valid JSON.");
+        console.error("Import processing error:", err);
+        setError("An error occurred while importing the dashboard.");
       }
     };
     reader.readAsText(file);
@@ -31,7 +39,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
 
   const validateAndImport = (json: any) => {
     if (json.widgets && Array.isArray(json.widgets)) {
-      onImport(json);
+      onImportSuccess(json);
       onClose();
     } else {
       setError("Invalid dashboard configuration. Missing 'widgets' array.");
@@ -40,11 +48,19 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
 
   const handlePasteImport = () => {
     setError(null);
+    let json;
     try {
-      const json = JSON.parse(pasteContent);
+      json = JSON.parse(pasteContent);
+    } catch (err) {
+      console.error("JSON parse error:", err);
+      setError("Invalid JSON content. Please check for syntax errors.");
+      return;
+    }
+    try {
       validateAndImport(json);
     } catch (err) {
-      setError("Invalid JSON content. Please check for syntax errors.");
+      console.error("Import processing error:", err);
+      setError("An error occurred while importing the dashboard.");
     }
   };
 

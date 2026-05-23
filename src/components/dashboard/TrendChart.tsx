@@ -727,17 +727,18 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
         )}
         
         {chartType !== 'pie' && (
-          <div className="shrink min-h-0 bg-transparent relative z-10 w-full mb-1 flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2 max-h-[120px] overflow-y-auto px-1 scrollbar-hide flex-shrink">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLegendSort(prev => prev === 'default' ? 'desc' : prev === 'desc' ? 'asc' : 'default');
-                }}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-0.5 rounded flex-shrink-0"
-                title={`Sort: ${legendSort}`}
-              >
-                 {legendSort === 'default' ? <ArrowUpDown className="w-3 h-3" /> : legendSort === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />}
-              </button>
+          <div className="shrink min-h-0 bg-transparent relative z-10 w-full mb-1 mt-2 max-h-[120px] overflow-y-auto px-1 scrollbar-hide flex-shrink">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLegendSort(prev => prev === 'default' ? 'desc' : prev === 'desc' ? 'asc' : 'default');
+              }}
+              className="absolute left-1 top-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-0.5 rounded z-10"
+              title={`Sort: ${legendSort}`}
+            >
+               {legendSort === 'default' ? <ArrowUpDown className="w-3 h-3" /> : legendSort === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />}
+            </button>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 w-full pl-5">
               {sortedSeries.map((s, i) => {
                 const isHidden = hiddenSeries?.has(s.key);
                 return (
@@ -771,6 +772,7 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
                 );
               })}
             </div>
+          </div>
         )}
 
         {zoomDomain && data && data.length > 0 && (
