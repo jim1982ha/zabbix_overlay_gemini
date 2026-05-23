@@ -196,6 +196,12 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
     try {
       const date = new Date(tickItem);
       if (isNaN(date.getTime())) return tickItem;
+      
+      const spanMs = data && data.length > 0 ? (new Date(data[data.length-1].time).getTime() - new Date(data[0].time).getTime()) : 0;
+      
+      if (spanMs > 86400000) {
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
+      }
 
       if (mode === 'live') {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -211,7 +217,7 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
     } catch (e) {
       return tickItem;
     }
-  }, [mode, granularity]);
+  }, [mode, granularity, data]);
 
   const renderCustomTooltip = useCallback(({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -233,14 +239,20 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
                    else if (granLower === '1d') stepMs = 86400000;
                    else stepMs = 60000;
 
+                   const spanMs = data && data.length > 0 ? (new Date(data[data.length-1].time).getTime() - new Date(data[0].time).getTime()) : 0;
                    const d2 = new Date(d.getTime() + stepMs);
+                   
+                   const showDate = spanMs > 86400000 || granLower === '1d';
+                   
+                   if (showDate) {
+                     const t1 = d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
+                     const t2 = d2.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
+                     return `[${t1} - ${t2}]`;
+                   }
+                   
                    const t1 = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
                    const t2 = d2.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
                    
-                   if (granLower === '1d') {
-                     const opt = { month: 'short', day: 'numeric' } as const;
-                     return `[${d.toLocaleDateString([], opt)} - ${d2.toLocaleDateString([], opt)}]`;
-                   }
                    return `[${t1} - ${t2}]`;
                  } catch (err) {
                    return formatXAxis(label);
@@ -271,7 +283,7 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
       );
     }
     return null;
-  }, [granularity, formatXAxis, series, unit, formatValue]);
+  }, [granularity, formatXAxis, series, unit, formatValue, data]);
 
   const renderChart = () => {
     const gridColor = "#f1f5f9";

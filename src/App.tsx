@@ -630,7 +630,7 @@ function DashboardApp() {
             if (aggType !== 'none') {
                smetrics.forEach(m => {
                  const aggKey = `${sKey}_${m}_agg`;
-                 const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
+                 const u = metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
                  mixedData = mixedData.map(point => {
                    let vals: number[] = [];
                    const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
@@ -653,7 +653,7 @@ function DashboardApp() {
                });
             } else {
                smetrics.forEach(m => {
-                 const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
+                 const u = metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
                  const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
                  hostsToUse.forEach(h => {
                    const key = `${m}_${h}`;
@@ -693,7 +693,7 @@ function DashboardApp() {
           });
         } else {
           w.metrics.forEach(m => {
-            const u = metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`;
+            const u = metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
             const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
             hostsToUse.forEach(h => {
               const key = `${m}_${h}`;

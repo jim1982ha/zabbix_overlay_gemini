@@ -73,7 +73,7 @@ timeseriesRouter.post("/", async (req, res) => {
 
       const durationMs = endTime - startTime;
 
-      dataPoints = Math.min(Math.floor(durationMs / stepMs), 500); 
+      dataPoints = Math.min(Math.floor(durationMs / stepMs), 10000); 
       if (dataPoints < 1) dataPoints = 1; 
       
       timeLabels = Array.from({ length: dataPoints }, (_, i) => {
@@ -86,7 +86,7 @@ timeseriesRouter.post("/", async (req, res) => {
       
       const totalRangeMs = rangeMsMap[range as string] || 86400000;
       
-      dataPoints = Math.min(Math.floor(totalRangeMs / stepMs), 500);
+      dataPoints = Math.min(Math.floor(totalRangeMs / stepMs), 10000);
       if (dataPoints < 1) dataPoints = 1; 
 
       timeLabels = Array.from({ length: dataPoints }, (_, i) => {
