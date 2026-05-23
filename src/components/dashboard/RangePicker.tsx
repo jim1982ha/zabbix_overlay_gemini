@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { DayPicker, DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -16,7 +16,7 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState({ top: 0, bottom: 0, left: 0, width: 0, height: 0, windowHeight: 0 });
+  const [coords, setCoords] = useState<{ top: number, bottom: number, left: number, width: number, height: number, windowHeight: number, windowWidth: number } | null>(null);
   
   // Internal state for pending changes
   const [tempRange, setTempRange] = useState<DateRange | undefined>(undefined);
@@ -43,7 +43,7 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
   }, [isOpen]);
 
   // Sync internal state when menu opens
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isOpen) {
       if (range.start && range.end) {
         setTempRange({ from: new Date(range.start), to: new Date(range.end) });
@@ -64,6 +64,8 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
           windowWidth: window.innerWidth
         });
       }
+    } else {
+      setCoords(null);
     }
   }, [isOpen, range.start, range.end]);
 
@@ -145,7 +147,7 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
          <ChevronDown className={cn("w-4 h-4 text-slate-400 shrink-0 transition-transform duration-300", isOpen && "-rotate-180")} />
        </button>
 
-       {isOpen && createPortal(
+       {isOpen && coords && createPortal(
            <div 
               ref={popoverRef}
               style={{ 
@@ -155,7 +157,10 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
                 left: Math.max(16, Math.min(coords.left + coords.width - 340, window.innerWidth - 356)), // Prevent overflow on both sides
                 maxHeight: 'calc(100vh - 32px)',
               }}
-              className="fixed z-[1001] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-xl p-4 w-[calc(100vw-32px)] sm:w-[340px] max-w-[340px] flex flex-col gap-4 pointer-events-auto overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
+              className={cn(
+                "fixed z-[1001] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-xl p-4 w-[calc(100vw-32px)] sm:w-[340px] max-w-[340px] flex flex-col gap-4 pointer-events-auto overflow-y-auto animate-in fade-in zoom-in-95 duration-100",
+                coords.bottom + 400 > coords.windowHeight && coords.top - 400 > 0 ? "origin-bottom-left" : "origin-top-left"
+              )}
             >
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">

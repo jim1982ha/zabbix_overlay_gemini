@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { Settings2, X, ChevronDown, ArrowUpDown, Check } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -7,24 +7,41 @@ import type { Widget } from "../../types/zabbix";
 export function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { options: string[], selected: string[], onChange: (val: string[]) => void, label: string, metricUnitsMap: Record<string, string> }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const [dropdownPos, setDropdownPos] = useState<{ top: number, left: number, width: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const sortedOptions = [...options].sort((a, b) => a.localeCompare(b));
   const filteredOptions = sortedOptions.filter(opt => opt.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const toggleOpen = () => {
-    if (!isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      const fitsBelow = window.innerHeight - rect.bottom > 250;
-      setDropdownPos({
-        top: fitsBelow ? rect.bottom + 8 : rect.top - 232, 
-        left: rect.left,
-        width: rect.width
-      });
-    }
     setIsOpen(!isOpen);
+    if (isOpen) {
+      setDropdownPos(null);
+    }
   };
+
+  useLayoutEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const updatePosition = () => {
+        if (!buttonRef.current) return;
+        const rect = buttonRef.current.getBoundingClientRect();
+        const fitsBelow = window.innerHeight - rect.bottom > 250;
+        setDropdownPos({
+          top: fitsBelow ? rect.bottom + 8 : Math.max(8, rect.top - 232), 
+          left: rect.left,
+          width: rect.width
+        });
+      };
+      
+      updatePosition();
+      
+      // Update position on scroll for nested containers
+      window.addEventListener('scroll', updatePosition, true);
+      return () => window.removeEventListener('scroll', updatePosition, true);
+    } else {
+      setDropdownPos(null);
+    }
+  }, [isOpen]);
 
   return (
     <div className="relative">
@@ -45,11 +62,14 @@ export function MultiSelect({ options, selected, onChange, label, metricUnitsMap
         </span>
         <ChevronDown className={cn("w-4 h-4 transition-all duration-300 ml-2 shrink-0", isOpen ? "rotate-180 text-blue-500 dark:text-sky-500" : "opacity-30 group-hover:opacity-60 text-slate-400")} />
       </button>
-      {isOpen && typeof window !== 'undefined' && createPortal(
+      {isOpen && dropdownPos && typeof window !== 'undefined' && createPortal(
         <>
           <div className="fixed inset-0 z-[120]" onClick={() => setIsOpen(false)} />
           <div 
-            className="fixed z-[130] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in duration-200 scrollbar-hide flex flex-col"
+            className={cn(
+              "fixed z-[130] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 scrollbar-hide flex flex-col",
+              dropdownPos?.top < (buttonRef.current?.getBoundingClientRect().top || 0) ? "origin-bottom" : "origin-top"
+            )}
             style={{
               top: dropdownPos.top,
               left: dropdownPos.left,
