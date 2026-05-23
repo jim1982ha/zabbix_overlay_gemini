@@ -54,8 +54,7 @@ export function useZabbixDiscovery(zabbixConfig: { url: string; token: string })
         params: {
           output: ["name", "key_", "units", "itemid", "value_type", "lastvalue"],
           selectHosts: ["name", "host"],
-          monitored: true,
-          limit: 1000
+          monitored: true
         }
       });
 

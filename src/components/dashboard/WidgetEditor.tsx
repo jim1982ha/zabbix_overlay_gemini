@@ -76,20 +76,36 @@ export function MultiSelect({ options, selected, onChange, label, metricUnitsMap
               width: dropdownPos.width,
             }}
           >
-            <div className="sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10 p-1 flex gap-2">
+            <div className="sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10 p-1 flex flex-col gap-2 border-b border-slate-100 dark:border-slate-800 mb-1">
               <input 
                 type="text" 
                 placeholder="Search..." 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
-                className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-950 dark:text-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:border-blue-500 dark:focus:border-sky-500 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="w-full min-w-0 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-950 dark:text-slate-200 text-sm rounded-md px-3 py-2 outline-none focus:border-blue-500 dark:focus:border-sky-500 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange([]); }}
-                className="px-3 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all whitespace-nowrap opacity-75 hover:opacity-100"
-              >
-                Clear All
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={(e) => { 
+                    e.preventDefault(); e.stopPropagation(); 
+                    const newSelected = [...new Set([...selected, ...filteredOptions])];
+                    onChange(newSelected);
+                  }}
+                  className="flex-1 px-3 py-1.5 text-xs font-semibold bg-blue-50 dark:bg-sky-500/10 text-blue-700 dark:text-sky-400 hover:text-blue-800 dark:hover:text-sky-300 rounded-md hover:bg-blue-100 dark:hover:bg-sky-500/20 border border-blue-200 dark:border-sky-500/30 transition-all whitespace-nowrap text-center"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={(e) => { 
+                    e.preventDefault(); e.stopPropagation(); 
+                    const newSelected = selected.filter(s => !filteredOptions.includes(s));
+                    onChange(newSelected);
+                  }}
+                  className="flex-1 px-3 py-1.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all whitespace-nowrap opacity-75 hover:opacity-100 text-center"
+                >
+                  Deselect All
+                </button>
+              </div>
             </div>
             {filteredOptions.length === 0 && <div className="text-xs text-slate-500 text-center py-4">No results</div>}
             {filteredOptions.slice(0, 100).map((opt, i) => {
