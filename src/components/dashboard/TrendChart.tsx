@@ -21,7 +21,7 @@ import {
   Brush
 } from 'recharts';
 import { motion } from 'motion/react';
-import { Download, ZoomIn, Clock } from 'lucide-react';
+import { Download, ZoomIn, Clock, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { cn, formatValue } from '../../lib/utils';
 
 interface DataPoint {
@@ -75,6 +75,30 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
   const [refAreaLeft, setRefAreaLeft] = useState<string | null>(null);
   const [refAreaRight, setRefAreaRight] = useState<string | null>(null);
   const [autoScaleY, setAutoScaleY] = useState(false);
+  const [legendSort, setLegendSort] = useState<'default'|'desc'|'asc'>('default');
+
+  const sortedSeries = React.useMemo(() => {
+    if (legendSort === 'default') return series;
+    
+    const totals: Record<string, number> = {};
+    for (const s of series) totals[s.key] = 0;
+
+    if (data && data.length > 0) {
+       for (const d of data) {
+          for (const s of series) {
+             if (d[s.key] !== undefined) {
+                 totals[s.key] += Number(d[s.key]) || 0;
+             }
+          }
+       }
+    }
+
+    return [...series].sort((a, b) => {
+      const valA = totals[a.key];
+      const valB = totals[b.key];
+      return legendSort === 'desc' ? valB - valA : valA - valB;
+    });
+  }, [series, data, legendSort]);
 
   const displayedData = React.useMemo(() => {
     let result = data;
@@ -261,15 +285,22 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
              </div>
           )}
           <div className="space-y-0.5">
-            {payload.map((entry: any, index: number) => (
-              <div key={`item-${index}`} className="flex items-center justify-between gap-3 px-1 py-0.5 hover:bg-slate-50 dark:bg-slate-950 rounded bg-transparent transition-colors">
+            {(() => {
+              const orderMap = new Map(sortedSeries.map((s, idx) => [s.key, idx]));
+              return [...payload].sort((a, b) => {
+                const idxA = orderMap.has(a.dataKey) ? orderMap.get(a.dataKey) : 999;
+                const idxB = orderMap.has(b.dataKey) ? orderMap.get(b.dataKey) : 999;
+                return (idxA as number) - (idxB as number);
+              });
+            })().map((entry: any, index: number) => (
+              <div key={`item-${index}`} className="flex items-center justify-between gap-3 px-1 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-900 rounded bg-transparent transition-colors">
                 <div className="flex items-center gap-1.5 overflow-hidden">
                   <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: entry.color || entry.fill }} />
-                  <span className="text-[10px] font-medium text-slate-600 truncate block max-w-[120px]">
+                  <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300 truncate block max-w-[120px]">
                     {entry.name}
                   </span>
                 </div>
-                <span className="text-[10px] font-bold text-slate-900 whitespace-nowrap ml-2">
+                <span className="text-[10px] font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap ml-2">
                   {(() => {
                     const u = entry.payload?.unit || series.find((s) => s.key === entry.dataKey)?.unit || unit;
                     const { value, unit: fmtUnit } = formatValue(entry.value || 0, u);
@@ -283,7 +314,7 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
       );
     }
     return null;
-  }, [granularity, formatXAxis, series, unit, formatValue, data]);
+  }, [granularity, formatXAxis, series, unit, formatValue, data, sortedSeries]);
 
   const renderChart = () => {
     const gridColor = "#f1f5f9";
@@ -646,9 +677,21 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
         {chartType === 'pie' && (
           <div className={cn(
             "shrink-0 min-h-0 bg-transparent relative z-10 py-1",
-            "flex flex-row @[450px]:flex-col flex-wrap @[450px]:flex-nowrap justify-center @[450px]:justify-start gap-x-3 gap-y-1.5 w-full @[450px]:w-auto @[450px]:min-w-[120px] @[450px]:max-w-[50%] @[450px]:ml-4 max-h-[100px] @[450px]:max-h-full overflow-y-auto px-2 scrollbar-hide" 
+            "flex flex-row @[450px]:flex-col flex-wrap @[450px]:flex-nowrap justify-center @[450px]:justify-start items-center @[450px]:items-start gap-x-3 gap-y-1.5 w-full @[450px]:w-auto @[450px]:min-w-[120px] @[450px]:max-w-[50%] @[450px]:ml-4 max-h-[100px] @[450px]:max-h-full overflow-y-auto px-2 scrollbar-hide" 
           )}>
-            {series.map((s, i) => {
+            <div className="hidden @[450px]:flex w-full justify-end mb-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLegendSort(prev => prev === 'default' ? 'desc' : prev === 'desc' ? 'asc' : 'default');
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-0.5 rounded"
+                title={`Sort: ${legendSort}`}
+              >
+                 {legendSort === 'default' ? <ArrowUpDown className="w-3 h-3" /> : legendSort === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />}
+              </button>
+            </div>
+            {sortedSeries.map((s, i) => {
               const isHidden = hiddenSeries?.has(s.key);
               return (
                 <div 
@@ -684,8 +727,18 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
         )}
         
         {chartType !== 'pie' && (
-          <div className="shrink min-h-0 bg-transparent relative z-10 w-full mb-1 flex flex-wrap gap-x-4 gap-y-1.5 mt-2 max-h-[120px] overflow-y-auto px-1 scrollbar-hide flex-shrink">
-              {series.map((s, i) => {
+          <div className="shrink min-h-0 bg-transparent relative z-10 w-full mb-1 flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2 max-h-[120px] overflow-y-auto px-1 scrollbar-hide flex-shrink">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLegendSort(prev => prev === 'default' ? 'desc' : prev === 'desc' ? 'asc' : 'default');
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-0.5 rounded flex-shrink-0"
+                title={`Sort: ${legendSort}`}
+              >
+                 {legendSort === 'default' ? <ArrowUpDown className="w-3 h-3" /> : legendSort === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />}
+              </button>
+              {sortedSeries.map((s, i) => {
                 const isHidden = hiddenSeries?.has(s.key);
                 return (
                   <div 
