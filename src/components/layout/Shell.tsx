@@ -91,7 +91,7 @@ export function Shell({
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans overflow-hidden relative">
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-50 px-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3" title="Build: 1672b3a">
+        <div className="flex items-center gap-3" title={`Build: ${__BUILD_HASH__}`}>
           <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center shadow-md font-bold text-white cursor-pointer" onClick={() => { onNavigate('dashboard'); closeMobileMenu(); }}>
             <Activity className="w-5 h-5 text-white" />
           </div>
@@ -124,7 +124,7 @@ export function Shell({
           isCollapsed ? "px-0 justify-center" : "px-4 justify-between"
         )}>
           {!isCollapsed ? (
-            <div className="flex items-center gap-2 font-bold cursor-pointer transition-all shrink-0" onClick={() => onNavigate('dashboard')} title="Build: 1672b3a">
+            <div className="flex items-center gap-2 font-bold cursor-pointer transition-all shrink-0" onClick={() => onNavigate('dashboard')} title={`Build: ${__BUILD_HASH__}`}>
               <div className="w-8 h-8 rounded-none flex items-center justify-center shrink-0 text-white">
                 <Activity className="w-6 h-6" />
               </div>
@@ -133,7 +133,7 @@ export function Shell({
           ) : null}
           <button onClick={toggleCollapse} className={cn("hidden lg:flex transition-colors", isCollapsed ? "w-[60px] h-[60px] items-center justify-center hover:bg-blue-700 dark:hover:bg-blue-800" : "p-1.5 text-blue-100 hover:bg-blue-700 dark:hover:bg-blue-800 hover:text-white rounded-none")} title={isCollapsed ? "Expand Menu" : "Collapse Menu"}>
             {isCollapsed ? (
-              <div className="w-8 h-8 rounded-none flex items-center justify-center shrink-0 text-white cursor-pointer transition-colors" title="Build: 1672b3a">
+              <div className="w-8 h-8 rounded-none flex items-center justify-center shrink-0 text-white cursor-pointer transition-colors" title={`Build: ${__BUILD_HASH__}`}>
                 <Activity className="w-6 h-6" />
               </div>
             ) : <ChevronLeft className="w-5 h-5" />}

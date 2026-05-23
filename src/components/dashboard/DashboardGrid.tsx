@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import React, { useMemo, useCallback } from "react";
+
 import { 
   Settings2, 
   Trash2, 
@@ -35,7 +35,7 @@ interface DashboardGridProps {
   isMobile: boolean;
 }
 
-export function DashboardGrid({
+export const DashboardGrid = React.memo(function DashboardGrid({
   data,
   availableHosts,
   availableMetrics,
@@ -184,6 +184,22 @@ export function DashboardGrid({
     );
   };
 
+  const handleLegendClick = useCallback((key: string) => toggleSeriesVisibility(key), [toggleSeriesVisibility]);
+  
+  const handleColorChangeRequest = useCallback((metric: string, current: string) => setColorPickerTarget({ metric, current }), [setColorPickerTarget]);
+  
+  const handleHostClick = useCallback((host: string) => {
+    const keysForHost: string[] = [];
+    availableMetrics.forEach(m => {
+      keysForHost.push(`${m}_${host}`);
+    });
+    toggleSeriesVisibility(keysForHost);
+  }, [availableMetrics, toggleSeriesVisibility]);
+
+  const handleZoomDomainChange = useCallback((id: string, domain: any) => {
+    handleUpdateWidgetZoom(id, domain);
+  }, [handleUpdateWidgetZoom]);
+
   // Render the trend chart visualization
   const renderTrendChart = (w: Widget) => {
     const { chartData = data, chartSeries = [] } = widgetDataMapping[w.id] || {};
@@ -251,17 +267,12 @@ export function DashboardGrid({
         granularity={filters.granularity}
         aggregation={w.chartType === 'mixed' ? undefined : w.aggregation}
         hiddenSeries={hiddenSeries}
-        onLegendClick={(key) => toggleSeriesVisibility(key)}
-        onColorChangeRequest={(metric, current) => setColorPickerTarget({ metric, current })}
-        onHostClick={(host) => {
-          const keysForHost: string[] = [];
-          availableMetrics.forEach(m => {
-            keysForHost.push(`${m}_${host}`);
-          });
-          toggleSeriesVisibility(keysForHost);
-        }}
+        onLegendClick={handleLegendClick}
+        onColorChangeRequest={handleColorChangeRequest}
+        onHostClick={handleHostClick}
+        widgetId={w.id}
         zoomDomain={widgetZoomDomains[w.id]}
-        onZoomDomainChange={(domain) => handleUpdateWidgetZoom(w.id, domain)}
+        onZoomDomainChange={handleZoomDomainChange}
       />
     );
   };
@@ -317,7 +328,6 @@ export function DashboardGrid({
       )}
       style={!isMobile ? { gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' } : {}}
     >
-      <AnimatePresence mode="popLayout">
         {filteredWidgets.map((w, index) => {
           let hasFilter = false;
           if (w.chartType === 'mixed' && w.seriesConfig) {
@@ -363,16 +373,8 @@ export function DashboardGrid({
           }
           
           return (
-            <motion.div 
+            <div 
               key={w.id}
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{
-                layout: { type: "spring", stiffness: 300, damping: 30 },
-                opacity: { duration: 0.2 }
-              }}
               data-widget-id={w.id}
               className={cn(
                 "relative group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 flex flex-col shadow-sm rounded",
@@ -602,10 +604,9 @@ export function DashboardGrid({
               ) : (
                 w.type === 'kpi' ? renderKpiWidget(w) : renderTrendChart(w)
               )}
-            </motion.div>
+            </div>
           );
         })}
-      </AnimatePresence>
     </div>
   );
-}
+});

@@ -566,13 +566,13 @@ function DashboardApp() {
     });
   }, []);
 
-  const handleUpdateWidgetZoom = (id: string, domain: [number, number] | null) => {
+  const handleUpdateWidgetZoom = useCallback((id: string, domain: [number, number] | null) => {
     setWidgetZoomDomains(prev => ({ ...prev, [id]: domain }));
-  };
+  }, []);
 
-  const handleZoomOut = (id: string) => {
+  const handleZoomOut = useCallback((id: string) => {
     setWidgetZoomDomains(prev => ({ ...prev, [id]: null }));
-  };
+  }, []);
 
   // Setup active Live polling progress calculations
   useEffect(() => {

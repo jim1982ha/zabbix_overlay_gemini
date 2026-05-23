@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   AreaChart, 
   Area, 
@@ -62,12 +62,13 @@ interface TrendChartProps {
   onLegendClick?: (key: string) => void;
   onColorChangeRequest?: (metric: string, current: string) => void;
   onHostClick?: (host: string) => void;
+  widgetId?: string;
   zoomDomain?: [number, number] | null;
-  onZoomDomainChange?: (domain: [number, number] | null) => void;
+  onZoomDomainChange?: (id: string, domain: [number, number] | null) => void;
   timestamp?: string; // Add timestamp to show pie chart's current time bin
 }
 
-export function TrendChart({ title, data, series, hosts, chartType = 'area', seriesConfig, stacked = false, unit, leftUnit, rightUnit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onColorChangeRequest, onHostClick, zoomDomain, onZoomDomainChange, timestamp }: TrendChartProps) {
+export const TrendChart = React.memo(function TrendChart({ widgetId, title, data, series, hosts, chartType = 'area', seriesConfig, stacked = false, unit, leftUnit, rightUnit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onColorChangeRequest, onHostClick, zoomDomain, onZoomDomainChange, timestamp }: TrendChartProps) {
   const defaultColors = ['#0284c7', '#4f46e5', '#7c3aed', '#db2777', '#d97706', '#059669', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#06b6d4'];
   const chartColors = color ? [color, ...defaultColors.filter(c => c !== color)] : defaultColors;
 
@@ -81,7 +82,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
       result = data.slice(zoomDomain[0], zoomDomain[1] + 1);
     }
     return result;
-  }, [data, zoomDomain]);
+  }, [data, zoomDomain, series]);
 
   const handleDownloadCSV = () => {
     if (!displayedData || displayedData.length === 0) return;
@@ -163,7 +164,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
         const absStart = data.findIndex(d => d.time === displayedData[start].time);
         const absEnd = data.findIndex(d => d.time === displayedData[end].time);
         
-        onZoomDomainChange?.([absStart, absEnd]);
+        onZoomDomainChange?.(widgetId || '', [absStart, absEnd]);
       }
     }
     setRefAreaLeft(null);
@@ -191,7 +192,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
     }).sort((a, b) => b.value - a.value);
   }, [chartType, series, data, hiddenSeries]);
 
-  const formatXAxis = (tickItem: string) => {
+  const formatXAxis = useCallback((tickItem: string) => {
     try {
       const date = new Date(tickItem);
       if (isNaN(date.getTime())) return tickItem;
@@ -210,9 +211,9 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
     } catch (e) {
       return tickItem;
     }
-  };
+  }, [mode, granularity]);
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const renderCustomTooltip = useCallback(({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white dark:bg-slate-900/95 backdrop-blur-sm border border-slate-100 rounded-lg shadow-lg p-1.5 max-h-[400px] overflow-y-auto flex flex-col gap-0.5 border-l-2 border-l-blue-600 min-w-[160px]">
@@ -270,7 +271,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
       );
     }
     return null;
-  };
+  }, [granularity, formatXAxis, series, unit, formatValue]);
 
   const renderChart = () => {
     const gridColor = "#f1f5f9";
@@ -300,7 +301,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 <Cell key={`cell-${index}-${entry.dataKey}-${entry.color}`} fill={entry.color} stroke="transparent" strokeWidth={0} />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip />} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            <Tooltip isAnimationActive={false} content={renderCustomTooltip} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
           </PieChart>
         );
       case 'line':
@@ -316,7 +317,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               minTickGap={30}
             />
             <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            <Tooltip isAnimationActive={false} content={renderCustomTooltip} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Line 
                 isAnimationActive={false}
@@ -375,7 +376,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
             />
             {hasLeft && <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} yAxisId="left" orientation="left" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, leftUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />}
             {hasRight && <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, rightUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} width={55} />}
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            <Tooltip isAnimationActive={false} content={renderCustomTooltip} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {[...series].sort((a, b) => {
               if (a.metric === 'series1' && b.metric === 'series2') return 1;
               if (a.metric === 'series2' && b.metric === 'series1') return -1;
@@ -421,6 +422,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                     unit={unit} 
                     animationDuration={1000} 
                     yAxisId={yId}
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 0 }}
                   />
                 );
               } else {
@@ -460,7 +463,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               minTickGap={30}
             />
             <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            <Tooltip isAnimationActive={false} content={renderCustomTooltip} cursor={{ fill: 'rgba(0,0,0,0.02)' }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => (
               <Bar 
                 isAnimationActive={false}
@@ -505,7 +508,7 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
               minTickGap={30} 
             />
             <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, unit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
+            <Tooltip isAnimationActive={false} content={renderCustomTooltip} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {series.map((s, i) => {
               const colorValue = getSeriesColor(s);
               const safeId = `gradient-${s.key.replace(/[^a-zA-Z0-9-_]/g, '_')}-${colorValue.replace(/[^a-zA-Z0-9]/g, '')}`;
@@ -524,6 +527,8 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
                 fill={`url(#${safeId})`} 
                 unit={unit} 
                 animationDuration={1000} 
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 0 }}
               />
               );
             })}
@@ -732,4 +737,20 @@ export function TrendChart({ title, data, series, hosts, chartType = 'area', ser
       )}
     </div>
   );
-}
+}, (prev, next) => {
+  const hiddenSeriesChangedForUs = prev.series.some(s => prev.hiddenSeries?.has(s.key) !== next.hiddenSeries?.has(s.key));
+  if (hiddenSeriesChangedForUs) return false;
+
+  return prev.widgetId === next.widgetId &&
+         prev.title === next.title &&
+         prev.data === next.data &&
+         prev.mode === next.mode &&
+         prev.granularity === next.granularity &&
+         prev.zoomDomain?.[0] === next.zoomDomain?.[0] &&
+         prev.zoomDomain?.[1] === next.zoomDomain?.[1] &&
+         prev.aggregation === next.aggregation &&
+         prev.stacked === next.stacked &&
+         prev.timestamp === next.timestamp &&
+         prev.series.length === next.series.length &&
+         prev.series.map(s => s.key).join(',') === next.series.map(s => s.key).join(',');
+});

@@ -5,7 +5,7 @@ import 'react-day-picker/dist/style.css';
 import { format, subDays, subHours, startOfToday, endOfToday } from 'date-fns';
 import { Calendar as CalendarIcon, ChevronDown, Clock, Zap, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { motion, AnimatePresence } from 'motion/react';
+
 
 interface RangePickerProps {
   range: { start: string; end: string };
@@ -146,7 +146,7 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
        </button>
 
        {isOpen && createPortal(
-           <motion.div 
+           <div 
               ref={popoverRef}
               style={{ 
                 ...(coords.bottom + 400 > coords.windowHeight && coords.top - 400 > 0
@@ -155,10 +155,7 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
                 left: Math.max(16, Math.min(coords.left + coords.width - 340, window.innerWidth - 356)), // Prevent overflow on both sides
                 maxHeight: 'calc(100vh - 32px)',
               }}
-              initial={{ opacity: 0, y: 5, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 5, scale: 0.98 }}
-              className="fixed z-[1001] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-xl p-4 w-[calc(100vw-32px)] sm:w-[340px] max-w-[340px] flex flex-col gap-4 pointer-events-auto overflow-y-auto"
+              className="fixed z-[1001] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-xl p-4 w-[calc(100vw-32px)] sm:w-[340px] max-w-[340px] flex flex-col gap-4 pointer-events-auto overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
             >
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
@@ -233,7 +230,7 @@ export function RangePicker({ range, onChange }: RangePickerProps) {
                   Confirm
                   </button>
               </div>
-            </motion.div>,
+            </div>,
          document.body
        )}
 
