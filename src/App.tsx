@@ -771,6 +771,7 @@ function DashboardApp() {
       <div className="w-full min-w-0">
         <DashboardGrid 
           data={data}
+          isLoading={loading}
           availableHosts={availableHosts}
           availableMetrics={availableMetrics}
           hostMetricsMap={hostMetricsMap}

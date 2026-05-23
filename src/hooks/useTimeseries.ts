@@ -22,6 +22,9 @@ export function useTimeseries(
   const [data, setData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fetchedParamsHash, setFetchedParamsHash] = useState<string | null>(null);
+  
+  const currentParamsHash = JSON.stringify(params);
   
   // Track continuous polling via ref to avoid React state re-eval sync issues
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -32,6 +35,8 @@ export function useTimeseries(
       setIsLoading(true);
     }
     setError(null);
+
+    const hashForThisFetch = JSON.stringify(params);
 
     try {
       const response = await axios.post("/api/timeseries", {
@@ -50,11 +55,13 @@ export function useTimeseries(
       if (response.data) {
         setData(response.data);
       }
+      setFetchedParamsHash(hashForThisFetch);
     } catch (err: any) {
       console.error("Timeseries Fetch Error:", err);
       // Only set error if not silent (background polling errors shouldn't disrupt active viewing if they are transient)
       if (!isSilent) {
         setError(err.response?.data?.error || err.message || "Failed to load timeseries statistics.");
+        setFetchedParamsHash(hashForThisFetch);
       }
     } finally {
       if (!isSilent) {
@@ -71,7 +78,8 @@ export function useTimeseries(
     params.token,
     params.metrics,
     params.hosts,
-    metricDict
+    metricDict,
+    skip
   ]);
 
   // Handle active or background polling
@@ -92,9 +100,11 @@ export function useTimeseries(
     };
   }, [fetchTimeseries, params.mode, pollingInterval, skip]);
 
+  const isSyncing = isLoading || (fetchedParamsHash !== currentParamsHash);
+
   return {
     data,
-    isLoading,
+    isLoading: isSyncing,
     error,
     refetch: fetchTimeseries
   };

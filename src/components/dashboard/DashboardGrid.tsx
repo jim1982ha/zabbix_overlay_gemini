@@ -33,6 +33,7 @@ interface DashboardGridProps {
   widgetDataMapping: Record<string, { chartData: any[], chartSeries: any[] }>;
   setColorPickerTarget: (val: { metric: string, current: string } | null) => void;
   isMobile: boolean;
+  isLoading?: boolean;
 }
 
 export const DashboardGrid = React.memo(function DashboardGrid({
@@ -50,7 +51,8 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   handleZoomOut,
   widgetDataMapping,
   setColorPickerTarget,
-  isMobile
+  isMobile,
+  isLoading
 }: DashboardGridProps) {
   const {
     widgets,
@@ -601,6 +603,14 @@ export const DashboardGrid = React.memo(function DashboardGrid({
                   handleUpdateWidget={(id, updates) => updateWidget(id, updates)}
                   setEditingWidgetId={setEditingWidgetId}
                 />
+              ) : isLoading ? (
+                <div className="flex-1 flex flex-col items-center justify-center min-h-[100px] h-full w-full bg-slate-50/10 dark:bg-slate-900/10">
+                  <div className="flex gap-4">
+                    <div className="w-6 h-6 rounded-full dot-loading shadow-sm" style={{ animationDelay: '-0.6s' }}></div>
+                    <div className="w-6 h-6 rounded-full dot-loading shadow-sm" style={{ animationDelay: '-0.3s' }}></div>
+                    <div className="w-6 h-6 rounded-full dot-loading shadow-sm" style={{ animationDelay: '0s' }}></div>
+                  </div>
+                </div>
               ) : (
                 w.type === 'kpi' ? renderKpiWidget(w) : renderTrendChart(w)
               )}

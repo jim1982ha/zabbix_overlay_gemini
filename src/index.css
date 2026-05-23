@@ -57,4 +57,26 @@
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
   }
+
+  @keyframes dot-shift {
+    0%, 100% { background-color: #000000; transform: scale(1); } /* Black */
+    50% { background-color: #2563eb; transform: scale(1.2); } /* blue-600 */
+  }
+  
+  .dark .dot-loading {
+    animation: dot-shift-dark 1s infinite ease-in-out;
+  }
+
+  @keyframes dot-shift-dark {
+    0%, 100% { background-color: #ffffff; transform: scale(1); } /* White */
+    50% { background-color: #3b82f6; transform: scale(1.2); } /* blue-500 */
+  }
+
+  .dot-loading {
+    animation: dot-shift 1s infinite ease-in-out;
+    background-color: #000000;
+  }
+  .dark .dot-loading {
+    background-color: #ffffff;
+  }
 }
