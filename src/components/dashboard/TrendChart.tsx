@@ -676,21 +676,19 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
         
         {chartType === 'pie' && (
           <div className={cn(
-            "shrink-0 min-h-0 bg-transparent relative z-10 py-1",
-            "flex flex-row @[450px]:flex-col flex-wrap @[450px]:flex-nowrap justify-center @[450px]:justify-start items-center @[450px]:items-start gap-x-3 gap-y-1.5 w-full @[450px]:w-auto @[450px]:min-w-[120px] @[450px]:max-w-[50%] @[450px]:ml-4 max-h-[100px] @[450px]:max-h-full overflow-y-auto px-2 scrollbar-hide" 
+            "shrink-0 min-h-0 bg-transparent relative z-10 py-1 pl-6 pr-2",
+            "flex flex-row @[450px]:flex-col flex-wrap @[450px]:flex-nowrap justify-center @[450px]:justify-start items-center @[450px]:items-start gap-x-3 gap-y-1.5 w-full @[450px]:w-auto @[450px]:min-w-[120px] @[450px]:max-w-[50%] @[450px]:ml-4 max-h-[100px] @[450px]:max-h-full overflow-y-auto scrollbar-hide" 
           )}>
-            <div className="hidden @[450px]:flex w-full justify-end mb-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLegendSort(prev => prev === 'default' ? 'desc' : prev === 'desc' ? 'asc' : 'default');
-                }}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-0.5 rounded"
-                title={`Sort: ${legendSort}`}
-              >
-                 {legendSort === 'default' ? <ArrowUpDown className="w-3 h-3" /> : legendSort === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />}
-              </button>
-            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLegendSort(prev => prev === 'default' ? 'desc' : prev === 'desc' ? 'asc' : 'default');
+              }}
+              className="absolute left-1 top-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-0.5 rounded z-10"
+              title={`Sort: ${legendSort}`}
+            >
+               {legendSort === 'default' ? <ArrowUpDown className="w-3 h-3" /> : legendSort === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />}
+            </button>
             {sortedSeries.map((s, i) => {
               const isHidden = hiddenSeries?.has(s.key);
               return (
