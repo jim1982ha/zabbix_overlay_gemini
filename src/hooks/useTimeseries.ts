@@ -16,6 +16,7 @@ export interface TimeseriesParams {
 export function useTimeseries(
   params: TimeseriesParams,
   metricDict: Record<string, { itemid: string; value_type: string; lastvalue: string }>,
+  skip = false,
   pollingInterval = 30000
 ) {
   const [data, setData] = useState<any[]>([]);
@@ -26,6 +27,7 @@ export function useTimeseries(
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchTimeseries = useCallback(async (isSilent = false) => {
+    if (skip) return;
     if (!isSilent) {
       setIsLoading(true);
     }
@@ -74,6 +76,7 @@ export function useTimeseries(
 
   // Handle active or background polling
   useEffect(() => {
+    if (skip) return;
     fetchTimeseries();
 
     if (params.mode === "live") {
@@ -87,7 +90,7 @@ export function useTimeseries(
         clearInterval(timerRef.current);
       }
     };
-  }, [fetchTimeseries, params.mode, pollingInterval]);
+  }, [fetchTimeseries, params.mode, pollingInterval, skip]);
 
   return {
     data,

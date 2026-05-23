@@ -103,6 +103,10 @@ function DashboardApp() {
   const [secureTokenPrompt, setSecureTokenPrompt] = useState(false);
   const [secureTokenInput, setSecureTokenInput] = useState("");
   const [requiresSecureToken, setRequiresSecureToken] = useState(false);
+  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
+  const isAuthorized = useMemo(() => {
+    return !requiresSecureToken || !!sessionStorage.getItem("hareporting_app_secure_token");
+  }, [requiresSecureToken, secureTokenPrompt]);
   const [refreshProgress, setRefreshProgress] = useState(0);
   const [colorPickerTarget, setColorPickerTarget] = useState<{ metric: string, current: string } | null>(null);
   const [colorMapToggle, setColorMapToggle] = useState(0);
@@ -190,7 +194,7 @@ function DashboardApp() {
     hosts: activeHostsStr ? activeHostsStr.split(',') : (availableHosts.length > 0 ? [availableHosts[0]] : ['srv-prod-01'])
   }), [filters, zabbixConfig, activeMetricsStr, activeHostsStr, availableMetrics, availableHosts]);
 
-  const { data, isLoading: loading, error: timeseriesError, refetch: fetchStats } = useTimeseries(timeseriesParams, metricDict);
+  const { data, isLoading: loading, error: timeseriesError, refetch: fetchStats } = useTimeseries(timeseriesParams, metricDict, !isConfigLoaded || !isAuthorized);
 
   // Sync last sync dates upon data change
   useEffect(() => {
@@ -296,6 +300,8 @@ function DashboardApp() {
         }
       } catch (err) {
         console.error("Failed to load server configuration:", err);
+      } finally {
+        setIsConfigLoaded(true);
       }
     };
     fetchConfig();
@@ -303,14 +309,14 @@ function DashboardApp() {
 
   const [initialDiscoveryTriggered, setInitialDiscoveryTriggered] = useState(false);
   useEffect(() => {
-    if (!initialDiscoveryTriggered) {
+    if (!initialDiscoveryTriggered && isConfigLoaded && isAuthorized) {
       const hasValidConfig = zabbixConfig.url && (zabbixConfig.token || zabbixConfig.isPreconfigured);
       if (hasValidConfig) {
         discoverZabbixAssets(false);
       }
       setInitialDiscoveryTriggered(true);
     }
-  }, [zabbixConfig, initialDiscoveryTriggered, discoverZabbixAssets]);
+  }, [zabbixConfig, initialDiscoveryTriggered, discoverZabbixAssets, isConfigLoaded, isAuthorized]);
 
   const [draftZabbixConfig, setDraftZabbixConfig] = useState(zabbixConfig);
   useEffect(() => {
