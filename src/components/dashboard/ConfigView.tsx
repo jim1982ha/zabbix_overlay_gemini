@@ -136,9 +136,6 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
           <p className="text-xs text-slate-500 text-center font-medium mt-6">
             Authentication is handled server-side via the HA Gateway Proxy.
           </p>
-          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800/60 flex justify-center">
-            <span className="text-xs text-slate-400 font-mono">v1.2.4 (Build: b6d9e8f)</span>
-          </div>
         </Card>
       </div>
     </div>

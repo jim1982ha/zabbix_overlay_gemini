@@ -142,8 +142,7 @@ timeseriesRouter.post("/", async (req, res) => {
                   const missingRes = await zReq("item.get", {
                       output: ["itemid", "name", "value_type", "lastvalue"],
                       selectHosts: ["name", "host"],
-                      search: { name: Array.from(missingMetrics) },
-                      searchByAny: true,
+                      filter: { name: Array.from(missingMetrics) },
                       monitored: true,
                   }, 10000);
                   
@@ -177,8 +176,7 @@ timeseriesRouter.post("/", async (req, res) => {
            const itemRes = await zReq("item.get", {
                output: ["itemid", "name", "value_type", "lastvalue"],
                selectHosts: ["name", "host"],
-               search: { name: metrics },
-               searchByAny: true,
+               filter: { name: metrics },
                monitored: true,
            }, 10000);
            
