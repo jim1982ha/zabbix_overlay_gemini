@@ -19,7 +19,7 @@ interface Notification {
   host?: string;
 }
 
-export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbixConfig, showToast }: { globalSearch?: string, zabbixBaseUrl?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void }) {
+export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbixConfig, showToast, isDemo }: { globalSearch?: string, zabbixBaseUrl?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void, isDemo: boolean }) {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info' | 'success'>('all');
   
@@ -32,7 +32,6 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
   ];
 
   const [zabbixNotifications, setZabbixNotifications] = useState<Notification[]>([]);
-  const isDemo = !zabbixConfig?.url || !zabbixConfig?.token;
 
   const fetchZabbixTriggers = useCallback(async () => {
     if (isDemo) return;

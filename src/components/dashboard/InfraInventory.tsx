@@ -5,11 +5,10 @@ import { FilterBar, FilterButton } from '../ui/FilterBar';
 import { STDL_LIST_CARD_CLASS } from '../ui/Card';
 import axios from 'axios';
 
-export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showToast }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void }) {
+export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showToast, isDemo }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void, isDemo: boolean }) {
   const isHistorical = filters.mode === 'historical';
   const [activeHostGroup, setActiveHostGroup] = React.useState<string>('all');
   
-  const isDemo = !zabbixConfig?.url || !zabbixConfig?.token;
   const [zabbixAssets, setZabbixAssets] = useState<any[]>([]);
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);

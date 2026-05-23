@@ -5,14 +5,13 @@ import { Card } from "../ui/Card";
 import { FilterBar, FilterButton } from "../ui/FilterBar";
 import axios from 'axios';
 
-export function NetworkTopology({ filters, globalSearch = "", zabbixConfig }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string } }) {
+export function NetworkTopology({ filters, globalSearch = "", zabbixConfig, isDemo }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string }, isDemo: boolean }) {
   const isHistorical = filters.mode === 'historical';
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [hoveredLink, setHoveredLink] = useState<{from: string, to: string} | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [groupingMode, setGroupingMode] = useState<'none' | 'hostGroup' | 'status'>('none');
 
-  const isDemo = !zabbixConfig?.url || !zabbixConfig?.token;
   const [zabbixNodes, setZabbixNodes] = useState<any[]>([]);
   const [zabbixLinks, setZabbixLinks] = useState<any[]>([]);
 

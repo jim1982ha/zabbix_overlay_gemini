@@ -735,14 +735,14 @@ function DashboardApp() {
   // Main page content distributor
   const renderContent = () => {
     if (view === "network") {
-      return <NetworkTopology filters={filters} globalSearch={globalSearch} zabbixConfig={zabbixConfig} />;
+      return <NetworkTopology filters={filters} globalSearch={globalSearch} zabbixConfig={zabbixConfig} isDemo={isDemo} />;
     }
     if (view === "infra") {
-      return <InfraInventory filters={filters} globalSearch={globalSearch} zabbixConfig={zabbixConfig} showToast={showToast} />;
+      return <InfraInventory filters={filters} globalSearch={globalSearch} zabbixConfig={zabbixConfig} showToast={showToast} isDemo={isDemo} />;
     }
     if (view === "notifications") {
       const zabbixBaseUrl = zabbixConfig.url.replace('/api_jsonrpc.php', '');
-      return <NotificationFeed globalSearch={globalSearch} zabbixBaseUrl={zabbixBaseUrl} zabbixConfig={zabbixConfig} showToast={showToast} />;
+      return <NotificationFeed globalSearch={globalSearch} zabbixBaseUrl={zabbixBaseUrl} zabbixConfig={zabbixConfig} showToast={showToast} isDemo={isDemo} />;
     }
     if (view === "config") {
       return (
