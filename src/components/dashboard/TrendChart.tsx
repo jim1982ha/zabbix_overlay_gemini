@@ -764,5 +764,5 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
          prev.stacked === next.stacked &&
          prev.timestamp === next.timestamp &&
          prev.series.length === next.series.length &&
-         prev.series.map(s => s.key).join(',') === next.series.map(s => s.key).join(',');
+         prev.series.map(s => `${s.key}-${s.color}`).join(',') === next.series.map(s => `${s.key}-${s.color}`).join(',');
 });
