@@ -115,6 +115,8 @@ timeseriesRouter.post("/", async (req, res) => {
               if (v) lowerItemDict[k.toLowerCase()] = v;
            }
 
+           const missingMetrics = new Set<string>();
+
            metrics.forEach((m: string) => {
               hosts.forEach((h: string) => {
                  const key = `${m}_${h}`;
@@ -128,9 +130,48 @@ timeseriesRouter.post("/", async (req, res) => {
                        itemsToFetchHistory[vtype].push(info.itemid);
                        itemIdToKey[info.itemid] = key; // Preserve the requested casing key
                     }
+                 } else {
+                    missingMetrics.add(m);
                  }
               });
            });
+
+           if (missingMetrics.size > 0) {
+               console.log(`[timeseries] Fetching missing metrics:`, Array.from(missingMetrics));
+               try {
+                  const missingRes = await zReq("item.get", {
+                      output: ["itemid", "name", "value_type", "lastvalue"],
+                      selectHosts: ["name", "host"],
+                      search: { name: Array.from(missingMetrics) },
+                      searchByAny: true,
+                      monitored: true,
+                  }, 10000);
+                  
+                  if (missingRes.data && missingRes.data.result) {
+                    missingRes.data.result.forEach((item: any) => {
+                       const h = item.hosts?.[0]?.name || item.hosts?.[0]?.host;
+                       const m = item.name;
+                       if (h && m) {
+                          // Match case-insensitively with missing metrics
+                          const matchedMetric = Array.from(missingMetrics).find((reqM: string) => reqM.toLowerCase() === m.toLowerCase()) || m;
+                          const key = `${matchedMetric}_${h}`;
+                          // Ensure we only process if this host matches requested hosts (to prevent unexpected inserts)
+                          if (hosts.includes(h) || hosts.map(x=>x.toLowerCase()).includes(h.toLowerCase())) {
+                              itemValueMap[key] = item.lastvalue;
+                              const vtype = parseInt(item.value_type, 10);
+                              if (!isNaN(vtype)) {
+                                 if (!itemsToFetchHistory[vtype]) itemsToFetchHistory[vtype] = [];
+                                 itemsToFetchHistory[vtype].push(item.itemid);
+                                 itemIdToKey[item.itemid] = key; // Preserve the requested casing key
+                              }
+                          }
+                       }
+                    });
+                  }
+               } catch (e) {
+                  console.error("[timeseries] Failed to fetch missing metrics", e);
+               }
+           }
         } else {
            console.log(`[timeseries] No itemDict provided, falling back to item.get`);
            const itemRes = await zReq("item.get", {
