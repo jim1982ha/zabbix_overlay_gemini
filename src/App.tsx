@@ -48,8 +48,10 @@ const defaultWidgets: Widget[] = [
     hosts: ['all'], 
     aggregation: 'avg', 
     stacked: false, 
-    cols: 6, 
-    rows: 4 
+    x: 0,
+    y: 0,
+    w: 6, 
+    h: 4
   },
   { 
     id: 'kpi-2', 
@@ -60,8 +62,10 @@ const defaultWidgets: Widget[] = [
     hosts: ['all'], 
     aggregation: 'sum', 
     stacked: false, 
-    cols: 12, 
-    rows: 4 
+    x: 6,
+    y: 0,
+    w: 12, 
+    h: 4
   },
   { 
     id: 'kpi-3', 
@@ -72,8 +76,10 @@ const defaultWidgets: Widget[] = [
     hosts: ['sql-db-primary'], 
     aggregation: 'avg', 
     stacked: false, 
-    cols: 6, 
-    rows: 4
+    x: 18,
+    y: 0,
+    w: 6, 
+    h: 4
   }
 ];
 
@@ -366,8 +372,8 @@ function DashboardApp() {
           ...db,
           widgets: db.widgets.map((w: Widget) => ({
             ...w,
-            cols: w.cols <= 4 ? w.cols * 6 : w.cols,
-            rows: w.rows <= 3 ? w.rows * 4 : w.rows
+            w: (w.w || w.cols || 1) <= 4 ? (w.w || w.cols || 1) * 6 : (w.w || w.cols || 6),
+            h: (w.h || w.rows || 1) <= 3 ? (w.h || w.rows || 1) * 4 : (w.h || w.rows || 4)
           }))
         }));
         setSavedDashboards(migrated);
@@ -440,6 +446,9 @@ function DashboardApp() {
   };
 
   const handleAddWidget = (type: 'kpi' | 'chart') => {
+    const maxX = 0;
+    const maxY = widgets.length > 0 ? Math.max(...widgets.map(w => w.y + (w.h || w.rows || 0))) : 0;
+    
     const newWidget: Widget = {
       id: `w-${Date.now()}`,
       title: type === 'kpi' ? 'New KPI Metric Card' : 'New Analytical Trend Chart',
@@ -449,8 +458,10 @@ function DashboardApp() {
       hosts: isDemo ? ['srv-prod-01'] : (availableHosts.length > 0 ? [availableHosts[0]] : []),
       aggregation: 'avg',
       stacked: false,
-      cols: type === 'kpi' ? 6 : 12,
-      rows: type === 'kpi' ? 4 : 10,
+      x: 0,
+      y: maxY,
+      w: type === 'kpi' ? 6 : 12,
+      h: type === 'kpi' ? 4 : 10,
     };
     addWidget(newWidget);
   };
@@ -536,8 +547,14 @@ function DashboardApp() {
       return;
     }
     const sanitizedWidgets = payload.widgets.filter((w: any) => 
-      w && typeof w === 'object' && w.id && w.type && w.cols && w.rows
-    );
+      w && typeof w === 'object' && w.id && w.type && ((w.cols && w.rows) || (w.w && w.h))
+    ).map((w: any) => ({
+      ...w,
+      x: w.x ?? 0,
+      y: w.y ?? Infinity,
+      w: w.w ?? w.cols,
+      h: w.h ?? w.rows,
+    }));
 
     setWidgets(sanitizedWidgets as Widget[]);
     if (typeof payload.name === 'string') {

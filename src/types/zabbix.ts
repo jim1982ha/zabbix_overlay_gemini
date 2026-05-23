@@ -21,13 +21,14 @@ export interface Widget {
   title: string;
   metrics: string[];
   hosts: string[];
-  cols: number;
-  rows: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
   chartType?: 'line' | 'bar' | 'area' | 'pie' | 'mixed';
   seriesConfig?: Record<string, SeriesConfig>;
   aggregation?: 'none' | 'sum' | 'avg';
   stacked?: boolean;
-  forceNewline?: boolean;
 }
 
 export interface ZabbixConfig {
