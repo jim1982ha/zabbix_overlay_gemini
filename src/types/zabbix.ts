@@ -29,6 +29,7 @@ export interface Widget {
   seriesConfig?: Record<string, SeriesConfig>;
   aggregation?: 'none' | 'sum' | 'avg';
   stacked?: boolean;
+  forceNewline?: boolean;
 }
 
 export interface ZabbixConfig {

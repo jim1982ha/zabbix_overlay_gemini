@@ -71,107 +71,110 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig, isDe
   const periodKey = isHistorical ? `${filters.start}-${filters.end}` : filters.range;
   
   const layoutNodes = useMemo(() => {
-    const width = Math.max(containerWidth, 800);
+    // Subtract 32px for Card horizontal padding (p-4 = 16px left + 16px right)
+    const width = Math.max(containerWidth - 32, 800);
     
-    if (isDemo) {
-      // Basic grouping for demo if status grouping is selected
-      if (groupingMode === 'status') {
-        const gateway = { id: 'gw-01', type: 'gateway', x: width * 0.50, y: 30, status: 'online', label: 'Primary Gateway' };
-        const onlineHosts = [
-          { id: 'sw-01', type: 'switch', status: 'online', label: 'Core Switch 01' },
-          { id: 'sw-02', type: 'switch', status: 'online', label: 'Core Switch 02' },
-          { id: 'srv-01', type: 'server', status: 'online', label: 'App Server 01' },
-          { id: 'srv-02', type: 'server', status: 'online', label: 'App Server 02' },
-          { id: 'srv-03', type: 'server', status: 'online', label: 'App Server 03' },
-          { id: 'db-01', type: 'server', status: 'online', label: 'DB Cluster A' },
+    if (groupingMode === 'none') {
+      if (isDemo) {
+        return [
+          { id: 'gw-01', type: 'gateway', x: width * 0.50, y: 30, status: 'online', label: 'Primary Gateway' },
+          { id: 'sw-01', type: 'switch', x: width * 0.35, y: 150, status: 'online', label: 'Core Switch 01' },
+          { id: 'sw-02', type: 'switch', x: width * 0.65, y: 150, status: 'online', label: 'Core Switch 02' },
+          { id: 'srv-01', type: 'server', x: width * 0.15, y: 300, status: 'online', label: 'App Server 01' },
+          { id: 'srv-02', type: 'server', x: width * 0.35, y: 300, status: 'online', label: 'App Server 02' },
+          { id: 'srv-03', type: 'server', x: width * 0.55, y: 300, status: 'online', label: 'App Server 03' },
+          { id: 'db-01', type: 'server', x: width * 0.75, y: 300, status: 'online', label: 'DB Cluster A' },
+          { id: 'db-02', type: 'server', x: width * 0.90, y: 300, status: 'offline', label: 'DB Cluster B (Maint)' },
         ];
-        const offlineHosts = [
-          { id: 'db-02', type: 'server', status: 'offline', label: 'DB Cluster B (Maint)' },
-        ];
-
+      } else {
+        const gateway = { id: 'gw-real-01', type: 'gateway', x: width / 2, y: 30, status: 'online', label: 'Zabbix Gateway' };
+        const rawHosts = zabbixNodes.filter(n => n.host);
         const nodeSpacing = 160;
-        const rowSpacing = 120;
-        
-        const mappedOnline = onlineHosts.map((h, i) => {
-          const cols = Math.floor(width / nodeSpacing);
+        const mapped = rawHosts.map((h, i) => {
+          const cols = Math.max(2, Math.floor(width / nodeSpacing));
           const row = Math.floor(i / cols);
           const col = i % cols;
-          return { ...h, x: (col * nodeSpacing) + (nodeSpacing), y: 180 + (row * rowSpacing) };
+          const itemsInRow = Math.min(cols, rawHosts.length - row * cols);
+          const rowWidth = itemsInRow * nodeSpacing;
+          const startX = (width - rowWidth) / 2;
+          return {
+            id: h.host,
+            type: 'server',
+            x: startX + (col * nodeSpacing) + (nodeSpacing / 2),
+            y: 180 + (row * 120),
+            status: h.status === '0' ? 'online' : 'offline',
+            label: h.name || h.host
+          };
         });
-
-        const mappedOffline = offlineHosts.map((h, i) => {
-          return { ...h, x: width - 150, y: 180 + (i * rowSpacing) };
-        });
-
-        return [gateway, ...mappedOnline, ...mappedOffline];
+        return [gateway, ...mapped];
       }
-
-      return [
-        { id: 'gw-01', type: 'gateway', x: width * 0.50, y: 30, status: 'online', label: 'Primary Gateway' },
-        { id: 'sw-01', type: 'switch', x: width * 0.35, y: 150, status: 'online', label: 'Core Switch 01' },
-        { id: 'sw-02', type: 'switch', x: width * 0.65, y: 150, status: 'online', label: 'Core Switch 02' },
-        { id: 'srv-01', type: 'server', x: width * 0.15, y: 300, status: 'online', label: 'App Server 01' },
-        { id: 'srv-02', type: 'server', x: width * 0.35, y: 300, status: 'online', label: 'App Server 02' },
-        { id: 'srv-03', type: 'server', x: width * 0.55, y: 300, status: 'online', label: 'App Server 03' },
-        { id: 'db-01', type: 'server', x: width * 0.75, y: 300, status: 'online', label: 'DB Cluster A' },
-        { id: 'db-02', type: 'server', x: width * 0.90, y: 300, status: 'online', label: 'DB Cluster B' },
-      ];
-    } else {
-      const gateway = { id: 'gw-real-01', type: 'gateway', x: width / 2, y: 30, status: 'online', label: 'Zabbix Gateway' };
-      const rawHosts = zabbixNodes.filter(n => n.host);
-      
-      let groupedData: Record<string, any[]> = {};
-      if (groupingMode === 'hostGroup') {
-        rawHosts.forEach(h => {
-          const groupName = h.hostgroups?.[0]?.name || 'Uncategorized';
-          if (!groupedData[groupName]) groupedData[groupName] = [];
-          groupedData[groupName].push(h);
-        });
-      } else if (groupingMode === 'status') {
-        rawHosts.forEach(h => {
-          const statusName = h.status === '0' ? 'Online' : 'Offline';
-          if (!groupedData[statusName]) groupedData[statusName] = [];
-          groupedData[statusName].push(h);
-        });
-      } else {
-        groupedData['all'] = rawHosts;
-      }
-
-      // Rebuilding grouping logic slightly more cleanly
-      const finalGroups = Object.entries(groupedData);
-      const nodeSpacing = 160;
-      const rowSpacing = 120;
-      const groupSpacing = 100;
-      let currentY = 180;
-      
-      const generatedNodes: any[] = [];
-      
-      finalGroups.forEach(([groupName, groupHosts]) => {
-        const cols = Math.max(2, Math.floor(width / nodeSpacing));
-        groupHosts.forEach((h: any, i: number) => {
-           const row = Math.floor(i / cols);
-           const col = i % cols;
-           const itemsInRow = Math.min(cols, groupHosts.length - row * cols);
-           const rowWidth = itemsInRow * nodeSpacing;
-           const startX = (width - rowWidth) / 2;
-           
-           generatedNodes.push({
-              id: h.host,
-              type: 'server',
-              x: startX + (col * nodeSpacing) + (nodeSpacing / 2),
-              y: currentY + (row * rowSpacing),
-              status: h.status === '0' ? 'online' : 'offline',
-              label: h.name || h.host,
-              group: groupName
-           });
-        });
-        
-        const groupRows = Math.ceil(groupHosts.length / cols);
-        currentY += (groupRows * rowSpacing) + groupSpacing;
-      });
-
-      return [gateway, ...generatedNodes];
     }
+
+    // Otherwise, groupingMode is 'status' or 'hostGroup'
+    const gateway = isDemo 
+      ? { id: 'gw-01', type: 'gateway', x: width * 0.50, y: 30, status: 'online', label: 'Primary Gateway' }
+      : { id: 'gw-real-01', type: 'gateway', x: width / 2, y: 30, status: 'online', label: 'Zabbix Gateway' };
+
+    const rawHosts = isDemo 
+      ? [
+          { host: 'sw-01', type: 'switch', status: '0', name: 'Core Switch 01', hostgroups: [{ name: 'Infrastructure' }] },
+          { host: 'sw-02', type: 'switch', status: '0', name: 'Core Switch 02', hostgroups: [{ name: 'Infrastructure' }] },
+          { host: 'srv-01', type: 'server', status: '0', name: 'App Server 01', hostgroups: [{ name: 'Applications' }] },
+          { host: 'srv-02', type: 'server', status: '0', name: 'App Server 02', hostgroups: [{ name: 'Applications' }] },
+          { host: 'srv-03', type: 'server', status: '0', name: 'App Server 03', hostgroups: [{ name: 'Applications' }] },
+          { host: 'db-01', type: 'server', status: '0', name: 'DB Cluster A', hostgroups: [{ name: 'Databases' }] },
+          { host: 'db-02', type: 'server', status: '1', name: 'DB Cluster B (Maint)', hostgroups: [{ name: 'Databases' }] },
+        ]
+      : zabbixNodes.filter(n => n.host);
+
+    let groupedData: Record<string, any[]> = {};
+    if (groupingMode === 'hostGroup') {
+      rawHosts.forEach(h => {
+        const groupName = h.hostgroups?.[0]?.name || 'Uncategorized';
+        if (!groupedData[groupName]) groupedData[groupName] = [];
+        groupedData[groupName].push(h);
+      });
+    } else { // status
+      rawHosts.forEach(h => {
+        const statusName = h.status === '0' ? 'Online' : 'Offline';
+        if (!groupedData[statusName]) groupedData[statusName] = [];
+        groupedData[statusName].push(h);
+      });
+    }
+
+    const finalGroups = Object.entries(groupedData);
+    const nodeSpacing = 160;
+    const rowSpacing = 120;
+    const groupSpacing = 100;
+    let currentY = 180;
+    
+    const generatedNodes: any[] = [];
+    
+    finalGroups.forEach(([groupName, groupHosts]) => {
+      const cols = Math.max(2, Math.floor(width / nodeSpacing));
+      groupHosts.forEach((h: any, i: number) => {
+         const row = Math.floor(i / cols);
+         const col = i % cols;
+         const itemsInRow = Math.min(cols, groupHosts.length - row * cols);
+         const rowWidth = itemsInRow * nodeSpacing;
+         const startX = (width - rowWidth) / 2;
+         
+         generatedNodes.push({
+            id: h.host,
+            type: h.type || 'server',
+            x: startX + (col * nodeSpacing) + (nodeSpacing / 2),
+            y: currentY + (row * rowSpacing),
+            status: h.status === '0' ? 'online' : 'offline',
+            label: h.name || h.host,
+            group: groupName
+         });
+      });
+      
+      const groupRows = Math.ceil(groupHosts.length / cols);
+      currentY += (groupRows * rowSpacing) + groupSpacing;
+    });
+
+    return [gateway, ...generatedNodes];
   }, [containerWidth, isDemo, zabbixNodes, groupingMode]);
 
   const layoutLinks = useMemo(() => {
@@ -226,16 +229,17 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig, isDe
         </div>
       </FilterBar>
       <div className="flex flex-col gap-6">
-        <Card ref={containerRef} className="p-4 relative min-h-[450px] overflow-x-auto shadow-none block rounded-none border-slate-200">
+        <div ref={containerRef} className="relative min-h-[450px] overflow-x-auto w-full">
+          <Card className="p-4 relative min-h-[450px] shadow-none block rounded-none border-slate-200 w-full">
           {/* SVG Topology Graph */}
           {(() => {
             const maxY = nodes.length > 0 ? Math.max(...nodes.map(n => n.y)) : 300;
             const vbHeight = maxY + 80;
-            const vbWidth = Math.max(containerWidth, 800);
+            const vbWidth = Math.max(containerWidth - 32, 800);
             return (
               <svg 
-                className="block" 
-                style={{ minWidth: `${vbWidth}px`, height: `${Math.max(450, vbHeight)}px` }} 
+                className="block mx-auto" 
+                style={{ width: "100%", minWidth: "800px", height: `${Math.max(450, vbHeight)}px` }} 
                 viewBox={`0 0 ${vbWidth} ${Math.max(450, vbHeight)}`} 
                 preserveAspectRatio="xMidYMin meet"
               >
@@ -386,7 +390,8 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig, isDe
 
 
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(2,132,199,0.02),transparent)] pointer-events-none" />
-        </Card>
+          </Card>
+        </div>
       </div>
       
       {/* Tooltip Overlay */}

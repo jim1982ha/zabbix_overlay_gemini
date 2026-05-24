@@ -1,0 +1,118 @@
+[
+  {
+    "id": "demo-dashboard-1",
+    "name": "HA Platform Analytics",
+    "widgets": [
+      {
+        "id": "kpi-cpu",
+        "title": "Cluster CPU Load",
+        "type": "kpi",
+        "chartType": "area",
+        "metrics": ["cpu"],
+        "hosts": ["all"],
+        "aggregation": "avg",
+        "stacked": false,
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      {
+        "id": "kpi-mem",
+        "title": "Memory Consumption",
+        "type": "kpi",
+        "chartType": "area",
+        "metrics": ["memory"],
+        "hosts": ["all"],
+        "aggregation": "avg",
+        "stacked": false,
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      {
+        "id": "kpi-traffic",
+        "title": "Total Ingress/Egress",
+        "type": "kpi",
+        "chartType": "bar",
+        "metrics": ["traffic"],
+        "hosts": ["all"],
+        "aggregation": "sum",
+        "stacked": false,
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      {
+        "id": "kpi-latency",
+        "title": "Average API Latency",
+        "type": "kpi",
+        "chartType": "line",
+        "metrics": ["latency"],
+        "hosts": ["all"],
+        "aggregation": "avg",
+        "stacked": false,
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      {
+        "id": "chart-cpu-trend",
+        "title": "CPU Trends by Host",
+        "type": "chart",
+        "chartType": "line",
+        "metrics": ["cpu"],
+        "hosts": ["srv-prod-01", "srv-prod-02", "srv-prod-03"],
+        "aggregation": "none",
+        "stacked": false,
+        "x": 0,
+        "y": 4,
+        "w": 18,
+        "h": 10
+      },
+      {
+        "id": "pie-status",
+        "title": "Disk Usage Distribution",
+        "type": "chart",
+        "chartType": "pie",
+        "metrics": ["disk"],
+        "hosts": ["srv-prod-01", "srv-prod-02", "srv-prod-03"],
+        "aggregation": "sum",
+        "stacked": false,
+        "x": 18,
+        "y": 4,
+        "w": 6,
+        "h": 10
+      },
+      {
+        "id": "mixed-metrics",
+        "title": "Network vs Latency",
+        "type": "chart",
+        "chartType": "mixed",
+        "metrics": [],
+        "hosts": [],
+        "seriesConfig": {
+          "series1": {
+            "metric": "traffic",
+            "host": "all",
+            "chartType": "bar"
+          },
+          "series2": {
+            "metric": "latency",
+            "host": "all",
+            "chartType": "line"
+          }
+        },
+        "aggregation": "none",
+        "stacked": false,
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 12
+      }
+    ]
+  }
+]

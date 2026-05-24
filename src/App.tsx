@@ -38,50 +38,11 @@ declare global {
   }
 }
 
-const defaultWidgets: Widget[] = [
-  { 
-    id: 'kpi-1', 
-    title: 'Average Cluster CPU', 
-    type: 'kpi', 
-    chartType: 'area', 
-    metrics: ['cpu'], 
-    hosts: ['all'], 
-    aggregation: 'avg', 
-    stacked: false, 
-    x: 0,
-    y: 0,
-    w: 6, 
-    h: 4
-  },
-  { 
-    id: 'kpi-2', 
-    title: 'Global Cluster Network Flow', 
-    type: 'kpi', 
-    chartType: 'bar', 
-    metrics: ['traffic'], 
-    hosts: ['all'], 
-    aggregation: 'sum', 
-    stacked: false, 
-    x: 6,
-    y: 0,
-    w: 12, 
-    h: 4
-  },
-  { 
-    id: 'kpi-3', 
-    title: 'Primary SQL Latency', 
-    type: 'kpi', 
-    chartType: 'line', 
-    metrics: ['latency'], 
-    hosts: ['sql-db-primary'], 
-    aggregation: 'avg', 
-    stacked: false, 
-    x: 18,
-    y: 0,
-    w: 6, 
-    h: 4
-  }
-];
+import demoDashboardData from "./data/demoDashboard.json";
+
+// We keep defaultWidgets as fallback, or just remove it and use demoDashboardData directly.
+// Let's replace defaultWidgets with demoDashboardData[0].widgets.
+const defaultWidgets: Widget[] = demoDashboardData[0].widgets as Widget[];
 
 function DashboardApp() {
   const { 
@@ -158,7 +119,7 @@ function DashboardApp() {
   const dashboardStorageKey = useMemo(() => {
     return savedZabbixUrl 
       ? `hareporting_dashboards_${btoa(savedZabbixUrl).replace(/=/g, '')}` 
-      : 'hareporting_dashboards_v5';
+      : 'hareporting_dashboards_v6';
   }, [savedZabbixUrl]);
 
   // Integrated Discovery Hook
@@ -348,7 +309,18 @@ function DashboardApp() {
     sessionStorage.setItem('hareporting_zabbix_url', '');
     sessionStorage.setItem('hareporting_zabbix_token', '');
     setSavedZabbixUrl('');
-    showToast("Switched to offline Demo Mode.", "info");
+
+    // Re-initialize demo dashboards from the JSON configuration file
+    const initialDashboards = demoDashboardData as Dashboard[];
+    setSavedDashboards(initialDashboards);
+    if (initialDashboards && initialDashboards.length > 0) {
+      setActiveDashboardId(initialDashboards[0].id);
+      setDashboardName(initialDashboards[0].name);
+      setWidgets(initialDashboards[0].widgets);
+    }
+    localStorage.setItem(dashboardStorageKey, JSON.stringify(initialDashboards));
+
+    showToast("Switched to offline Demo Mode and reloaded default dashboards.", "info");
     setView("dashboard");
   };
 
@@ -382,22 +354,27 @@ function DashboardApp() {
           setDashboardName(migrated[0].name);
           setActiveDashboardId(migrated[0].id);
         } else {
-          setWidgets(dashboardStorageKey === 'hareporting_dashboards_v5' ? defaultWidgets : []);
+          setWidgets(dashboardStorageKey === 'hareporting_dashboards_v6' ? defaultWidgets : []);
         }
       } catch (e) {
         console.error("Failed to parse saved dashboards", e);
       }
     } else {
-      const initialWidgets = dashboardStorageKey === 'hareporting_dashboards_v5' ? defaultWidgets : [];
-      const initialDashboard: Dashboard = {
-        id: 'default-board-1',
-        name: 'Executive Overview',
-        widgets: initialWidgets
-      };
-      setSavedDashboards([initialDashboard]);
-      setActiveDashboardId('default-board-1');
-      setWidgets(initialWidgets);
-      localStorage.setItem(dashboardStorageKey, JSON.stringify([initialDashboard]));
+      let initialDashboards: Dashboard[] = [];
+      if (dashboardStorageKey === 'hareporting_dashboards_v6') {
+        initialDashboards = demoDashboardData as Dashboard[];
+      } else {
+        initialDashboards = [{
+          id: 'default-board-1',
+          name: 'Executive Overview',
+          widgets: []
+        }];
+      }
+      setSavedDashboards(initialDashboards);
+      setActiveDashboardId(initialDashboards[0].id);
+      setDashboardName(initialDashboards[0].name);
+      setWidgets(initialDashboards[0].widgets);
+      localStorage.setItem(dashboardStorageKey, JSON.stringify(initialDashboards));
     }
   }, [dashboardStorageKey]);
 
@@ -631,17 +608,18 @@ function DashboardApp() {
       if (w.type === 'chart') {
         const isAggregated = w.chartType !== 'mixed' && w.aggregation !== 'none';
         let chartSeries: { key: string; name: string; color?: string; metric?: string; configKey?: string; unit?: string }[] = [];
-        let chartData = data;
+        let chartData = data || [];
 
         if (w.chartType === 'mixed') {
-          let mixedData = data.map(point => ({ ...point }));
+          let mixedData = chartData.map(point => ({ ...point }));
           ['series1', 'series2'].forEach(sKey => {
             const sConf = w.seriesConfig?.[sKey];
             if (!sConf) return;
             
             const smetrics = sConf.metrics || (sConf.metric ? [sConf.metric] : []);
             const shosts = sConf.hosts || (sConf.host ? [sConf.host] : []);
-            const axisLabel = sConf.yAxis === 'right' ? ' (Right)' : ' (Left)';
+            const yAxis = sKey === 'series1' ? 'left' : 'right';
+            const axisLabel = yAxis === 'right' ? ' (Right)' : ' (Left)';
             const aggType = sConf.aggregation || 'none';
             
             if (aggType !== 'none') {
@@ -693,7 +671,7 @@ function DashboardApp() {
            const u = m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
            chartSeries = [{ key: 'agg_val', name: label, color: getDeterministicColor('agg_val', m), unit: u }];
           
-          chartData = data.map(point => {
+          chartData = chartData.map(point => {
             let vals: number[] = [];
             w.metrics.forEach(m => {
               const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;

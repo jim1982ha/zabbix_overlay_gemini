@@ -351,7 +351,12 @@ export function WidgetEditor({
                       )}
                       <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-bold text-blue-600 dark:text-sky-400 capitalize">Series {idx + 1}</span>
+                          <span className="text-sm font-bold text-blue-600 dark:text-sky-400">
+                            Serie {idx + 1}{" "}
+                            <span className="text-xs font-normal text-slate-500 dark:text-slate-400 ml-1.5 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-0.5 rounded-full border border-slate-200/60 dark:border-slate-700/60">
+                              {seriesKey === 'series2' ? 'Secondary (Right Axis)' : 'Primary (Left Axis)'}
+                            </span>
+                          </span>
                         </div>
                       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                         <div className="col-span-2 md:col-span-3">
@@ -384,22 +389,6 @@ export function WidgetEditor({
                           />
                         </div>
                         <div className="col-span-2 md:col-span-6 flex flex-col sm:flex-row gap-4 mt-2">
-                          <div className="flex-1">
-                            <label className="text-xs font-semibold text-slate-500 mb-1 block">Axis</label>
-                            <div className="relative">
-                              <select 
-                                value={sConf.yAxis} 
-                                onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, yAxis: e.target.value as any } } })}
-                                className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
-                              >
-                                <option value="left">Primary (Left)</option>
-                                <option value="right">Secondary (Right)</option>
-                              </select>
-                              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                              </div>
-                            </div>
-                          </div>
                           <div className="flex-1">
                             <label className="text-xs font-semibold text-slate-500 mb-1 block">Visual</label>
                             <div className="relative">

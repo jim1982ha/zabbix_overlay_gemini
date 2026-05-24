@@ -328,7 +328,7 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
     switch(chartType) {
       case 'pie':
         return (
-          <PieChart>
+          <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
             <Pie
               data={pieData}
               cx="50%"
@@ -382,11 +382,11 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
       case 'mixed':
         const hasRight = series.some(s => {
           const configKey = s.configKey || s.key.split('_')[0];
-          return seriesConfig?.[configKey]?.yAxis === 'right';
+          return configKey === 'series2';
         });
         const hasLeft = series.some(s => {
           const configKey = s.configKey || s.key.split('_')[0];
-          return (seriesConfig?.[configKey]?.yAxis || 'left') === 'left';
+          return configKey !== 'series2';
         });
 
         return (
@@ -419,14 +419,16 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
             {hasRight && <YAxis domain={autoScaleY ? ['dataMin', 'dataMax'] : [0, 'auto']} yAxisId="right" orientation="right" axisLine={false} tickLine={false} tickFormatter={(tick) => { const fmt = formatValue(tick, rightUnit); return `${fmt.value} ${fmt.unit}`.trim(); }} tick={{ fontSize: 10, fill: axisColor, fontWeight: 500 }} width={55} />}
             <Tooltip isAnimationActive={false} content={renderCustomTooltip} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} allowEscapeViewBox={{ x: false, y: true }} wrapperStyle={{ zIndex: 100 }} />
             {[...series].sort((a, b) => {
-              if (a.metric === 'series1' && b.metric === 'series2') return 1;
-              if (a.metric === 'series2' && b.metric === 'series1') return -1;
+              const ka = a.configKey || '';
+              const kb = b.configKey || '';
+              if (ka === 'series1' && kb === 'series2') return -1;
+              if (ka === 'series2' && kb === 'series1') return 1;
               return 0;
             }).map((s, i) => {
               const configKey = s.configKey || s.key.split('_')[0];
               const conf = seriesConfig?.[configKey] || { chartType: 'line', yAxis: 'left', stacked: false };
               const t = conf.chartType;
-              const yId = conf.yAxis || 'left';
+              const yId = configKey === 'series1' ? 'left' : (configKey === 'series2' ? 'right' : (conf.yAxis || 'left'));
               
               if (t === 'bar') {
                 return (
@@ -440,7 +442,6 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
                     fillOpacity={0.85}
                     stackId={conf.stacked ? `stack-${configKey}` : undefined} 
                     unit={unit} 
-                    radius={[4, 4, 0, 0]} 
                     yAxisId={yId}
                   />
                 );
@@ -516,7 +517,6 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
                 fillOpacity={0.85}
                 stackId={stacked ? "a" : undefined} 
                 unit={unit} 
-                radius={[4, 4, 0, 0]} 
               />
             ))}
             {refAreaLeft && refAreaRight ? (
@@ -584,7 +584,7 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
   if (!data || data.length === 0) {
     return (
       <div 
-        className={`bg-white dark:bg-slate-900 h-full flex flex-col items-center justify-center @container transition-colors duration-300 border border-slate-200 dark:border-slate-800 p-4 @[400px]:p-6`}
+        className={`bg-white dark:bg-slate-900 h-full flex flex-col items-center justify-center @container transition-colors duration-300 border border-slate-200 dark:border-slate-800 p-4 @[400px]:p-6 cancel-drag`}
       >
         <div className="flex gap-3 items-center">
           <motion.div className="w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600" animate={{ backgroundColor: ['#2563eb', '#cbd5e1', '#cbd5e1'], y: [-3, 0, 0] }} transition={{ duration: 1.5, repeat: Infinity, times: [0, 0.2, 1] }} />
@@ -597,9 +597,9 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
 
   return (
     <div 
-      className={`bg-white dark:bg-slate-900 h-full flex flex-col group @container transition-colors duration-300 ${zoomDomain ? 'border-[3px] border-sky-300 ring-2 ring-sky-100 ring-offset-1 p-[13px] @[400px]:p-[21px]' : 'border border-slate-200 dark:border-slate-800 p-4 @[400px]:p-6'}`}
+      className={`bg-white dark:bg-slate-900 h-full flex flex-col group @container transition-colors duration-300 cancel-drag ${zoomDomain ? 'border-[3px] border-sky-300 ring-2 ring-sky-100 ring-offset-1 p-[13px] @[400px]:p-[21px]' : cn('border border-slate-200 dark:border-slate-800 p-4 @[400px]:p-6', chartType === 'pie' && 'p-3 @[400px]:p-4')}`}
     >
-      <div className="mb-6">
+      <div className="mb-3.5 @[400px]:mb-5">
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between mb-2 gap-4">
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -659,11 +659,11 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
 
       <div className={cn(
         "flex-1 w-full relative min-h-0 flex", 
-        chartType === 'pie' ? "flex-col @[450px]:flex-row items-center @[450px]:items-stretch justify-center gap-3" : "flex-col"
+        chartType === 'pie' ? "flex-col @[450px]:flex-row items-center @[450px]:items-stretch justify-center gap-2" : "flex-col"
       )}>
         <div className={cn(
-          "flex-1 w-full relative select-none cursor-crosshair",
-          chartType === 'pie' ? "h-[220px] @[450px]:h-full min-h-[180px] w-full" : "h-full min-h-[100px]"
+          "relative select-none cursor-crosshair min-h-0",
+          chartType === 'pie' ? "flex-1 w-full h-0 @[450px]:h-full min-h-[130px]" : "h-full min-h-[100px] w-full"
         )}>
           <div className="absolute inset-0 min-w-0 min-h-0">
             <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
@@ -674,8 +674,8 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
         
         {chartType === 'pie' && (
           <div className={cn(
-            "shrink-0 min-h-0 bg-transparent relative z-10 py-1 pl-6 pr-2",
-            "flex flex-row @[450px]:flex-col flex-wrap @[450px]:flex-nowrap justify-center @[450px]:justify-start items-center @[450px]:items-start gap-x-3 gap-y-1.5 w-full @[450px]:w-auto @[450px]:min-w-[120px] @[450px]:max-w-[50%] @[450px]:ml-4 max-h-[100px] @[450px]:max-h-full overflow-y-auto scrollbar-hide" 
+            "shrink-0 min-h-0 bg-transparent relative z-10 py-0.5 pl-6 pr-2",
+            "flex flex-row @[450px]:flex-col flex-wrap @[450px]:flex-nowrap justify-center @[450px]:justify-start items-center @[450px]:items-start gap-x-3 gap-y-1 w-full @[450px]:w-auto @[450px]:min-w-[120px] @[450px]:max-w-[45%] @[450px]:ml-4 max-h-[70px] @[450px]:max-h-full overflow-y-auto scrollbar-hide" 
           )}>
             <button
               onClick={(e) => {
@@ -792,9 +792,9 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
 
       {chartType === 'pie' && timestamp && (
         <div className="relative z-10 flex flex-row items-center justify-between pt-1 shrink-0 mt-auto w-full min-w-0 gap-2">
-          <div className="flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-xs text-slate-400 dark:text-slate-500 font-medium px-1.5 @[200px]:px-2 py-0.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full shrink-0 min-w-0 max-w-[70%] truncate">
+          <div className="flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-[11px] text-slate-400 dark:text-slate-500 font-medium px-1.5 @[200px]:px-2 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-full shrink min-w-0 overflow-hidden">
             <Clock className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3 shrink-0" />
-            <span className="truncate">{timestamp}</span>
+            <span className="truncate min-w-0">{timestamp}</span>
           </div>
         </div>
       )}
@@ -814,6 +814,7 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
          prev.aggregation === next.aggregation &&
          prev.stacked === next.stacked &&
          prev.timestamp === next.timestamp &&
+         JSON.stringify(prev.seriesConfig) === JSON.stringify(next.seriesConfig) &&
          prev.series.length === next.series.length &&
-         prev.series.map(s => `${s.key}-${s.color}`).join(',') === next.series.map(s => `${s.key}-${s.color}`).join(',');
+         prev.series.map(s => `${s.key}-${s.color}-${s.name}`).join(',') === next.series.map(s => `${s.key}-${s.color}-${s.name}`).join(',');
 });

@@ -4,7 +4,7 @@ import type { Widget } from '../types/zabbix';
 export interface DashboardFilters {
   mode: 'live' | 'historical';
   range: string;
-  granularity: '1m' | '5m' | '15m' | '1h' | 'auto';
+  granularity: '1m' | '5m' | '15m' | '30m' | '1h' | '1d' | 'auto';
   start: string;
   end: string;
 }

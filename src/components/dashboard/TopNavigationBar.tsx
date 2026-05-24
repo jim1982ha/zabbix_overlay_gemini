@@ -55,20 +55,20 @@ export function TopNavigationBar({
   return (
     <div className="flex items-center justify-between w-full h-full text-slate-800 dark:text-slate-200 gap-2 sm:gap-4 lg:gap-8 min-w-0 max-w-full overflow-hidden">
       {/* Search Input Filter */}
-      <div className="hidden md:flex items-center w-[25%] md:max-w-[70px] lg:max-w-[100px] xl:max-w-[220px] h-[40px] pr-1 lg:pr-2 shrink transition-all min-w-[50px]">
-        <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 shrink-0 mr-2 md:mr-3 stroke-[2.5]" />
+      <div className="hidden md:flex flex-1 items-center h-[40px] bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 rounded-lg px-3 min-w-0">
+        <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0 mr-2 stroke-[2.2]" />
         <input 
           type="text" 
           value={globalSearch}
           onChange={(e) => setGlobalSearch(e.target.value)}
           placeholder="Search Board" 
-          className="w-full bg-transparent text-[15px] font-semibold text-slate-800 dark:text-slate-200 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 min-w-[30px]" 
+          className="w-full bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 min-w-0" 
         />
       </div>
 
       {/* Main Filter Dropdowns */}
-      <div className="flex-1 min-w-0 flex items-center h-full justify-end select-none">
-        <div className="w-full h-full max-w-full min-w-0">
+      <div className="shrink-0 flex items-center h-full justify-end select-none">
+        <div className="h-full">
           <ScrollableBar>
             <div className="flex flex-nowrap items-center gap-1 sm:gap-4 py-1 h-full pt-1.5 shrink-0 px-6 sm:px-2 md:sm:px-0 min-w-max md:ml-auto justify-end">
               {filters.mode === 'live' ? (

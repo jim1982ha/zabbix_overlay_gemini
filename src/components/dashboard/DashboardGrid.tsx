@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import { ResponsiveGridLayout, useContainerWidth, Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -71,12 +71,24 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     filters
   } = useDashboard();
 
-  const { width, containerRef, measureWidth } = useContainerWidth();
+  const { width, containerRef, mounted } = useContainerWidth();
 
+  // Force a window resize dispatch on mount and when loading finishes, to ensure 
+  // that react-grid-layout recalculates container width after all transitions have settled.
   React.useEffect(() => {
-    window.addEventListener("resize", measureWidth);
-    return () => window.removeEventListener("resize", measureWidth);
-  }, [measureWidth]);
+    if (mounted) {
+      const timerSettle = setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 150);
+      const timerLong = setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 600);
+      return () => {
+        clearTimeout(timerSettle);
+        clearTimeout(timerLong);
+      };
+    }
+  }, [mounted, isLoading]);
 
   // Cancel edit mode helper
   const handleCancelEdit = () => {
@@ -259,18 +271,14 @@ export const DashboardGrid = React.memo(function DashboardGrid({
         unit={metricUnitsMap[w.metrics[0]] ? (metricUnitsMap[w.metrics[0]] === '%' ? '%' : ` ${metricUnitsMap[w.metrics[0]]}`) : ''} 
         leftUnit={(() => {
            if (w.chartType !== 'mixed' || !w.seriesConfig) return '';
-           const s1 = w.seriesConfig['series1'];
-           const s2 = w.seriesConfig['series2'];
-           const s = s1?.yAxis !== 'right' ? s1 : (s2?.yAxis === 'left' ? s2 : null);
+           const s = w.seriesConfig['series1'];
            if (!s) return '';
            const m = s.metrics?.[0] || s.metric;
            return m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
         })()}
         rightUnit={(() => {
            if (w.chartType !== 'mixed' || !w.seriesConfig) return '';
-           const s1 = w.seriesConfig['series1'];
-           const s2 = w.seriesConfig['series2'];
-           const s = s2?.yAxis !== 'left' ? s2 : (s1?.yAxis === 'right' ? s1 : null);
+           const s = w.seriesConfig['series2'];
            if (!s) return '';
            const m = s.metrics?.[0] || s.metric;
            return m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
@@ -297,8 +305,8 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     );
   }, [widgets, globalSearch]);
 
-  const onLayoutChange = (layout: any) => {
-    // Sync back to widgets
+  const onUserInteractLayoutChange = (layout: any) => {
+    // Sync back to widgets when drag or resize completes
     setWidgets(prevWidgets => {
       let changed = false;
       const next = prevWidgets.map(w => {
@@ -352,19 +360,28 @@ export const DashboardGrid = React.memo(function DashboardGrid({
 
   return (
     <div ref={containerRef} className="w-full h-full relative min-w-0 overflow-x-hidden">
-      <ResponsiveGridLayout
-        className="layout"
-        width={width}
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        cols={{ lg: 24, md: 24, sm: 12, xs: 1, xxs: 1 }}
-        rowHeight={isMobile ? 30 : 25}
-        onLayoutChange={onLayoutChange}
-        draggableHandle=".drag-handle"
-        isDraggable={!isMobile}
-        isResizable={true}
-        useCSSTransforms={true}
-      >
-      {filteredWidgets.map((w, index) => {
+      {!mounted ? (
+        <div className="w-full h-full min-h-[600px]" />
+      ) : (
+        <ResponsiveGridLayout
+          className="layout"
+          width={width}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 24, md: 24, sm: 12, xs: 1, xxs: 1 }}
+          rowHeight={isMobile ? 30 : 25}
+          onDragStop={onUserInteractLayoutChange}
+          onResizeStop={onUserInteractLayoutChange}
+          dragConfig={{
+            enabled: !isMobile,
+            handle: ".drag-handle",
+            cancel: ".cancel-drag"
+          }}
+          resizeConfig={{
+            enabled: true,
+            handles: ['se', 'nw']
+          }}
+        >
+        {filteredWidgets.map((w, index) => {
         let hasFilter = false;
         if (w.chartType === 'mixed' && w.seriesConfig) {
           ['series1', 'series2'].forEach(sKey => {
@@ -411,7 +428,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
         return (
           <div
             key={w.id}
-            data-grid={{ i: w.id, x: w.x || 0, y: w.y || 0, w: w.w || 12, h: w.h || 10 }}
+            data-grid={{ i: w.id, x: w.x ?? 0, y: w.y ?? Infinity, w: w.w ?? (isMobile ? 1 : 12), h: w.h ?? 10 }}
             className={cn(
               "relative group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 flex flex-col rounded overflow-hidden",
               editingWidgetId === w.id ? "z-[100]" : "z-10 hover:z-[60]",
@@ -424,7 +441,9 @@ export const DashboardGrid = React.memo(function DashboardGrid({
                 {widgetZoomDomains[w.id] && (
                   <button 
                     onClick={() => handleZoomOut(w.id)}
-                    className="flex items-center gap-1.5 px-2 py-1.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 hover:text-sky-700 hover:border-sky-300 rounded shadow-sm transition-all text-[10px] font-bold uppercase tracking-wider h-[26px]"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1.5 px-2 py-1.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 hover:text-sky-700 hover:border-sky-300 rounded shadow-sm transition-all text-[10px] font-bold uppercase tracking-wider h-[26px] cancel-drag"
                     title="Zoom Out"
                   >
                     <ZoomOut className="w-3 h-3" />
@@ -434,8 +453,10 @@ export const DashboardGrid = React.memo(function DashboardGrid({
                 {/* Edit Button */}
                 <button 
                   onClick={() => setEditingWidgetId(editingWidgetId === w.id ? null : w.id)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                   className={cn(
-                    "p-1.5 rounded border transition-all shadow-sm h-[26px] w-[26px] flex items-center justify-center shrink-0",
+                    "p-1.5 rounded border transition-all shadow-sm h-[26px] w-[26px] flex items-center justify-center shrink-0 cancel-drag",
                     editingWidgetId === w.id ? "bg-blue-600 border-blue-500 text-white" : "bg-white/90 border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-slate-500 hover:text-slate-900"
                   )}
                   title="Edit Widget"
@@ -448,14 +469,16 @@ export const DashboardGrid = React.memo(function DashboardGrid({
                   <div 
                     className="drag-handle flex items-center justify-center p-1.5 bg-white/90 dark:bg-slate-800 dark:border-slate-700 rounded shadow-sm border border-slate-200 text-slate-400 cursor-grab active:cursor-grabbing hover:bg-slate-50 hover:text-slate-600 transition-colors h-[26px] w-[26px] shrink-0 outline-none select-none"
                   >
-                    <GripVertical className="w-4 h-4" />
+                    <GripVertical className="w-4 h-4 pointer-events-none" />
                   </div>
                 )}
 
                 {/* Remove widget */}
                 <button 
                   onClick={() => deleteWidget(w.id)}
-                  className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded hover:bg-rose-600 shadow-sm transition-all h-[26px] w-[26px] flex items-center justify-center opacity-70 hover:opacity-100 shrink-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="p-1.5 bg-rose-500 border border-rose-600 text-white rounded hover:bg-rose-600 shadow-sm transition-all h-[26px] w-[26px] flex items-center justify-center opacity-70 hover:opacity-100 shrink-0 cancel-drag"
                   title="Remove Widget"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -493,7 +516,8 @@ export const DashboardGrid = React.memo(function DashboardGrid({
           </div>
         );
       })}
-      </ResponsiveGridLayout>
+        </ResponsiveGridLayout>
+      )}
     </div>
   );
 });

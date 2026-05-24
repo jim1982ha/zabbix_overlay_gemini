@@ -52,8 +52,10 @@ export function useTimeseries(
         itemDict: metricDict
       });
 
-      if (response.data) {
+      if (response.data && Array.isArray(response.data)) {
         setData(response.data);
+      } else {
+        setData([]);
       }
       setFetchedParamsHash(hashForThisFetch);
     } catch (err: any) {
