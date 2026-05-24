@@ -1,118 +1,221 @@
-[
-  {
-    "id": "demo-dashboard-1",
-    "name": "HA Platform Analytics",
-    "widgets": [
-      {
-        "id": "kpi-cpu",
-        "title": "Cluster CPU Load",
-        "type": "kpi",
-        "chartType": "area",
-        "metrics": ["cpu"],
-        "hosts": ["all"],
-        "aggregation": "avg",
-        "stacked": false,
-        "x": 0,
-        "y": 0,
-        "w": 6,
-        "h": 4
-      },
-      {
-        "id": "kpi-mem",
-        "title": "Memory Consumption",
-        "type": "kpi",
-        "chartType": "area",
-        "metrics": ["memory"],
-        "hosts": ["all"],
-        "aggregation": "avg",
-        "stacked": false,
-        "x": 6,
-        "y": 0,
-        "w": 6,
-        "h": 4
-      },
-      {
-        "id": "kpi-traffic",
-        "title": "Total Ingress/Egress",
-        "type": "kpi",
-        "chartType": "bar",
-        "metrics": ["traffic"],
-        "hosts": ["all"],
-        "aggregation": "sum",
-        "stacked": false,
-        "x": 12,
-        "y": 0,
-        "w": 6,
-        "h": 4
-      },
-      {
-        "id": "kpi-latency",
-        "title": "Average API Latency",
-        "type": "kpi",
-        "chartType": "line",
-        "metrics": ["latency"],
-        "hosts": ["all"],
-        "aggregation": "avg",
-        "stacked": false,
-        "x": 18,
-        "y": 0,
-        "w": 6,
-        "h": 4
-      },
-      {
-        "id": "chart-cpu-trend",
-        "title": "CPU Trends by Host",
-        "type": "chart",
-        "chartType": "line",
-        "metrics": ["cpu"],
-        "hosts": ["srv-prod-01", "srv-prod-02", "srv-prod-03"],
-        "aggregation": "none",
-        "stacked": false,
-        "x": 0,
-        "y": 4,
-        "w": 18,
-        "h": 10
-      },
-      {
-        "id": "pie-status",
-        "title": "Disk Usage Distribution",
-        "type": "chart",
-        "chartType": "pie",
-        "metrics": ["disk"],
-        "hosts": ["srv-prod-01", "srv-prod-02", "srv-prod-03"],
-        "aggregation": "sum",
-        "stacked": false,
-        "x": 18,
-        "y": 4,
-        "w": 6,
-        "h": 10
-      },
-      {
-        "id": "mixed-metrics",
-        "title": "Network vs Latency",
-        "type": "chart",
-        "chartType": "mixed",
-        "metrics": [],
-        "hosts": [],
-        "seriesConfig": {
-          "series1": {
-            "metric": "traffic",
-            "host": "all",
-            "chartType": "bar"
-          },
-          "series2": {
-            "metric": "latency",
-            "host": "all",
-            "chartType": "line"
-          }
+{
+  "name": "Executive Overview",
+  "widgets": [
+    {
+      "id": "kpi-1",
+      "title": "Average Cluster CPU",
+      "type": "kpi",
+      "chartType": "area",
+      "metrics": [
+        "cpu"
+      ],
+      "hosts": [
+        "all"
+      ],
+      "aggregation": "avg",
+      "stacked": false,
+      "x": 0,
+      "y": 10,
+      "w": 12,
+      "h": 5
+    },
+    {
+      "id": "kpi-2",
+      "title": "Global Cluster Network Flow",
+      "type": "kpi",
+      "chartType": "bar",
+      "metrics": [
+        "traffic"
+      ],
+      "hosts": [
+        "all"
+      ],
+      "aggregation": "sum",
+      "stacked": false,
+      "x": 0,
+      "y": 0,
+      "w": 10,
+      "h": 5
+    },
+    {
+      "id": "kpi-3",
+      "title": "Primary SQL Latency",
+      "type": "kpi",
+      "chartType": "line",
+      "metrics": [
+        "latency"
+      ],
+      "hosts": [
+        "sql-db-primary"
+      ],
+      "aggregation": "avg",
+      "stacked": false,
+      "x": 5,
+      "y": 5,
+      "w": 5,
+      "h": 5
+    },
+    {
+      "id": "kpi-4",
+      "title": "Cluster Storage Health",
+      "type": "kpi",
+      "chartType": "area",
+      "metrics": [
+        "disk"
+      ],
+      "hosts": [
+        "all"
+      ],
+      "aggregation": "avg",
+      "stacked": false,
+      "x": 0,
+      "y": 5,
+      "w": 5,
+      "h": 5
+    },
+    {
+      "id": "chart-1",
+      "title": "Dual-Axis Health Correlation (Mixed View)",
+      "type": "chart",
+      "chartType": "mixed",
+      "seriesConfig": {
+        "series1": {
+          "metrics": [
+            "cpu"
+          ],
+          "hosts": [
+            "all"
+          ],
+          "chartType": "line",
+          "aggregation": "avg",
+          "stacked": false
         },
-        "aggregation": "none",
-        "stacked": false,
-        "x": 0,
-        "y": 14,
-        "w": 24,
-        "h": 12
-      }
-    ]
-  }
-]
+        "series2": {
+          "metrics": [
+            "traffic"
+          ],
+          "hosts": [
+            "all"
+          ],
+          "chartType": "bar",
+          "aggregation": "sum",
+          "stacked": false
+        }
+      },
+      "x": 10,
+      "y": 0,
+      "w": 14,
+      "h": 10
+    },
+    {
+      "id": "chart-2",
+      "title": "Storage Volume Allocation (Pie View)",
+      "type": "chart",
+      "chartType": "pie",
+      "metrics": [
+        "disk"
+      ],
+      "hosts": [
+        "all"
+      ],
+      "aggregation": "none",
+      "stacked": false,
+      "x": 12,
+      "y": 10,
+      "w": 12,
+      "h": 10
+    },
+    {
+      "id": "chart-3",
+      "title": "Production Server Resource Footprint",
+      "type": "chart",
+      "chartType": "line",
+      "metrics": [
+        "cpu",
+        "memory"
+      ],
+      "hosts": [
+        "srv-prod-01"
+      ],
+      "aggregation": "none",
+      "stacked": false,
+      "x": 0,
+      "y": 15,
+      "w": 12,
+      "h": 13
+    },
+    {
+      "id": "chart-4",
+      "title": "Database Read Latency Trends",
+      "type": "chart",
+      "chartType": "area",
+      "metrics": [
+        "latency"
+      ],
+      "hosts": [
+        "all"
+      ],
+      "aggregation": "none",
+      "stacked": true,
+      "x": 12,
+      "y": 20,
+      "w": 12,
+      "h": 8
+    },
+    {
+      "id": "chart-5",
+      "title": "Inter-Zone Network Traffic Load (Bar View)",
+      "type": "chart",
+      "chartType": "bar",
+      "metrics": [
+        "traffic"
+      ],
+      "hosts": [
+        "all"
+      ],
+      "aggregation": "none",
+      "stacked": false,
+      "x": 0,
+      "y": 28,
+      "w": 24,
+      "h": 11
+    },
+    {
+      "id": "chart-6",
+      "title": "Network Load & Resource Correlation (Dual-Axis Mixed Stacking)",
+      "type": "chart",
+      "chartType": "mixed",
+      "seriesConfig": {
+        "series1": {
+          "metrics": [
+            "traffic"
+          ],
+          "hosts": [
+            "srv-prod-01",
+            "sql-db-primary",
+            "gateway-02"
+          ],
+          "chartType": "bar",
+          "aggregation": "none",
+          "stacked": true
+        },
+        "series2": {
+          "metrics": [
+            "cpu"
+          ],
+          "hosts": [
+            "all"
+          ],
+          "chartType": "area",
+          "aggregation": "avg",
+          "stacked": false
+        }
+      },
+      "x": 0,
+      "y": 39,
+      "w": 24,
+      "h": 12
+    }
+  ],
+  "v": "1.0"
+}

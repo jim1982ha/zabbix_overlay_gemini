@@ -41,8 +41,71 @@ declare global {
 import demoDashboardData from "./data/demoDashboard.json";
 
 // We keep defaultWidgets as fallback, or just remove it and use demoDashboardData directly.
-// Let's replace defaultWidgets with demoDashboardData[0].widgets.
-const defaultWidgets: Widget[] = demoDashboardData[0].widgets as Widget[];
+// Let's replace defaultWidgets with demoDashboardData.widgets.
+const defaultWidgets: Widget[] = demoDashboardData.widgets as any;
+
+export function cleanWidgetForSaveAndExport(w: any): any {
+  const clean: any = {
+    id: w.id,
+    title: w.title,
+    type: w.type,
+    chartType: w.chartType,
+  };
+
+  if (w.chartType !== 'mixed') {
+    if (w.metrics !== undefined) {
+      clean.metrics = w.metrics;
+    }
+    if (w.hosts !== undefined) {
+      clean.hosts = w.hosts;
+    }
+  }
+
+  if (w.chartType !== 'mixed') {
+    if (w.aggregation !== undefined && w.aggregation !== 'none') {
+      clean.aggregation = w.aggregation;
+    } else if (w.aggregation === 'none' && w.type !== 'kpi') {
+      clean.aggregation = 'none';
+    }
+
+    if (w.stacked !== undefined) clean.stacked = w.stacked;
+  }
+
+  if (w.seriesConfig) {
+    clean.seriesConfig = {};
+    for (const key of ['series1', 'series2']) {
+      if (w.seriesConfig[key]) {
+        const s = w.seriesConfig[key];
+        const cleanS: any = {};
+        
+        if (s.metrics !== undefined) {
+          cleanS.metrics = s.metrics;
+        } else if (s.metric !== undefined) {
+          cleanS.metrics = [s.metric];
+        }
+
+        if (s.hosts !== undefined) {
+          cleanS.hosts = s.hosts;
+        } else if (s.host !== undefined) {
+          cleanS.hosts = s.host === 'all' ? ['all'] : [s.host];
+        }
+
+        if (s.chartType !== undefined) cleanS.chartType = s.chartType;
+        if (s.aggregation !== undefined) cleanS.aggregation = s.aggregation;
+        if (s.stacked !== undefined) cleanS.stacked = s.stacked;
+        
+        clean.seriesConfig[key] = cleanS;
+      }
+    }
+  }
+
+  clean.x = w.x ?? 0;
+  clean.y = w.y ?? 0;
+  clean.w = w.w ?? (w as any).cols ?? 6;
+  clean.h = w.h ?? (w as any).rows ?? 4;
+
+  return clean;
+}
 
 function DashboardApp() {
   const { 
@@ -138,13 +201,29 @@ function DashboardApp() {
   // Integrated Timeseries Fetch system
   const activeMetricsStr = useMemo(() => {
     const s = new Set<string>();
-    widgets.forEach(w => w.metrics.forEach(m => s.add(m)));
+    widgets.forEach(w => {
+      (w.metrics || []).forEach(m => s.add(m));
+      if (w.seriesConfig) {
+        Object.values(w.seriesConfig).forEach((sc: any) => {
+          const sMetrics = sc.metrics || (sc.metric ? [sc.metric] : []);
+          sMetrics.forEach((m: string) => s.add(m));
+        });
+      }
+    });
     return Array.from(s).sort().join(',');
   }, [widgets]);
 
   const activeHostsStr = useMemo(() => {
     const s = new Set<string>();
-    widgets.forEach(w => w.hosts.forEach(h => s.add(h)));
+    widgets.forEach(w => {
+      (w.hosts || []).forEach(h => s.add(h));
+      if (w.seriesConfig) {
+        Object.values(w.seriesConfig).forEach((sc: any) => {
+          const sHosts = sc.hosts || (sc.host ? [sc.host] : []);
+          sHosts.forEach((h: string) => s.add(h));
+        });
+      }
+    });
     return Array.from(s).sort().join(',');
   }, [widgets]);
 
@@ -311,7 +390,14 @@ function DashboardApp() {
     setSavedZabbixUrl('');
 
     // Re-initialize demo dashboards from the JSON configuration file
-    const initialDashboards = demoDashboardData as Dashboard[];
+    const initialDashboards: Dashboard[] = [
+      {
+        id: "demo-dashboard-1",
+        name: demoDashboardData.name,
+        widgets: demoDashboardData.widgets as any,
+        v: "1.0"
+      }
+    ];
     setSavedDashboards(initialDashboards);
     if (initialDashboards && initialDashboards.length > 0) {
       setActiveDashboardId(initialDashboards[0].id);
@@ -329,7 +415,9 @@ function DashboardApp() {
     if (!activeDashboardId) return widgets.length > 0;
     const currentSaved = savedDashboards.find(d => d.id === activeDashboardId);
     if (!currentSaved) return true;
-    const widgetsEqual = JSON.stringify(currentSaved.widgets) === JSON.stringify(widgets);
+    const cleanedLive = widgets.map(w => cleanWidgetForSaveAndExport(w));
+    const cleanedSaved = (currentSaved.widgets || []).map(w => cleanWidgetForSaveAndExport(w));
+    const widgetsEqual = JSON.stringify(cleanedSaved) === JSON.stringify(cleanedLive);
     const nameEqual = currentSaved.name === dashboardName;
     return !widgetsEqual || !nameEqual;
   }, [widgets, dashboardName, savedDashboards, activeDashboardId]);
@@ -340,14 +428,19 @@ function DashboardApp() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const migrated = parsed.map((db: Dashboard) => ({
-          ...db,
-          widgets: db.widgets.map((w: Widget) => ({
-            ...w,
-            w: (w.w || (w as any).cols || 1) <= 4 ? (w.w || (w as any).cols || 1) * 6 : (w.w || (w as any).cols || 6),
-            h: (w.h || (w as any).rows || 1) <= 3 ? (w.h || (w as any).rows || 1) * 4 : (w.h || (w as any).rows || 4)
-          }))
-        }));
+        const migrated = parsed.map((db: Dashboard) => {
+          if (db.v === "1.0") {
+            return db;
+          }
+          return {
+            ...db,
+            widgets: (db.widgets || []).map((w: Widget) => ({
+              ...w,
+              w: (w.w || (w as any).cols || 1) <= 4 ? (w.w || (w as any).cols || 1) * 6 : (w.w || (w as any).cols || 6),
+              h: (w.h || (w as any).rows || 1) <= 3 ? (w.h || (w as any).rows || 1) * 4 : (w.h || (w as any).rows || 4)
+            }))
+          };
+        });
         setSavedDashboards(migrated);
         if (migrated.length > 0) {
           setWidgets(migrated[0].widgets);
@@ -362,7 +455,14 @@ function DashboardApp() {
     } else {
       let initialDashboards: Dashboard[] = [];
       if (dashboardStorageKey === 'hareporting_dashboards_v6') {
-        initialDashboards = demoDashboardData as Dashboard[];
+        initialDashboards = [
+          {
+            id: 'demo-dashboard-1',
+            name: demoDashboardData.name,
+            widgets: demoDashboardData.widgets as any,
+            v: "1.0"
+          }
+        ];
       } else {
         initialDashboards = [{
           id: 'default-board-1',
@@ -404,18 +504,21 @@ function DashboardApp() {
   };
 
   const handleSaveAll = () => {
+    const cleanedWidgets = widgets.map(w => cleanWidgetForSaveAndExport(w));
+    setWidgets(cleanedWidgets);
     if (activeDashboardId) {
-      const next = savedDashboards.map(d => d.id === activeDashboardId ? { ...d, name: dashboardName, widgets } : d);
+      const next = savedDashboards.map(d => d.id === activeDashboardId ? { ...d, name: dashboardName, widgets: cleanedWidgets } : d);
       setSavedDashboards(next);
       localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
     } else {
       const newId = `db-${Date.now()}`;
-      const newBoard = { id: newId, name: dashboardName, widgets };
+      const newBoard = { id: newId, name: dashboardName, widgets: cleanedWidgets };
       const next = [...savedDashboards, newBoard];
       setSavedDashboards(next);
       setActiveDashboardId(newId);
       localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
     }
+    showToast("Dashboard configuration saved successfully.", "success");
   };
 
   const triggerOpenSecureTokenPrompt = () => {
@@ -499,7 +602,7 @@ function DashboardApp() {
   const handleExportDashboard = () => {
     const exportData = {
       name: dashboardName,
-      widgets: widgets,
+      widgets: widgets.map(w => cleanWidgetForSaveAndExport(w)),
       v: '1.0'
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -524,14 +627,8 @@ function DashboardApp() {
       return;
     }
     const sanitizedWidgets = payload.widgets.filter((w: any) => 
-      w && typeof w === 'object' && w.id && w.type && ((w.cols && w.rows) || (w.w && w.h))
-    ).map((w: any) => ({
-      ...w,
-      x: w.x ?? 0,
-      y: w.y ?? Infinity,
-      w: w.w ?? w.cols,
-      h: w.h ?? w.rows,
-    }));
+      w && typeof w === 'object' && w.id && w.type
+    ).map((w: any) => cleanWidgetForSaveAndExport(w));
 
     setWidgets(sanitizedWidgets as Widget[]);
     if (typeof payload.name === 'string') {
@@ -667,14 +764,14 @@ function DashboardApp() {
           chartData = mixedData;
         } else if (isAggregated) {
            const label = w.aggregation === 'sum' ? 'Aggregate Sum' : 'Aggregate Mean';
-           const m = w.metrics[0];
+           const m = w.metrics?.[0];
            const u = m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
            chartSeries = [{ key: 'agg_val', name: label, color: getDeterministicColor('agg_val', m), unit: u }];
           
           chartData = chartData.map(point => {
             let vals: number[] = [];
-            w.metrics.forEach(m => {
-              const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+            (w.metrics || []).forEach(m => {
+              const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
               hostsToUse.forEach(h => {
                 const key = `${m}_${h}`;
                 if (!hiddenSeries.has(key) && point[key] != null) {
@@ -687,9 +784,9 @@ function DashboardApp() {
             return { ...point, agg_val: val };
           });
         } else {
-          w.metrics.forEach(m => {
+          (w.metrics || []).forEach(m => {
             const u = metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
-            const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+            const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
             hostsToUse.forEach(h => {
               const key = `${m}_${h}`;
               chartSeries.push({
@@ -714,8 +811,8 @@ function DashboardApp() {
     
     // Fallback: standard grid iteration matching baseline definitions
     widgets.forEach(w => {
-      w.metrics.forEach(m => {
-        w.hosts.forEach(h => {
+      (w.metrics || []).forEach(m => {
+        (w.hosts || []).forEach(h => {
           activeWidgetKeys.add(`${m}_${h}`);
         });
       });

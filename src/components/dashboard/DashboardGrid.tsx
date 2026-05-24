@@ -102,16 +102,16 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     
     if (data.length > 0) {
       lastPoint = [...data].reverse().find((d: any) => 
-        w.metrics.some((m: string) => {
-          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+        (w.metrics || []).some((m: string) => {
+          const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
           return hostsToUse.some((h: string) => !hiddenSeries.has(`${m}_${h}`) && d[`${m}_${h}`] != null);
         })
       ) || data[data.length - 1];
       
       let values: number[] = [];
       
-      w.metrics.forEach(m => {
-        const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+      (w.metrics || []).forEach(m => {
+        const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
         hostsToUse.forEach(h => {
           const key = `${m}_${h}`;
           if (!hiddenSeries.has(key) && lastPoint[key] != null) {
@@ -129,7 +129,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
       }
     }
 
-    const rawUnit = metricUnitsMap[w.metrics[0]] || '';
+    const rawUnit = w.metrics && w.metrics[0] ? (metricUnitsMap[w.metrics[0]] || '') : '';
     const { value: fmtValue, unit: fmtUnit } = finalValue !== null ? formatValue(finalValue, rawUnit) : { value: '...', unit: '' };
 
     let changePct = 0;
@@ -138,8 +138,8 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     if (data.length >= 2) {
       const getVal = (point: any) => {
         let values: number[] = [];
-        w.metrics.forEach(m => {
-          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+        (w.metrics || []).forEach(m => {
+          const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
           hostsToUse.forEach(h => {
             const key = `${m}_${h}`;
             if (!hiddenSeries.has(key) && point[key] != null) {
@@ -197,12 +197,12 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     return (
       <StatCard 
         title={w.title} 
-        tooltip={w.metrics.map(m => m.toUpperCase()).join(', ')}
+        tooltip={(w.metrics || []).map(m => m.toUpperCase()).join(', ')}
         value={fmtValue}
         unit={fmtUnit || (rawUnit === '%' ? '%' : (rawUnit ? ` ${rawUnit}` : ''))}
         change={changePct}
         trend={trendDir}
-        color={w.aggregation !== 'none' ? getDeterministicColor('agg_val', w.metrics[0]) : (w.metrics[0] && w.hosts[0] ? getDeterministicColor(`${w.metrics[0]}_${w.hosts[0]}`, w.metrics[0]) : '#0EA5E9')}
+        color={w.aggregation !== 'none' ? getDeterministicColor('agg_val', w.metrics?.[0]) : (w.metrics?.[0] && w.hosts?.[0] ? getDeterministicColor(`${w.metrics[0]}_${w.hosts[0]}`, w.metrics[0]) : '#0EA5E9')}
         timestamp={timestampStr}
       />
     );
@@ -268,7 +268,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
         chartType={w.chartType}
         timestamp={timestampStr}
         seriesConfig={w.seriesConfig as any}
-        unit={metricUnitsMap[w.metrics[0]] ? (metricUnitsMap[w.metrics[0]] === '%' ? '%' : ` ${metricUnitsMap[w.metrics[0]]}`) : ''} 
+        unit={w.metrics && w.metrics[0] && metricUnitsMap[w.metrics[0]] ? (metricUnitsMap[w.metrics[0]] === '%' ? '%' : ` ${metricUnitsMap[w.metrics[0]]}`) : ''} 
         leftUnit={(() => {
            if (w.chartType !== 'mixed' || !w.seriesConfig) return '';
            const s = w.seriesConfig['series1'];
@@ -300,12 +300,16 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   const filteredWidgets = useMemo(() => {
     return widgets.filter(w => 
       w.title.toLowerCase().includes(globalSearch.toLowerCase()) ||
-      w.metrics.some(m => m.toLowerCase().includes(globalSearch.toLowerCase())) ||
-      w.hosts.some(h => h.toLowerCase().includes(globalSearch.toLowerCase()))
+      (w.metrics && w.metrics.some(m => m.toLowerCase().includes(globalSearch.toLowerCase()))) ||
+      (w.hosts && w.hosts.some(h => h.toLowerCase().includes(globalSearch.toLowerCase())))
     );
   }, [widgets, globalSearch]);
 
   const onUserInteractLayoutChange = (layout: any) => {
+    // Only allow syncing back of coordinates if we are in widescreen desktop mode
+    // (where layout column grid is 24-cols, i.e., width >= 996)
+    if (width < 996) return;
+
     // Sync back to widgets when drag or resize completes
     setWidgets(prevWidgets => {
       let changed = false;
@@ -405,8 +409,8 @@ export const DashboardGrid = React.memo(function DashboardGrid({
             }
           });
         } else if (w.type === 'kpi') {
-          const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
-          w.metrics.forEach((m: string) => {
+          const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
+          (w.metrics || []).forEach((m: string) => {
             hostsToUse.forEach((h: string) => {
               const key = `${m}_${h}`;
               if (hiddenSeries.has(key)) hasFilter = true;
@@ -415,8 +419,8 @@ export const DashboardGrid = React.memo(function DashboardGrid({
         } else if (w.aggregation === 'avg' || w.aggregation === 'sum') {
           if (hiddenSeries.has('agg_val')) hasFilter = true;
         } else {
-          w.metrics.forEach((m: string) => {
-            const hostsToUse = w.hosts.includes('all') ? availableHosts : w.hosts;
+          (w.metrics || []).forEach((m: string) => {
+            const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
             hostsToUse.forEach((h: string) => {
               const key = `${m}_${h}`;
               const hasDataForSeries = data.some((point: any) => point[key] != null);

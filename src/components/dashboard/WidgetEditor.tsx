@@ -4,7 +4,7 @@ import { Settings2, X, ChevronDown, ArrowUpDown, Check } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { Widget } from "../../types/zabbix";
 
-export function MultiSelect({ options, selected, onChange, label, metricUnitsMap }: { options: string[], selected: string[], onChange: (val: string[]) => void, label: string, metricUnitsMap: Record<string, string> }) {
+export function MultiSelect({ options, selected = [], onChange, label, metricUnitsMap }: { options: string[], selected?: string[], onChange: (val: string[]) => void, label: string, metricUnitsMap: Record<string, string> }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dropdownPos, setDropdownPos] = useState<{ top: number, left: number, width: number } | null>(null);
@@ -289,12 +289,13 @@ export function WidgetEditor({
 
                 {(() => {
                   let optionsForWidget = isDemo ? availableMetrics : [];
+                  const wHosts = w.hosts || [];
                   if (!isDemo) {
-                    if (w.hosts.length === 0) {
+                    if (wHosts.length === 0) {
                       optionsForWidget = availableMetrics;
                     } else {
                       const metricItems = new Set<string>();
-                      w.hosts.forEach(h => {
+                      wHosts.forEach(h => {
                         const m = hostMetricsMap[h];
                         if (m) m.forEach(x => metricItems.add(x));
                       });
@@ -305,8 +306,8 @@ export function WidgetEditor({
                     <div className="space-y-6">
                       <MultiSelect 
                         label="Telemetry Metric Stream" 
-                        options={(!isDemo && w.hosts.length > 0) ? optionsForWidget : availableMetrics} 
-                        selected={w.metrics} 
+                        options={(!isDemo && wHosts.length > 0) ? optionsForWidget : availableMetrics} 
+                        selected={w.metrics || []} 
                         onChange={(m) => handleUpdateWidget(w.id, { metrics: m })} 
                         metricUnitsMap={metricUnitsMap}
                       />
@@ -321,8 +322,8 @@ export function WidgetEditor({
             <div className="mt-8 space-y-6">
               <h5 className="text-sm font-semibold text-slate-400">Series Configuration (Max 2 metrics for Mixed)</h5>
               <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 flex flex-col gap-6 relative">
-                {['series1', 'series2'].map((seriesKey, idx) => {
-                  const sConf = w.seriesConfig?.[seriesKey] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: idx === 0 ? 'left' : 'right', chartType: 'line', aggregation: 'none', stacked: false };
+                 {['series1', 'series2'].map((seriesKey, idx) => {
+                  const sConf = w.seriesConfig?.[seriesKey] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', chartType: 'line', aggregation: 'none', stacked: false };
                   
                   return (
                     <React.Fragment key={seriesKey}>
@@ -332,8 +333,8 @@ export function WidgetEditor({
                           <button
                             type="button"
                             onClick={() => {
-                              const prevSeries1 = w.seriesConfig?.['series1'] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: 'left', chartType: 'line', aggregation: 'none', stacked: false };
-                              const prevSeries2 = w.seriesConfig?.['series2'] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', yAxis: 'right', chartType: 'line', aggregation: 'none', stacked: false };
+                              const prevSeries1 = w.seriesConfig?.['series1'] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', chartType: 'line', aggregation: 'none', stacked: false };
+                              const prevSeries2 = w.seriesConfig?.['series2'] || { metric: availableMetrics[0] || '', host: availableHosts[0] || 'all', chartType: 'line', aggregation: 'none', stacked: false };
                               const allMetrics = Array.from(new Set([...(prevSeries2.metrics || (prevSeries2.metric ? [prevSeries2.metric] : [])), ...(prevSeries1.metrics || (prevSeries1.metric ? [prevSeries1.metric] : []))]));
                               const allHosts = Array.from(new Set([...(prevSeries2.hosts || (prevSeries2.host ? [prevSeries2.host] : [])), ...(prevSeries1.hosts || (prevSeries1.host ? [prevSeries1.host] : []))]));
                               handleUpdateWidget(w.id, { 

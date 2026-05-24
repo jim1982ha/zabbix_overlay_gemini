@@ -2,6 +2,7 @@ export interface Dashboard {
   id: string;
   name: string;
   widgets: Widget[];
+  v?: string;
 }
 
 export interface SeriesConfig {
@@ -9,7 +10,7 @@ export interface SeriesConfig {
   host: string;
   metrics?: string[];
   hosts?: string[];
-  yAxis: 'left' | 'right';
+  yAxis?: 'left' | 'right';
   chartType: 'line' | 'bar' | 'area' | 'pie';
   aggregation: 'none' | 'sum' | 'avg';
   stacked: boolean;

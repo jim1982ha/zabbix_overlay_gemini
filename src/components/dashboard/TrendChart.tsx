@@ -42,7 +42,7 @@ interface TrendChartProps {
   title: string;
   data: DataPoint[];
   series: LegendItem[];
-  hosts: string[];
+  hosts?: string[];
   chartType?: 'area' | 'line' | 'bar' | 'pie' | 'mixed';
   seriesConfig?: Record<string, {
     yAxis: 'left' | 'right';
@@ -68,7 +68,7 @@ interface TrendChartProps {
   timestamp?: string; // Add timestamp to show pie chart's current time bin
 }
 
-export const TrendChart = React.memo(function TrendChart({ widgetId, title, data, series, hosts, chartType = 'area', seriesConfig, stacked = false, unit, leftUnit, rightUnit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onColorChangeRequest, onHostClick, zoomDomain, onZoomDomainChange, timestamp }: TrendChartProps) {
+export const TrendChart = React.memo(function TrendChart({ widgetId, title, data, series, hosts = [], chartType = 'area', seriesConfig, stacked = false, unit, leftUnit, rightUnit, mode = 'live', granularity, aggregation, color, hiddenSeries, onLegendClick, onColorChangeRequest, onHostClick, zoomDomain, onZoomDomainChange, timestamp }: TrendChartProps) {
   const defaultColors = ['#0284c7', '#4f46e5', '#7c3aed', '#db2777', '#d97706', '#059669', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#06b6d4'];
   const chartColors = color ? [color, ...defaultColors.filter(c => c !== color)] : defaultColors;
 
