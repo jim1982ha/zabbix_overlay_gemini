@@ -564,14 +564,24 @@ function DashboardApp() {
   };
 
   const handleCreateDashboard = () => {
+    let currentSaved = savedDashboards;
+    if (savedDashboards.length === 0 && widgets.length > 0) {
+      const defaultDb = { 
+        id: `db-default-${Date.now()}`, 
+        name: dashboardName, 
+        widgets: widgets.map(w => cleanWidgetForSaveAndExport(w)) 
+      };
+      currentSaved = [defaultDb];
+    }
+
     const newId = `db-${Date.now()}`;
     const newName = "New Analytical Board";
     const newBoard: Dashboard = { id: newId, name: newName, widgets: [] };
-    setSavedDashboards(prev => {
-      const next = [...prev, newBoard];
-      localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
-      return next;
-    });
+    
+    const next = [...currentSaved, newBoard];
+    setSavedDashboards(next);
+    localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
+    
     setActiveDashboardId(newId);
     setWidgets([]);
     setDashboardName(newName);
@@ -585,19 +595,23 @@ function DashboardApp() {
       e.preventDefault();
       e.stopPropagation();
     }
-    setSavedDashboards(prev => {
-      const updated = prev.filter(d => d.id !== id);
-      localStorage.setItem(dashboardStorageKey, JSON.stringify(updated));
-      return updated;
-    });
+    const updated = savedDashboards.filter(d => d.id !== id);
+    setSavedDashboards(updated);
+    localStorage.setItem(dashboardStorageKey, JSON.stringify(updated));
     
     if (activeDashboardId === id) {
-      setActiveDashboardId(undefined);
-      setWidgets(defaultWidgets);
-      setDashboardName('Executive Overview');
+      if (updated.length > 0) {
+        setActiveDashboardId(updated[0].id);
+        setWidgets(updated[0].widgets);
+        setDashboardName(updated[0].name);
+      } else {
+        setActiveDashboardId(undefined);
+        setWidgets([]);
+        setDashboardName('New Dashboard');
+      }
       setView('dashboard');
     }
-  }, [activeDashboardId, defaultWidgets, dashboardStorageKey]);
+  }, [savedDashboards, activeDashboardId, dashboardStorageKey, setWidgets, setDashboardName, setView]);
 
   const handleExportDashboard = () => {
     const exportData = {

@@ -73,23 +73,6 @@ export const DashboardGrid = React.memo(function DashboardGrid({
 
   const { width, containerRef, mounted } = useContainerWidth();
 
-  // Force a window resize dispatch on mount and when loading finishes, to ensure 
-  // that react-grid-layout recalculates container width after all transitions have settled.
-  React.useEffect(() => {
-    if (mounted) {
-      const timerSettle = setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-      }, 150);
-      const timerLong = setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-      }, 600);
-      return () => {
-        clearTimeout(timerSettle);
-        clearTimeout(timerLong);
-      };
-    }
-  }, [mounted, isLoading]);
-
   // Cancel edit mode helper
   const handleCancelEdit = () => {
     setEditingWidgetId(null);
@@ -305,24 +288,50 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     );
   }, [widgets, globalSearch]);
 
-  const onUserInteractLayoutChange = (layout: any) => {
-    // Only allow syncing back of coordinates if we are in widescreen desktop mode
-    // (where layout column grid is 24-cols, i.e., width >= 996)
-    if (width < 996) return;
+  const [layouts, setLayouts] = useState<Partial<Record<string, Layout>>>({});
+  const prevWidgetIds = React.useRef<string>('');
 
-    // Sync back to widgets when drag or resize completes
-    setWidgets(prevWidgets => {
-      let changed = false;
-      const next = prevWidgets.map(w => {
-        const item = layout.find((l: any) => l.i === w.id);
-        if (item && (w.x !== item.x || w.y !== item.y || w.w !== item.w || w.h !== item.h)) {
-          changed = true;
-          return { ...w, x: item.x, y: item.y, w: item.w, h: item.h };
-        }
-        return w;
+  React.useEffect(() => {
+    const currentIds = widgets.map(w => w.id).join(',');
+    // If widgets list changes structurally (addition, removal, dashboard switch)
+    if (currentIds !== prevWidgetIds.current) {
+      prevWidgetIds.current = currentIds;
+      setLayouts(prev => {
+        // Reconstruct lg layout to match new widgets list. Retain other layouts so they generate dynamically.
+        const lg: Layout = widgets.map(w => ({ i: w.id, x: w.x ?? 0, y: w.y ?? Infinity, w: w.w ?? (isMobile ? 1 : 12), h: w.h ?? 10 }));
+        return { ...prev, lg };
       });
-      return changed ? next : prevWidgets;
-    });
+    }
+  }, [widgets, isMobile]);
+
+  const layoutChangeTimer = React.useRef<NodeJS.Timeout | undefined>(undefined);
+
+  React.useEffect(() => {
+    return () => {
+      if (layoutChangeTimer.current) clearTimeout(layoutChangeTimer.current);
+    };
+  }, []);
+
+  const handleLayoutChange = (currentLayout: Layout, allLayouts: Partial<Record<string, Layout>>) => {
+    setLayouts(allLayouts);
+    // Persist the 'lg' blueprint back to the canonical widgets store for exporting and persistence
+    if (allLayouts.lg) {
+      if (layoutChangeTimer.current) clearTimeout(layoutChangeTimer.current);
+      layoutChangeTimer.current = setTimeout(() => {
+        setWidgets(prevWidgets => {
+          let changed = false;
+          const next = prevWidgets.map(w => {
+            const item = allLayouts.lg!.find((l: any) => l.i === w.id);
+            if (item && (w.x !== item.x || w.y !== item.y || w.w !== item.w || w.h !== item.h)) {
+              changed = true;
+              return { ...w, x: item.x, y: item.y, w: item.w, h: item.h };
+            }
+            return w;
+          });
+          return changed ? next : prevWidgets;
+        });
+      }, 300);
+    }
   };
 
   if (widgets.length === 0) {
@@ -370,11 +379,11 @@ export const DashboardGrid = React.memo(function DashboardGrid({
         <ResponsiveGridLayout
           className="layout"
           width={width}
+          layouts={layouts}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 24, md: 24, sm: 12, xs: 1, xxs: 1 }}
           rowHeight={isMobile ? 30 : 25}
-          onDragStop={onUserInteractLayoutChange}
-          onResizeStop={onUserInteractLayoutChange}
+          onLayoutChange={handleLayoutChange}
           dragConfig={{
             enabled: !isMobile,
             handle: ".drag-handle",
@@ -382,7 +391,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
           }}
           resizeConfig={{
             enabled: true,
-            handles: ['se', 'nw']
+            handles: ['s', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne']
           }}
         >
         {filteredWidgets.map((w, index) => {
