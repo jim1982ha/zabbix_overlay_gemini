@@ -288,6 +288,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     );
   }, [widgets, globalSearch]);
 
+  const [currentBreakpoint, setCurrentBreakpoint] = useState<string>('lg');
   const [layouts, setLayouts] = useState<Partial<Record<string, Layout>>>({});
   const prevWidgetIds = React.useRef<string>('');
 
@@ -296,10 +297,11 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     // If widgets list changes structurally (addition, removal, dashboard switch)
     if (currentIds !== prevWidgetIds.current) {
       prevWidgetIds.current = currentIds;
-      setLayouts(prev => {
-        // Reconstruct lg layout to match new widgets list. Retain other layouts so they generate dynamically.
+      setLayouts(() => {
+        // Reconstruct lg layout to match new widgets list. Reset other layouts to avoid stale coordinates from other dashboards.
         const lg: Layout = widgets.map(w => ({ i: w.id, x: w.x ?? 0, y: w.y ?? Infinity, w: w.w ?? (isMobile ? 1 : 12), h: w.h ?? 10 }));
-        return { ...prev, lg };
+        // Since md also has 24 columns, they share the identical layout nicely
+        return { lg, md: lg };
       });
     }
   }, [widgets, isMobile]);
@@ -314,24 +316,37 @@ export const DashboardGrid = React.memo(function DashboardGrid({
 
   const handleLayoutChange = (currentLayout: Layout, allLayouts: Partial<Record<string, Layout>>) => {
     setLayouts(allLayouts);
-    // Persist the 'lg' blueprint back to the canonical widgets store for exporting and persistence
-    if (allLayouts.lg) {
-      if (layoutChangeTimer.current) clearTimeout(layoutChangeTimer.current);
-      layoutChangeTimer.current = setTimeout(() => {
-        setWidgets(prevWidgets => {
-          let changed = false;
-          const next = prevWidgets.map(w => {
-            const item = allLayouts.lg!.find((l: any) => l.i === w.id);
-            if (item && (w.x !== item.x || w.y !== item.y || w.w !== item.w || w.h !== item.h)) {
-              changed = true;
-              return { ...w, x: item.x, y: item.y, w: item.w, h: item.h };
+    
+    // De-bounce and persist changes back to the canonical widgets store (using currentLayout to be fully responsive at any zooms/breakpoints)
+    if (layoutChangeTimer.current) clearTimeout(layoutChangeTimer.current);
+    layoutChangeTimer.current = setTimeout(() => {
+      setWidgets(prevWidgets => {
+        let changed = false;
+        const next = prevWidgets.map(w => {
+          const item = currentLayout.find((l: any) => l.i === w.id);
+          if (item) {
+            let newW = item.w;
+            let newX = item.x;
+            
+            // If the active breakpoint is sm (12 cols), scale up to canonical 24 cols space
+            if (currentBreakpoint === 'sm') {
+              newW = Math.min(24, item.w * 2);
+              newX = Math.min(24, item.x * 2);
+            } else if (currentBreakpoint === 'xs' || currentBreakpoint === 'xxs') {
+              newW = 24;
+              newX = 0;
             }
-            return w;
-          });
-          return changed ? next : prevWidgets;
+            
+            if (w.x !== newX || w.y !== item.y || w.w !== newW || w.h !== item.h) {
+              changed = true;
+              return { ...w, x: newX, y: item.y, w: newW, h: item.h };
+            }
+          }
+          return w;
         });
-      }, 300);
-    }
+        return changed ? next : prevWidgets;
+      });
+    }, 300);
   };
 
   if (widgets.length === 0) {
@@ -384,6 +399,9 @@ export const DashboardGrid = React.memo(function DashboardGrid({
           cols={{ lg: 24, md: 24, sm: 12, xs: 1, xxs: 1 }}
           rowHeight={isMobile ? 30 : 25}
           onLayoutChange={handleLayoutChange}
+          onBreakpointChange={(bp) => {
+            setCurrentBreakpoint(bp);
+          }}
           dragConfig={{
             enabled: !isMobile,
             handle: ".drag-handle",
