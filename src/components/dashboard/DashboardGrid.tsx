@@ -71,7 +71,12 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     filters
   } = useDashboard();
 
-  const { width, containerRef } = useContainerWidth();
+  const { width, containerRef, measureWidth } = useContainerWidth();
+
+  React.useEffect(() => {
+    window.addEventListener("resize", measureWidth);
+    return () => window.removeEventListener("resize", measureWidth);
+  }, [measureWidth]);
 
   // Cancel edit mode helper
   const handleCancelEdit = () => {
@@ -292,12 +297,12 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     );
   }, [widgets, globalSearch]);
 
-  const onLayoutChange = (layout: Layout[]) => {
+  const onLayoutChange = (layout: any) => {
     // Sync back to widgets
     setWidgets(prevWidgets => {
       let changed = false;
       const next = prevWidgets.map(w => {
-        const item = layout.find(l => l.i === w.id);
+        const item = layout.find((l: any) => l.i === w.id);
         if (item && (w.x !== item.x || w.y !== item.y || w.w !== item.w || w.h !== item.h)) {
           changed = true;
           return { ...w, x: item.x, y: item.y, w: item.w, h: item.h };
@@ -346,11 +351,10 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full relative">
+    <div ref={containerRef} className="w-full h-full relative min-w-0 overflow-x-hidden">
       <ResponsiveGridLayout
         className="layout"
         width={width}
-        layouts={{ lg: filteredWidgets.map((w) => ({ i: w.id, x: w.x || 0, y: w.y || 0, w: w.w || 12, h: w.h || 10 })) }}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 24, md: 24, sm: 12, xs: 1, xxs: 1 }}
         rowHeight={isMobile ? 30 : 25}
@@ -409,7 +413,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
             key={w.id}
             data-grid={{ i: w.id, x: w.x || 0, y: w.y || 0, w: w.w || 12, h: w.h || 10 }}
             className={cn(
-              "relative group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 flex flex-col shadow-sm rounded overflow-hidden",
+              "relative group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 flex flex-col rounded overflow-hidden",
               editingWidgetId === w.id ? "z-[100]" : "z-10 hover:z-[60]",
               hasFilter && "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-50"
             )}

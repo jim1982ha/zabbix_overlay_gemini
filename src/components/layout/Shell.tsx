@@ -348,7 +348,7 @@ export function Shell({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col relative overflow-hidden pt-14 lg:pt-0 bg-[#f7f8f9] dark:bg-slate-950 h-screen w-full lg:w-auto">
+      <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden pt-14 lg:pt-0 bg-[#f7f8f9] dark:bg-slate-950 h-screen w-full lg:w-auto">
         {topBar && (
           <div className="flex min-h-[60px] bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 w-full items-center z-50 overflow-hidden shadow-sm lg:shadow-none relative">
             <div className="flex-1 h-full flex items-center justify-between px-2 lg:px-4 min-w-0 max-w-full overflow-hidden">
@@ -356,8 +356,8 @@ export function Shell({
              </div>
           </div>
         )}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-4 md:py-6 custom-scrollbar w-full relative">
-          <div className="max-w-full lg:max-w-none w-full">
+        <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-4 md:py-6 custom-scrollbar w-full relative">
+          <div className="max-w-full lg:max-w-none w-full min-w-0">
             {children}
           </div>
         </div>

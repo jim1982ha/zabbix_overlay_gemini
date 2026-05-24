@@ -372,8 +372,8 @@ function DashboardApp() {
           ...db,
           widgets: db.widgets.map((w: Widget) => ({
             ...w,
-            w: (w.w || w.cols || 1) <= 4 ? (w.w || w.cols || 1) * 6 : (w.w || w.cols || 6),
-            h: (w.h || w.rows || 1) <= 3 ? (w.h || w.rows || 1) * 4 : (w.h || w.rows || 4)
+            w: (w.w || (w as any).cols || 1) <= 4 ? (w.w || (w as any).cols || 1) * 6 : (w.w || (w as any).cols || 6),
+            h: (w.h || (w as any).rows || 1) <= 3 ? (w.h || (w as any).rows || 1) * 4 : (w.h || (w as any).rows || 4)
           }))
         }));
         setSavedDashboards(migrated);
@@ -447,7 +447,7 @@ function DashboardApp() {
 
   const handleAddWidget = (type: 'kpi' | 'chart') => {
     const maxX = 0;
-    const maxY = widgets.length > 0 ? Math.max(...widgets.map(w => w.y + (w.h || w.rows || 0))) : 0;
+    const maxY = widgets.length > 0 ? Math.max(...widgets.map(w => w.y + (w.h || (w as any).rows || 0))) : 0;
     
     const newWidget: Widget = {
       id: `w-${Date.now()}`,
@@ -838,7 +838,7 @@ function DashboardApp() {
       hiddenSeries={relevantHiddenSeries}
       toggleSeriesVisibility={toggleSeriesVisibility}
     >
-      <div className="w-full space-y-4">
+      <div className="w-full min-w-0 space-y-4">
         {/* Dashboard Title & Actions header */}
         <div className="flex flex-row items-center justify-between mb-4 flex-wrap gap-4 select-none">
           <div className="flex items-center gap-3 min-w-0">
