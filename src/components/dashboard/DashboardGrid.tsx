@@ -293,15 +293,15 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   const prevWidgetIds = React.useRef<string>('');
 
   React.useEffect(() => {
-    const currentIds = widgets.map(w => w.id).join(',');
-    // If widgets list changes structurally (addition, removal, dashboard switch)
-    if (currentIds !== prevWidgetIds.current) {
-      prevWidgetIds.current = currentIds;
+    // Generate a robust layout fingerprint including coordinates and dimensions
+    const layoutFingerprint = widgets.map(w => `${w.id}:${w.x}:${w.y}:${w.w}:${w.h}:${w.type}`).join('|');
+    if (layoutFingerprint !== prevWidgetIds.current) {
+      prevWidgetIds.current = layoutFingerprint;
       setLayouts(() => {
         // Reconstruct lg layout to match new widgets list. Reset other layouts to avoid stale coordinates from other dashboards.
         const lg: Layout = widgets.map(w => ({ i: w.id, x: w.x ?? 0, y: w.y ?? Infinity, w: w.w ?? (isMobile ? 1 : 12), h: w.h ?? 10 }));
-        // Since md also has 24 columns, they share the identical layout nicely
-        return { lg, md: lg };
+        // Since lg, md, and sm all have 24 columns, they share the identical layout perfectly and scale smoothly
+        return { lg, md: lg, sm: lg };
       });
     }
   }, [widgets, isMobile]);
@@ -328,11 +328,8 @@ export const DashboardGrid = React.memo(function DashboardGrid({
             let newW = item.w;
             let newX = item.x;
             
-            // If the active breakpoint is sm (12 cols), scale up to canonical 24 cols space
-            if (currentBreakpoint === 'sm') {
-              newW = Math.min(24, item.w * 2);
-              newX = Math.min(24, item.x * 2);
-            } else if (currentBreakpoint === 'xs' || currentBreakpoint === 'xxs') {
+            // Standardize mobile stacked view boundaries
+            if (currentBreakpoint === 'xs' || currentBreakpoint === 'xxs') {
               newW = 24;
               newX = 0;
             }
@@ -396,7 +393,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
           width={width}
           layouts={layouts}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 24, md: 24, sm: 12, xs: 1, xxs: 1 }}
+          cols={{ lg: 24, md: 24, sm: 24, xs: 1, xxs: 1 }}
           rowHeight={isMobile ? 30 : 25}
           onLayoutChange={handleLayoutChange}
           onBreakpointChange={(bp) => {
