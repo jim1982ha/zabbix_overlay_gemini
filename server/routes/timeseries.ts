@@ -121,8 +121,26 @@ timeseriesRouter.post("/", async (req, res) => {
               hosts.forEach((h: string) => {
                  const key = `${m}_${h}`;
                  // Search case-insensitively in the itemDict keys
-                 const info = lowerItemDict[key.toLowerCase()];
-                 if (info) {
+                 let info = lowerItemDict[key.toLowerCase()];
+                 let finalH = h;
+                 if (!info) {
+                    // Try to find a fuzzy match for the legacy metric (e.g. "cpu" -> "cpu utilization" or support "all" hosts wildcard)
+                    const mLower = m.toLowerCase();
+                    const hLower = h.toLowerCase();
+                    const fuzzyKeys = hLower === 'all' 
+                       ? Object.keys(lowerItemDict).filter(k => k.includes(mLower))
+                       : Object.keys(lowerItemDict).filter(k => k.endsWith(`_${hLower}`) && k.includes(mLower));
+                    
+                    if (fuzzyKeys.length > 0) {
+                        // Use the first fuzzy match if we have a specific host, but if all, we should technically add them all.
+                        // However, since we process (m,h) nested loop, if h is 'all', we just add it to missingMetrics and let Zabbix search it below
+                        if (hLower !== 'all') {
+                           info = lowerItemDict[fuzzyKeys[0]];
+                        }
+                    }
+                 }
+                 
+                 if (info && h !== 'all') {
                     itemValueMap[key] = info.lastvalue;
                     const vtype = parseInt(info.value_type, 10);
                     if (!isNaN(vtype)) {
@@ -142,7 +160,8 @@ timeseriesRouter.post("/", async (req, res) => {
                   const missingRes = await zReq("item.get", {
                       output: ["itemid", "name", "value_type", "lastvalue"],
                       selectHosts: ["name", "host"],
-                      filter: { name: Array.from(missingMetrics) },
+                      search: { name: Array.from(missingMetrics) },
+                      searchByAny: true,
                       monitored: true,
                   }, 10000);
                   
@@ -151,11 +170,11 @@ timeseriesRouter.post("/", async (req, res) => {
                        const h = item.hosts?.[0]?.name || item.hosts?.[0]?.host;
                        const m = item.name;
                        if (h && m) {
-                          // Match case-insensitively with missing metrics
-                          const matchedMetric = Array.from(missingMetrics).find((reqM: string) => reqM.toLowerCase() === m.toLowerCase()) || m;
+                          // Match case-insensitively with missing metrics to use the requested metric key
+                          const matchedMetric = Array.from(missingMetrics).find((reqM: string) => m.toLowerCase().includes(reqM.toLowerCase())) || m;
                           const key = `${matchedMetric}_${h}`;
                           // Ensure we only process if this host matches requested hosts (to prevent unexpected inserts)
-                          if (hosts.includes(h) || hosts.map(x=>x.toLowerCase()).includes(h.toLowerCase())) {
+                          if (!Object.values(itemIdToKey).includes(key) && (hosts.includes('all') || hosts.includes(h) || hosts.map((x: string)=>x.toLowerCase()).includes(h.toLowerCase()))) {
                               itemValueMap[key] = item.lastvalue;
                               const vtype = parseInt(item.value_type, 10);
                               if (!isNaN(vtype)) {
@@ -176,7 +195,8 @@ timeseriesRouter.post("/", async (req, res) => {
            const itemRes = await zReq("item.get", {
                output: ["itemid", "name", "value_type", "lastvalue"],
                selectHosts: ["name", "host"],
-               filter: { name: metrics },
+               search: { name: metrics },
+               searchByAny: true,
                monitored: true,
            }, 10000);
            
@@ -186,14 +206,16 @@ timeseriesRouter.post("/", async (req, res) => {
                 const m = item.name;
                 if (h && m) {
                    // Match case-insensitively with requested metrics to preserve requested casing key
-                   const matchedMetric = metrics.find((reqM: string) => reqM.toLowerCase() === m.toLowerCase()) || m;
+                   const matchedMetric = metrics.find((reqM: string) => m.toLowerCase().includes(reqM.toLowerCase())) || m;
                    const key = `${matchedMetric}_${h}`;
-                   itemValueMap[key] = item.lastvalue;
-                   const vtype = parseInt(item.value_type, 10);
-                   if (!isNaN(vtype)) {
-                      if (!itemsToFetchHistory[vtype]) itemsToFetchHistory[vtype] = [];
-                      itemsToFetchHistory[vtype].push(item.itemid);
-                      itemIdToKey[item.itemid] = key; // Preserve the requested casing key
+                   if (!Object.values(itemIdToKey).includes(key) && (hosts.includes('all') || hosts.includes(h) || hosts.map((x: string)=>x.toLowerCase()).includes(h.toLowerCase()))) {
+                       itemValueMap[key] = item.lastvalue;
+                       const vtype = parseInt(item.value_type, 10);
+                       if (!isNaN(vtype)) {
+                          if (!itemsToFetchHistory[vtype]) itemsToFetchHistory[vtype] = [];
+                          itemsToFetchHistory[vtype].push(item.itemid);
+                          itemIdToKey[item.itemid] = key; // Preserve the requested casing key
+                       }
                    }
                 }
              });
@@ -330,10 +352,20 @@ timeseriesRouter.post("/", async (req, res) => {
       };
       const bucketTime = new Date(timeLabels[i]).getTime();
 
-      hostsArr.forEach((h: string) => {
-        metricsArr.forEach((m: string) => {
-           const key = `${m}_${h}`;
-           
+      // Ensure all fetched keys are injected into the point
+      const allKeys = new Set([
+        ...Object.keys(historyValues),
+        ...Object.keys(itemValueMap),
+        ...hostsArr.flatMap(h => metricsArr.map(m => `${m}_${h}`))
+      ]);
+
+      allKeys.forEach((key: string) => {
+           // We might not have h and m distinctly mapped if we just iterate keys,
+           // but we can compute them if needed for Demo fallback.
+           const parts = key.split('_');
+           const h = parts.length > 1 ? parts[parts.length - 1] : hostsArr[0];
+           const m = parts.slice(0, parts.length - 1).join('_') || parts[0];
+
            if (historyValues[key] && historyValues[key].length > 0) {
               const pts = historyValues[key]; 
               let sum = 0;
@@ -343,36 +375,26 @@ timeseriesRouter.post("/", async (req, res) => {
               const rangeEnd = bucketTime + stepMs;
 
               let lastSeenBeforeOrAtStart: number | null = null;
-              // Optimally, we can find the exact value active at rangeStart.
-              // Note: pts is sorted by timestamp asc
               let bestTBefore = -Infinity;
               
               for (let p=0; p<pts.length; p++) {
                  const t = pts[p][0];
                  const v = pts[p][1];
                  
-                 // If the point is before passing rangeStart, track it as latest known state
                  if (t <= rangeStart && t > bestTBefore) {
                     bestTBefore = t;
                     lastSeenBeforeOrAtStart = v;
                  }
                  
-                 // If inside the bucket
                  if (t > rangeStart && t <= rangeEnd) {
                     sum += v;
                     count++;
                  }
-                 
-                 // Optimisation: stop if we passed the end
-                 // if (t > rangeEnd) break;  // Can do this since pts is sorted
               }
               
               if (count > 0) {
-                  // If we got values strictly this period, use average or last value?
-                  // Trend charting typically uses the average during this bucket
                   point[key] = parseFloat((sum/count).toFixed(2));
               } else if (lastSeenBeforeOrAtStart !== null) {
-                  // No data *inside* bucket, hold latest known state!
                   point[key] = parseFloat(lastSeenBeforeOrAtStart.toFixed(2));
               } else {
                   point[key] = null;
@@ -384,7 +406,6 @@ timeseriesRouter.post("/", async (req, res) => {
                   point[key] = null;
               }
            } else if (isDemo) {
-             // Mock values based on metric name heuristics (Demo Mode only)
              const timeValue = new Date(timeLabels[i]).getTime();
              const seedValue = timeValue / 10000; 
              const hostSeed = h.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
@@ -401,10 +422,8 @@ timeseriesRouter.post("/", async (req, res) => {
 
              point[key] = val;
            } else {
-             // Real API but no data found for this timestamp bucket
              point[key] = null;
            }
-        });
       });
 
       // Legacy global keys for backward compatibility for demo mode
