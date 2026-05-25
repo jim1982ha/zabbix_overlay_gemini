@@ -458,7 +458,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
             key={w.id}
             data-grid={{ i: w.id, x: w.x ?? 0, y: w.y ?? Infinity, w: w.w ?? (isMobile ? 1 : 12), h: w.h ?? 10 }}
             className={cn(
-              "relative group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 flex flex-col rounded overflow-hidden",
+              "relative group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 flex flex-col rounded",
               editingWidgetId === w.id ? "z-[100]" : "z-10 hover:z-[60]",
               hasFilter && "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-slate-50"
             )}

@@ -49,6 +49,32 @@ async function startServer() {
 
   // Proxy Zabbix API calls to avoid CORS and hide token
   
+  // Demo Dashboard File API
+  app.get("/api/demo-dashboard", (req, res) => {
+    try {
+      const demoPath = path.join(process.cwd(), "src", "data", "demoDashboard.json");
+      const fs = require("fs");
+      if (fs.existsSync(demoPath)) {
+        res.json(JSON.parse(fs.readFileSync(demoPath, "utf-8")));
+      } else {
+        res.status(404).json({ error: "demoDashboard.json not found" });
+      }
+    } catch (e) {
+      res.status(500).json({ error: "Failed to read demoDashboard.json" });
+    }
+  });
+
+  app.post("/api/demo-dashboard", express.json(), (req, res) => {
+    try {
+      const demoPath = path.join(process.cwd(), "src", "data", "demoDashboard.json");
+      const fs = require("fs");
+      fs.writeFileSync(demoPath, JSON.stringify(req.body, null, 2), "utf-8");
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ error: "Failed to write demoDashboard.json" });
+    }
+  });
+
   app.use('/api/zabbix', zabbixRouter);
   app.use('/api/timeseries', timeseriesRouter);
 

@@ -79,8 +79,8 @@
   /* Omnidirectional react-resizable handles for Dashboard Widgets */
   .react-resizable-handle {
     position: absolute;
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     z-index: 50 !important;
     background-image: none !important; /* Eliminate default slash dot images */
     display: block;
@@ -92,61 +92,29 @@
   .react-grid-item:hover .react-resizable-handle {
     opacity: 0.25;
   }
-
-  /* South East (Bottom-Right) Handle */
-  .react-resizable-handle-se {
-    right: 4px;
-    bottom: 4px;
-    cursor: se-resize;
-  }
-
-  .react-resizable-handle-se::after {
+  
+  /* Apply universal chevron style to all resize handles, 
+     react-grid-layout uses CSS transforms to rotate this base shape */
+  .react-grid-item > .react-resizable-handle::after {
     content: "";
     position: absolute;
-    right: 3px;
-    bottom: 3px;
-    width: 5px;
-    height: 5px;
+    right: 4px;
+    bottom: 4px;
+    width: 6px;
+    height: 6px;
     border-right: 2px solid rgba(0, 0, 0, 0.45);
     border-bottom: 2px solid rgba(0, 0, 0, 0.45);
     opacity: 0.35;
     transition: opacity 0.2s ease, border-color 0.2s ease;
   }
 
-  .dark .react-resizable-handle-se::after {
+  .dark .react-grid-item > .react-resizable-handle::after {
     border-right-color: rgba(255, 255, 255, 0.45);
     border-bottom-color: rgba(255, 255, 255, 0.45);
-  }
-
-  /* North West (Top-Left) Handle - mirrored to face top-left, making it 100% consistent with the bottom-right style */
-  .react-resizable-handle-nw {
-    left: 4px;
-    top: 4px;
-    cursor: nw-resize;
-  }
-
-  .react-resizable-handle-nw::after {
-    content: "";
-    position: absolute;
-    left: 3px;
-    top: 3px;
-    width: 5px;
-    height: 5px;
-    border-left: 2px solid rgba(0, 0, 0, 0.45);
-    border-top: 2px solid rgba(0, 0, 0, 0.45);
-    opacity: 0.35;
-    transition: opacity 0.2s ease, border-color 0.2s ease;
-  }
-
-  .dark .react-resizable-handle-nw::after {
-    border-left-color: rgba(255, 255, 255, 0.45);
-    border-top-color: rgba(255, 255, 255, 0.45);
   }
 
   /* Enhancing handle opacity on hover for visibility and precision */
   .react-resizable-handle:hover {
     opacity: 1 !important;
-    width: 14px;
-    height: 14px;
   }
 }

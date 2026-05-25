@@ -398,13 +398,12 @@ function DashboardApp() {
         v: "1.0"
       }
     ];
-    setSavedDashboards(initialDashboards);
+    syncDashboards(initialDashboards);
     if (initialDashboards && initialDashboards.length > 0) {
       setActiveDashboardId(initialDashboards[0].id);
       setDashboardName(initialDashboards[0].name);
       setWidgets(initialDashboards[0].widgets);
     }
-    localStorage.setItem(dashboardStorageKey, JSON.stringify(initialDashboards));
 
     showToast("Switched to offline Demo Mode and reloaded default dashboards.", "info");
     setView("dashboard");
@@ -424,38 +423,74 @@ function DashboardApp() {
 
   // Load dashboards on startup or configuration save key changes
   useEffect(() => {
-    const saved = localStorage.getItem(dashboardStorageKey);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const migrated = parsed.map((db: Dashboard) => {
-          if (db.v === "1.0") {
-            return db;
+    let isMounted = true;
+    
+    // Abstract the standard local storage logic
+    const applyLocalStorage = () => {
+      const saved = localStorage.getItem(dashboardStorageKey);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          const migrated = parsed.map((db: Dashboard) => {
+            if (db.v === "1.0") {
+              return db;
+            }
+            return {
+              ...db,
+              widgets: (db.widgets || []).map((w: Widget) => ({
+                ...w,
+                w: (w.w || (w as any).cols || 1) <= 4 ? (w.w || (w as any).cols || 1) * 6 : (w.w || (w as any).cols || 6),
+                h: (w.h || (w as any).rows || 1) <= 3 ? (w.h || (w as any).rows || 1) * 4 : (w.h || (w as any).rows || 4)
+              }))
+            };
+          });
+          setSavedDashboards(migrated);
+          if (migrated.length > 0) {
+            setWidgets(migrated[0].widgets);
+            setDashboardName(migrated[0].name);
+            setActiveDashboardId(migrated[0].id);
+          } else {
+            setWidgets([]);
           }
-          return {
-            ...db,
-            widgets: (db.widgets || []).map((w: Widget) => ({
-              ...w,
-              w: (w.w || (w as any).cols || 1) <= 4 ? (w.w || (w as any).cols || 1) * 6 : (w.w || (w as any).cols || 6),
-              h: (w.h || (w as any).rows || 1) <= 3 ? (w.h || (w as any).rows || 1) * 4 : (w.h || (w as any).rows || 4)
-            }))
-          };
-        });
-        setSavedDashboards(migrated);
-        if (migrated.length > 0) {
-          setWidgets(migrated[0].widgets);
-          setDashboardName(migrated[0].name);
-          setActiveDashboardId(migrated[0].id);
-        } else {
-          setWidgets(dashboardStorageKey === 'hareporting_dashboards_v6' ? defaultWidgets : []);
+        } catch (e) {
+          console.error("Failed to parse saved dashboards", e);
         }
-      } catch (e) {
-        console.error("Failed to parse saved dashboards", e);
+      } else {
+        const initialDashboards = [{
+            id: 'default-board-1',
+            name: 'Executive Overview',
+            widgets: [] as any
+        }];
+        setSavedDashboards(initialDashboards);
+        setActiveDashboardId(initialDashboards[0].id);
+        setDashboardName(initialDashboards[0].name);
+        setWidgets(initialDashboards[0].widgets);
+        localStorage.setItem(dashboardStorageKey, JSON.stringify(initialDashboards));
       }
-    } else {
-      let initialDashboards: Dashboard[] = [];
-      if (dashboardStorageKey === 'hareporting_dashboards_v6') {
-        initialDashboards = [
+    };
+
+    if (dashboardStorageKey === 'hareporting_dashboards_v6') {
+      // In Demo mode, always prioritize loading from the demoDashboard.json file via API
+      axios.get('/api/demo-dashboard').then(res => {
+        if (!isMounted) return;
+        const initialDashboards: Dashboard[] = [
+          {
+            id: 'demo-dashboard-1',
+            name: res.data.name,
+            widgets: res.data.widgets,
+            v: "1.0"
+          }
+        ];
+        setSavedDashboards(initialDashboards);
+        setActiveDashboardId(initialDashboards[0].id);
+        setDashboardName(initialDashboards[0].name);
+        setWidgets(initialDashboards[0].widgets);
+        // Also sync it to localStorage as backup
+        localStorage.setItem(dashboardStorageKey, JSON.stringify(initialDashboards));
+      }).catch(e => {
+        console.warn("Could not load demo from API, falling back to static import", e);
+        if (!isMounted) return;
+        const initialDashboards: Dashboard[] = [
           {
             id: 'demo-dashboard-1',
             name: demoDashboardData.name,
@@ -463,30 +498,47 @@ function DashboardApp() {
             v: "1.0"
           }
         ];
-      } else {
-        initialDashboards = [{
-          id: 'default-board-1',
-          name: 'Executive Overview',
-          widgets: []
-        }];
-      }
-      setSavedDashboards(initialDashboards);
-      setActiveDashboardId(initialDashboards[0].id);
-      setDashboardName(initialDashboards[0].name);
-      setWidgets(initialDashboards[0].widgets);
-      localStorage.setItem(dashboardStorageKey, JSON.stringify(initialDashboards));
+        setSavedDashboards(initialDashboards);
+        setActiveDashboardId(initialDashboards[0].id);
+        setDashboardName(initialDashboards[0].name);
+        setWidgets(initialDashboards[0].widgets);
+        localStorage.setItem(dashboardStorageKey, JSON.stringify(initialDashboards));
+      });
+    } else {
+      applyLocalStorage();
     }
+    
+    return () => { isMounted = false; };
   }, [dashboardStorageKey]);
+
+  // Helper to persist dashboards state
+  const syncDashboards = async (nextDashboards: Dashboard[]) => {
+    setSavedDashboards(nextDashboards);
+    localStorage.setItem(dashboardStorageKey, JSON.stringify(nextDashboards));
+    
+    // Auto-save back to demoDashboard.json if we are modifying the demo dashboard (Demo Mode)
+    if (dashboardStorageKey === 'hareporting_dashboards_v6') {
+      const demoBoard = nextDashboards.find(d => d.id === 'demo-dashboard-1');
+      if (demoBoard) {
+        try {
+          await axios.post('/api/demo-dashboard', {
+            name: demoBoard.name,
+            widgets: demoBoard.widgets,
+            v: "1.0"
+          });
+        } catch (e) {
+          console.error("Could not sync to demoDashboard.json", e);
+        }
+      }
+    }
+  };
 
   const handleUpdateDashboardName = (newName: string) => {
     if (!newName) return;
     setDashboardName(newName);
     if (activeDashboardId) {
-      setSavedDashboards(prev => {
-        const next = prev.map(d => d.id === activeDashboardId ? { ...d, name: newName } : d);
-        localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
-        return next;
-      });
+      const next = savedDashboards.map(d => d.id === activeDashboardId ? { ...d, name: newName } : d);
+      syncDashboards(next);
     }
   };
 
@@ -508,15 +560,13 @@ function DashboardApp() {
     setWidgets(cleanedWidgets);
     if (activeDashboardId) {
       const next = savedDashboards.map(d => d.id === activeDashboardId ? { ...d, name: dashboardName, widgets: cleanedWidgets } : d);
-      setSavedDashboards(next);
-      localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
+      syncDashboards(next);
     } else {
       const newId = `db-${Date.now()}`;
       const newBoard = { id: newId, name: dashboardName, widgets: cleanedWidgets };
       const next = [...savedDashboards, newBoard];
-      setSavedDashboards(next);
+      syncDashboards(next);
       setActiveDashboardId(newId);
-      localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
     }
     showToast("Dashboard configuration saved successfully.", "success");
   };
@@ -579,8 +629,7 @@ function DashboardApp() {
     const newBoard: Dashboard = { id: newId, name: newName, widgets: [] };
     
     const next = [...currentSaved, newBoard];
-    setSavedDashboards(next);
-    localStorage.setItem(dashboardStorageKey, JSON.stringify(next));
+    syncDashboards(next);
     
     setActiveDashboardId(newId);
     setWidgets([]);
@@ -596,8 +645,7 @@ function DashboardApp() {
       e.stopPropagation();
     }
     const updated = savedDashboards.filter(d => d.id !== id);
-    setSavedDashboards(updated);
-    localStorage.setItem(dashboardStorageKey, JSON.stringify(updated));
+    syncDashboards(updated);
     
     if (activeDashboardId === id) {
       if (updated.length > 0) {
