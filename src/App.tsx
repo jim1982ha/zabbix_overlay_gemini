@@ -195,7 +195,8 @@ function DashboardApp() {
     metricDict,
     hostMetricsMap,
     metricUnitsMap,
-    discoverZabbixAssets
+    discoverZabbixAssets,
+    resetDiscovery
   } = useZabbixDiscovery(zabbixConfig);
 
   // Integrated Timeseries Fetch system
@@ -237,8 +238,9 @@ function DashboardApp() {
     url: zabbixConfig.url,
     token: zabbixConfig.token,
     metrics: activeMetricsStr ? activeMetricsStr.split(',') : (availableMetrics.length > 0 ? [availableMetrics[0]] : ['cpu']),
-    hosts: activeHostsStr ? activeHostsStr.split(',') : (availableHosts.length > 0 ? [availableHosts[0]] : ['srv-prod-01'])
-  }), [filters, zabbixConfig, activeMetricsStr, activeHostsStr, availableMetrics, availableHosts]);
+    hosts: activeHostsStr ? activeHostsStr.split(',') : (availableHosts.length > 0 ? [availableHosts[0]] : ['srv-prod-01']),
+    isDemoRequest: isDemo
+  }), [filters, zabbixConfig, activeMetricsStr, activeHostsStr, availableMetrics, availableHosts, isDemo]);
 
   const { data, isLoading: loading, error: timeseriesError, refetch: fetchStats } = useTimeseries(timeseriesParams, metricDict, !isConfigLoaded || !isAuthorized);
 
@@ -370,18 +372,29 @@ function DashboardApp() {
   }, [zabbixConfig]);
 
   const handleSaveZabbixConfig = () => {
+    resetDiscovery(); // Wipes previous memory context
+    const nextKey = draftZabbixConfig.url 
+      ? `hareporting_dashboards_${btoa(draftZabbixConfig.url).replace(/=/g, '')}` 
+      : 'hareporting_dashboards_v6';
+      
+    if (nextKey !== 'hareporting_dashboards_v6') {
+      localStorage.removeItem(nextKey);
+    }
+    
     setZabbixConfig(draftZabbixConfig);
     sessionStorage.setItem('hareporting_zabbix_url', draftZabbixConfig.url);
     sessionStorage.setItem('hareporting_zabbix_token', draftZabbixConfig.token);
     setSavedZabbixUrl(draftZabbixConfig.url);
     showToast("Zabbix API configuration saved successfully.", "success");
-    setView("dashboard");
+    
     setTimeout(() => {
       setInitialDiscoveryTriggered(false);
     }, 100);
   };
 
   const handleDemoMode = () => {
+    resetDiscovery(); // Wipes previous memory context
+    
     const emptyConfig = { url: '', token: '', isPreconfigured: false };
     setZabbixConfig(emptyConfig);
     setDraftZabbixConfig(emptyConfig);
@@ -390,7 +403,6 @@ function DashboardApp() {
     setSavedZabbixUrl('');
 
     showToast("Switched to offline Demo Mode and reloaded default dashboards.", "info");
-    setView("dashboard");
   };
 
   // Consolidated Unsaved edits tracker

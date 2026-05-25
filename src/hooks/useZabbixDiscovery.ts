@@ -119,6 +119,21 @@ export function useZabbixDiscovery(zabbixConfig: { url: string; token: string })
     }
   }, [zabbixConfig.url, zabbixConfig.token]);
 
+  const resetDiscovery = useCallback(() => {
+    setAvailableHosts(["srv-prod-01", "sql-db-primary", "gateway-02"]);
+    setAvailableMetrics(["cpu", "memory", "traffic", "latency", "disk"]);
+    setMetricDict({});
+    setHostMetricsMap({});
+    setMetricUnitsMap({
+      cpu: "%",
+      memory: "GB",
+      traffic: "Mbps",
+      latency: "ms",
+      disk: "%"
+    });
+    setDiscoveryStatus(null);
+  }, []);
+
   return {
     isDiscovering,
     discoveryStatus,
@@ -128,6 +143,7 @@ export function useZabbixDiscovery(zabbixConfig: { url: string; token: string })
     metricDict,
     hostMetricsMap,
     metricUnitsMap,
-    discoverZabbixAssets
+    discoverZabbixAssets,
+    resetDiscovery
   };
 }

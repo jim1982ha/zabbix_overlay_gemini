@@ -8,7 +8,7 @@ import axios from 'axios';
 export const timeseriesRouter = express.Router();
 
 timeseriesRouter.post("/", async (req, res) => {
-    let { start, end, granularity = '5m', range = '24h', mode = 'live', url: reqUrl, token: reqToken, metrics = [], hosts = [], itemDict = {} } = req.body;
+    let { start, end, granularity = '5m', range = '24h', mode = 'live', url: reqUrl, token: reqToken, metrics = [], hosts = [], itemDict = {}, isDemoRequest } = req.body;
     
     // Prefer user-provided values from the frontend configuration, fallback to environment variables
     const url = reqUrl || process.env.VITE_ZABBIX_URL || "";
@@ -19,7 +19,7 @@ timeseriesRouter.post("/", async (req, res) => {
       token = process.env.VITE_ZABBIX_TOKEN;
     }
     
-    const isDemo = !url || !token;
+    const isDemo = isDemoRequest || (!url || !token);
 
     // Optional: Internal Authorization Gate if APP_SECURE_TOKEN is injected via environment (CWE-306 fix)
     const expectedToken = process.env.APP_SECURE_TOKEN;

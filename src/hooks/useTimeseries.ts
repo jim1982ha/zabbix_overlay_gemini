@@ -11,6 +11,7 @@ export interface TimeseriesParams {
   token: string;
   metrics: string[];
   hosts: string[];
+  isDemoRequest?: boolean;
 }
 
 export function useTimeseries(
@@ -49,7 +50,8 @@ export function useTimeseries(
         token: params.token,
         metrics: params.metrics,
         hosts: params.hosts,
-        itemDict: metricDict
+        itemDict: metricDict,
+        isDemoRequest: params.isDemoRequest
       });
 
       if (response.data && Array.isArray(response.data)) {
