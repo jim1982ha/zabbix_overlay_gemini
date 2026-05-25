@@ -389,23 +389,6 @@ function DashboardApp() {
     sessionStorage.setItem('hareporting_zabbix_token', '');
     setSavedZabbixUrl('');
 
-    // Re-initialize demo dashboards from the JSON configuration file for immediate UI response
-    // (The useEffect logic handles persistence and actual loading for the demo key 'v6' upon re-render)
-    const initialDashboards: Dashboard[] = [
-      {
-        id: "demo-dashboard-1",
-        name: demoDashboardData.name,
-        widgets: demoDashboardData.widgets as any,
-        v: "1.0"
-      }
-    ];
-    
-    if (initialDashboards && initialDashboards.length > 0) {
-      setActiveDashboardId(initialDashboards[0].id);
-      setDashboardName(initialDashboards[0].name);
-      setWidgets(initialDashboards[0].widgets);
-    }
-
     showToast("Switched to offline Demo Mode and reloaded default dashboards.", "info");
     setView("dashboard");
   };
@@ -425,6 +408,11 @@ function DashboardApp() {
   // Load dashboards on startup or configuration save key changes
   useEffect(() => {
     let isMounted = true;
+    
+    // Instantly wipe current UI to prevent stale cross-loading visual flashes
+    setWidgets([]);
+    setActiveDashboardId(undefined);
+    setDashboardName('Loading...');
     
     // Abstract the standard local storage logic
     const applyLocalStorage = () => {
