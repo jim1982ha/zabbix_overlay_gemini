@@ -154,6 +154,10 @@ function DashboardApp() {
     isPreconfigured: false
   });
 
+  const [appMode, setAppMode] = useState<'demo' | 'live'>(() => {
+    return (sessionStorage.getItem('hareporting_zabbix_url') || sessionStorage.getItem('hareporting_zabbix_token')) ? 'live' : 'demo';
+  });
+
   const [savedZabbixUrl, setSavedZabbixUrl] = useState<string>(
     sessionStorage.getItem('hareporting_zabbix_url') || ''
   );
@@ -177,7 +181,7 @@ function DashboardApp() {
   }, []);
 
   const isMobile = windowWidth < 1024;
-  const isDemo = !zabbixConfig.url || (!zabbixConfig.token && !zabbixConfig.isPreconfigured);
+  const isDemo = appMode === 'demo';
 
   const dashboardStorageKey = useMemo(() => {
     return savedZabbixUrl 
@@ -366,6 +370,86 @@ function DashboardApp() {
     }
   }, [zabbixConfig, initialDiscoveryTriggered, discoverZabbixAssets, isConfigLoaded, isAuthorized]);
 
+  const loadDashboards = useCallback(async (mode: 'demo' | 'live', specificUrl?: string) => {
+    setWidgets([]);
+    setActiveDashboardId(undefined);
+    setDashboardName('Loading...');
+
+    const targetKey = mode === 'demo' ? 'hareporting_dashboards_v6' : `hareporting_dashboards_${specificUrl ? btoa(specificUrl).replace(/=/g, '') : 'live'}`;
+
+    if (mode === 'demo') {
+      try {
+        const res = await axios.get('/api/demo-dashboard');
+        const initialDashboards: Dashboard[] = [{
+          id: 'demo-dashboard-1',
+          name: res.data.name,
+          widgets: res.data.widgets,
+          v: "1.0"
+        }];
+        setSavedDashboards(initialDashboards);
+        setActiveDashboardId(initialDashboards[0].id);
+        setDashboardName(initialDashboards[0].name);
+        setWidgets(initialDashboards[0].widgets);
+        localStorage.setItem(targetKey, JSON.stringify(initialDashboards));
+      } catch (e) {
+        console.warn("Could not load demo from API, falling back to static import", e);
+        const initialDashboards: Dashboard[] = [{
+          id: 'demo-dashboard-1',
+          name: demoDashboardData.name,
+          widgets: demoDashboardData.widgets as any,
+          v: "1.0"
+        }];
+        setSavedDashboards(initialDashboards);
+        setActiveDashboardId(initialDashboards[0].id);
+        setDashboardName(initialDashboards[0].name);
+        setWidgets(initialDashboards[0].widgets);
+        localStorage.setItem(targetKey, JSON.stringify(initialDashboards));
+      }
+    } else {
+      const saved = localStorage.getItem(targetKey);
+      let parsedFromStorage: Dashboard[] | null = null;
+      if (saved) {
+        try {
+          parsedFromStorage = JSON.parse(saved);
+          if (parsedFromStorage && parsedFromStorage[0]?.id === 'demo-dashboard-1') {
+             parsedFromStorage = null;
+          }
+        } catch (e) {
+          console.error("Failed to parse saved dashboards", e);
+        }
+      }
+
+      if (parsedFromStorage && parsedFromStorage.length > 0) {
+        const migrated = parsedFromStorage.map((db: Dashboard) => {
+          if (db.v === "1.0") return db;
+          return {
+            ...db,
+            widgets: (db.widgets || []).map((w: Widget) => ({
+              ...w,
+              w: (w.w || (w as any).cols || 1) <= 4 ? (w.w || (w as any).cols || 1) * 6 : (w.w || (w as any).cols || 6),
+              h: (w.h || (w as any).rows || 1) <= 3 ? (w.h || (w as any).rows || 1) * 4 : (w.h || (w as any).rows || 4)
+            }))
+          };
+        });
+        setSavedDashboards(migrated);
+        setWidgets(migrated[0].widgets);
+        setDashboardName(migrated[0].name);
+        setActiveDashboardId(migrated[0].id);
+      } else {
+        const initialDashboards = [{
+            id: 'default-board-1',
+            name: 'New Dashboard',
+            widgets: [] as any
+        }];
+        setSavedDashboards(initialDashboards);
+        setActiveDashboardId(initialDashboards[0].id);
+        setDashboardName(initialDashboards[0].name);
+        setWidgets(initialDashboards[0].widgets);
+        localStorage.setItem(targetKey, JSON.stringify(initialDashboards));
+      }
+    }
+  }, [setWidgets, setActiveDashboardId, setDashboardName, setSavedDashboards]);
+
   const [draftZabbixConfig, setDraftZabbixConfig] = useState(zabbixConfig);
   useEffect(() => {
     setDraftZabbixConfig(zabbixConfig);
@@ -373,13 +457,12 @@ function DashboardApp() {
 
   const handleSaveZabbixConfig = () => {
     resetDiscovery(); // Wipes previous memory context
+    setAppMode('live');
     const nextKey = draftZabbixConfig.url 
       ? `hareporting_dashboards_${btoa(draftZabbixConfig.url).replace(/=/g, '')}` 
-      : 'hareporting_dashboards_v6';
+      : 'hareporting_dashboards_live';
       
-    if (nextKey !== 'hareporting_dashboards_v6') {
-      localStorage.removeItem(nextKey);
-    }
+    localStorage.removeItem(nextKey);
     
     setZabbixConfig(draftZabbixConfig);
     sessionStorage.setItem('hareporting_zabbix_url', draftZabbixConfig.url);
@@ -389,11 +472,13 @@ function DashboardApp() {
     
     setTimeout(() => {
       setInitialDiscoveryTriggered(false);
+      loadDashboards('live', draftZabbixConfig.url);
     }, 100);
   };
 
   const handleDemoMode = () => {
     resetDiscovery(); // Wipes previous memory context
+    setAppMode('demo');
     
     const emptyConfig = { url: '', token: '', isPreconfigured: false };
     setZabbixConfig(emptyConfig);
@@ -403,6 +488,7 @@ function DashboardApp() {
     setSavedZabbixUrl('');
 
     showToast("Switched to offline Demo Mode and reloaded default dashboards.", "info");
+    loadDashboards('demo');
   };
 
   // Consolidated Unsaved edits tracker
@@ -417,109 +503,11 @@ function DashboardApp() {
     return !widgetsEqual || !nameEqual;
   }, [widgets, dashboardName, savedDashboards, activeDashboardId]);
 
-  // Load dashboards on startup or configuration save key changes
+  // Load dashboards on startup
   useEffect(() => {
-    let isMounted = true;
-    
-    // Instantly wipe current UI to prevent stale cross-loading visual flashes
-    setWidgets([]);
-    setActiveDashboardId(undefined);
-    setDashboardName('Loading...');
-    
-    // Abstract the standard local storage logic
-    const applyLocalStorage = () => {
-      const saved = localStorage.getItem(dashboardStorageKey);
-      
-      let parsedFromStorage: Dashboard[] | null = null;
-      if (saved) {
-        try {
-          parsedFromStorage = JSON.parse(saved);
-          // If we are evaluating Live Mode but the storage has a Demo Dashboard saved in it (due to previous bug), reject it.
-          if (dashboardStorageKey !== 'hareporting_dashboards_v6' && parsedFromStorage && parsedFromStorage[0]?.id === 'demo-dashboard-1') {
-             parsedFromStorage = null;
-          }
-        } catch (e) {
-          console.error("Failed to parse saved dashboards", e);
-        }
-      }
-
-      if (parsedFromStorage) {
-        const migrated = parsedFromStorage.map((db: Dashboard) => {
-          if (db.v === "1.0") {
-            return db;
-          }
-          return {
-            ...db,
-            widgets: (db.widgets || []).map((w: Widget) => ({
-              ...w,
-              w: (w.w || (w as any).cols || 1) <= 4 ? (w.w || (w as any).cols || 1) * 6 : (w.w || (w as any).cols || 6),
-              h: (w.h || (w as any).rows || 1) <= 3 ? (w.h || (w as any).rows || 1) * 4 : (w.h || (w as any).rows || 4)
-            }))
-          };
-        });
-        setSavedDashboards(migrated);
-        if (migrated.length > 0) {
-          setWidgets(migrated[0].widgets);
-          setDashboardName(migrated[0].name);
-          setActiveDashboardId(migrated[0].id);
-        } else {
-          setWidgets([]);
-        }
-      } else {
-        const initialDashboards = [{
-            id: 'default-board-1',
-            name: 'Executive Overview',
-            widgets: [] as any
-        }];
-        setSavedDashboards(initialDashboards);
-        setActiveDashboardId(initialDashboards[0].id);
-        setDashboardName(initialDashboards[0].name);
-        setWidgets(initialDashboards[0].widgets);
-        localStorage.setItem(dashboardStorageKey, JSON.stringify(initialDashboards));
-      }
-    };
-
-    if (dashboardStorageKey === 'hareporting_dashboards_v6') {
-      // In Demo mode, always prioritize loading from the demoDashboard.json file via API
-      axios.get('/api/demo-dashboard').then(res => {
-        if (!isMounted) return;
-        const initialDashboards: Dashboard[] = [
-          {
-            id: 'demo-dashboard-1',
-            name: res.data.name,
-            widgets: res.data.widgets,
-            v: "1.0"
-          }
-        ];
-        setSavedDashboards(initialDashboards);
-        setActiveDashboardId(initialDashboards[0].id);
-        setDashboardName(initialDashboards[0].name);
-        setWidgets(initialDashboards[0].widgets);
-        // Also sync it to localStorage as backup
-        localStorage.setItem(dashboardStorageKey, JSON.stringify(initialDashboards));
-      }).catch(e => {
-        console.warn("Could not load demo from API, falling back to static import", e);
-        if (!isMounted) return;
-        const initialDashboards: Dashboard[] = [
-          {
-            id: 'demo-dashboard-1',
-            name: demoDashboardData.name,
-            widgets: demoDashboardData.widgets as any,
-            v: "1.0"
-          }
-        ];
-        setSavedDashboards(initialDashboards);
-        setActiveDashboardId(initialDashboards[0].id);
-        setDashboardName(initialDashboards[0].name);
-        setWidgets(initialDashboards[0].widgets);
-        localStorage.setItem(dashboardStorageKey, JSON.stringify(initialDashboards));
-      });
-    } else {
-      applyLocalStorage();
-    }
-    
-    return () => { isMounted = false; };
-  }, [dashboardStorageKey]);
+    loadDashboards(appMode, savedZabbixUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Helper to persist dashboards state
   const syncDashboards = async (nextDashboards: Dashboard[]) => {

@@ -29,6 +29,7 @@ export function useTimeseries(
   
   // Track continuous polling via ref to avoid React state re-eval sync issues
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchTimeseries = useCallback(async (isSilent = false) => {
     if (skip) return;
@@ -36,6 +37,12 @@ export function useTimeseries(
       setIsLoading(true);
     }
     setError(null);
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     const hashForThisFetch = JSON.stringify(params);
 
@@ -52,6 +59,8 @@ export function useTimeseries(
         hosts: params.hosts,
         itemDict: metricDict,
         isDemoRequest: params.isDemoRequest
+      }, {
+        signal: abortController.signal
       });
 
       if (response.data && Array.isArray(response.data)) {
@@ -61,14 +70,17 @@ export function useTimeseries(
       }
       setFetchedParamsHash(hashForThisFetch);
     } catch (err: any) {
+      if (axios.isCancel(err)) {
+        return; // Request was aborted, do nothing
+      }
       console.error("Timeseries Fetch Error:", err);
-      // Only set error if not silent (background polling errors shouldn't disrupt active viewing if they are transient)
+      // Only set error if not silent
       if (!isSilent) {
         setError(err.response?.data?.error || err.message || "Failed to load timeseries statistics.");
         setFetchedParamsHash(hashForThisFetch);
       }
     } finally {
-      if (!isSilent) {
+      if (!isSilent && abortControllerRef.current === abortController) {
         setIsLoading(false);
       }
     }
@@ -82,6 +94,7 @@ export function useTimeseries(
     params.token,
     params.metrics,
     params.hosts,
+    params.isDemoRequest,
     metricDict,
     skip
   ]);
