@@ -424,18 +424,16 @@ export const DashboardGrid = React.memo(function DashboardGrid({
             const shosts = sConf.hosts || (sConf.host ? [sConf.host] : []);
             const aggType = sConf.aggregation || 'none';
             if (aggType !== 'none') {
-              smetrics.forEach((m: string) => {
-                if (hiddenSeries.has(`${sKey}_${m}_agg`)) hasFilter = true;
-              });
-            } else {
-              smetrics.forEach((m: string) => {
-                const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
-                hostsToUse.forEach((h: string) => {
-                  const key = `${m}_${h}`;
-                  if (hiddenSeries.has(key)) hasFilter = true;
-                });
-              });
+              if (hiddenSeries.has(`${sKey}_agg`)) hasFilter = true;
             }
+            smetrics.forEach((m: string) => {
+              const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
+              hostsToUse.forEach((h: string) => {
+                const key = `${m}_${h}`;
+                const hasDataForSeries = data.some((point: any) => point[key] != null);
+                if (hasDataForSeries && hiddenSeries.has(key)) hasFilter = true;
+              });
+            });
           });
         } else if (w.type === 'kpi') {
           const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
@@ -445,9 +443,10 @@ export const DashboardGrid = React.memo(function DashboardGrid({
               if (hiddenSeries.has(key)) hasFilter = true;
             });
           });
-        } else if (w.aggregation === 'avg' || w.aggregation === 'sum') {
-          if (hiddenSeries.has('agg_val')) hasFilter = true;
         } else {
+          if (w.aggregation === 'avg' || w.aggregation === 'sum') {
+            if (hiddenSeries.has('agg_val')) hasFilter = true;
+          }
           (w.metrics || []).forEach((m: string) => {
             const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
             hostsToUse.forEach((h: string) => {
