@@ -763,7 +763,7 @@ function DashboardApp() {
     const mapping: Record<string, any> = {};
     widgets.forEach(w => {
       if (w.type === 'chart') {
-        const isAggregated = w.chartType !== 'mixed' && w.aggregation !== 'none';
+        const isAggregated = w.chartType !== 'mixed' && w.chartType !== 'pie' && w.aggregation !== 'none';
         let chartSeries: { key: string; name: string; color?: string; metric?: string; configKey?: string; unit?: string }[] = [];
         let chartData = data || [];
 
@@ -780,28 +780,30 @@ function DashboardApp() {
             const aggType = sConf.aggregation || 'none';
             
             if (aggType !== 'none') {
-               smetrics.forEach(m => {
-                 const aggKey = `${sKey}_${m}_agg`;
-                 const u = metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
-                 mixedData = mixedData.map(point => {
-                   let vals: number[] = [];
-                   const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
+               const aggKey = `${sKey}_agg`;
+               const mInfo = smetrics[0];
+               const u = mInfo && metricUnitsMap[mInfo] ? (metricUnitsMap[mInfo] === '%' ? '%' : ` ${metricUnitsMap[mInfo]}`) : '';
+               const sname = smetrics.length > 1 ? `Series ${sKey === 'series1' ? '1' : '2'}` : (mInfo ? mInfo.toUpperCase() : `Series ${sKey === 'series1' ? '1' : '2'}`);
+               mixedData = mixedData.map(point => {
+                 let vals: number[] = [];
+                 const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
+                 smetrics.forEach(m => {
                    hostsToUse.forEach(h => {
                      const key = `${m}_${h}`;
                      if (!hiddenSeries.has(key) && point[key] !== undefined) vals.push(Number(point[key]));
                    });
-                   const sum = vals.reduce((a,b)=>a+b, 0);
-                   const val = aggType === 'avg' && vals.length > 0 ? sum/vals.length : sum;
-                   return { ...point, [aggKey]: val };
                  });
-                 chartSeries.push({
-                   key: aggKey,
-                   name: `${m.toUpperCase()} (${aggType === 'sum' ? 'Sum' : 'Avg'})${axisLabel}`,
-                   color: getDeterministicColor(aggKey, m),
-                   metric: m,
-                   configKey: sKey,
-                   unit: u
-                 });
+                 const sum = vals.reduce((a,b)=>a+b, 0);
+                 const val = aggType === 'avg' && vals.length > 0 ? sum/vals.length : sum;
+                 return { ...point, [aggKey]: val };
+               });
+               chartSeries.push({
+                 key: aggKey,
+                 name: `${sname} (${aggType === 'sum' ? 'Sum' : 'Avg'})${axisLabel}`,
+                 color: getDeterministicColor(aggKey, mInfo || 'agg'),
+                 metric: mInfo,
+                 configKey: sKey,
+                 unit: u
                });
             } else {
                smetrics.forEach(m => {

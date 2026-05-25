@@ -245,7 +245,7 @@ export function WidgetEditor({
                   </div>
                 )}
 
-                {w.chartType !== 'mixed' && (
+                {w.chartType !== 'mixed' && w.chartType !== 'pie' && (
                   <div>
                     <label className="text-sm font-semibold text-slate-400 block mb-2">Aggregation</label>
                     <select 

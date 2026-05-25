@@ -33,12 +33,6 @@ export interface Widget {
   forceNewline?: boolean;
 }
 
-export interface ZabbixConfig {
-  url: string;
-  token: string;
-  isPreconfigured: boolean;
-}
-
 export interface ZabbixHost {
   hostid: string;
   name?: string;
@@ -52,12 +46,4 @@ export interface ZabbixItem {
   lastvalue: string;
   units?: string;
   hosts?: ZabbixHost[];
-}
-
-export interface ZabbixHostResponse {
-  result: ZabbixHost[];
-}
-
-export interface ZabbixItemResponse {
-  result: ZabbixItem[];
 }
