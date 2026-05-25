@@ -389,7 +389,8 @@ function DashboardApp() {
     sessionStorage.setItem('hareporting_zabbix_token', '');
     setSavedZabbixUrl('');
 
-    // Re-initialize demo dashboards from the JSON configuration file
+    // Re-initialize demo dashboards from the JSON configuration file for immediate UI response
+    // (The useEffect logic handles persistence and actual loading for the demo key 'v6' upon re-render)
     const initialDashboards: Dashboard[] = [
       {
         id: "demo-dashboard-1",
@@ -398,7 +399,7 @@ function DashboardApp() {
         v: "1.0"
       }
     ];
-    syncDashboards(initialDashboards);
+    
     if (initialDashboards && initialDashboards.length > 0) {
       setActiveDashboardId(initialDashboards[0].id);
       setDashboardName(initialDashboards[0].name);
@@ -428,32 +429,41 @@ function DashboardApp() {
     // Abstract the standard local storage logic
     const applyLocalStorage = () => {
       const saved = localStorage.getItem(dashboardStorageKey);
+      
+      let parsedFromStorage: Dashboard[] | null = null;
       if (saved) {
         try {
-          const parsed = JSON.parse(saved);
-          const migrated = parsed.map((db: Dashboard) => {
-            if (db.v === "1.0") {
-              return db;
-            }
-            return {
-              ...db,
-              widgets: (db.widgets || []).map((w: Widget) => ({
-                ...w,
-                w: (w.w || (w as any).cols || 1) <= 4 ? (w.w || (w as any).cols || 1) * 6 : (w.w || (w as any).cols || 6),
-                h: (w.h || (w as any).rows || 1) <= 3 ? (w.h || (w as any).rows || 1) * 4 : (w.h || (w as any).rows || 4)
-              }))
-            };
-          });
-          setSavedDashboards(migrated);
-          if (migrated.length > 0) {
-            setWidgets(migrated[0].widgets);
-            setDashboardName(migrated[0].name);
-            setActiveDashboardId(migrated[0].id);
-          } else {
-            setWidgets([]);
+          parsedFromStorage = JSON.parse(saved);
+          // If we are evaluating Live Mode but the storage has a Demo Dashboard saved in it (due to previous bug), reject it.
+          if (dashboardStorageKey !== 'hareporting_dashboards_v6' && parsedFromStorage && parsedFromStorage[0]?.id === 'demo-dashboard-1') {
+             parsedFromStorage = null;
           }
         } catch (e) {
           console.error("Failed to parse saved dashboards", e);
+        }
+      }
+
+      if (parsedFromStorage) {
+        const migrated = parsedFromStorage.map((db: Dashboard) => {
+          if (db.v === "1.0") {
+            return db;
+          }
+          return {
+            ...db,
+            widgets: (db.widgets || []).map((w: Widget) => ({
+              ...w,
+              w: (w.w || (w as any).cols || 1) <= 4 ? (w.w || (w as any).cols || 1) * 6 : (w.w || (w as any).cols || 6),
+              h: (w.h || (w as any).rows || 1) <= 3 ? (w.h || (w as any).rows || 1) * 4 : (w.h || (w as any).rows || 4)
+            }))
+          };
+        });
+        setSavedDashboards(migrated);
+        if (migrated.length > 0) {
+          setWidgets(migrated[0].widgets);
+          setDashboardName(migrated[0].name);
+          setActiveDashboardId(migrated[0].id);
+        } else {
+          setWidgets([]);
         }
       } else {
         const initialDashboards = [{
