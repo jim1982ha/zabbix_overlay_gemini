@@ -300,8 +300,18 @@ export const DashboardGrid = React.memo(function DashboardGrid({
       setLayouts(() => {
         // Reconstruct lg layout to match new widgets list. Reset other layouts to avoid stale coordinates from other dashboards.
         const lg: Layout = widgets.map(w => ({ i: w.id, x: w.x ?? 0, y: w.y ?? Infinity, w: w.w ?? (isMobile ? 1 : 12), h: w.h ?? 10 }));
+        
+        // Generate explicit stacked layout for mobile breakpoints (1 column wide)
+        const mobileLayout: Layout = widgets.map((w, index) => ({ 
+          i: w.id, 
+          x: 0, 
+          y: Infinity, 
+          w: 1, 
+          h: w.h ?? 10 
+        }));
+        
         // Since lg, md, and sm all have 24 columns, they share the identical layout perfectly and scale smoothly
-        return { lg, md: lg, sm: lg };
+        return { lg, md: lg, sm: lg, xs: mobileLayout, xxs: mobileLayout };
       });
     }
   }, [widgets, isMobile]);
@@ -317,22 +327,17 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   const handleLayoutChange = (currentLayout: Layout, allLayouts: Partial<Record<string, Layout>>) => {
     setLayouts(allLayouts);
     
-    // De-bounce and persist changes back to the canonical widgets store (using currentLayout to be fully responsive at any zooms/breakpoints)
+    // De-bounce and persist changes back to the canonical widgets store (use the 'lg' layout so mobile breakpoints don't corrupt the grid coordinates)
     if (layoutChangeTimer.current) clearTimeout(layoutChangeTimer.current);
     layoutChangeTimer.current = setTimeout(() => {
       setWidgets(prevWidgets => {
         let changed = false;
+        const targetLayout = allLayouts.lg || currentLayout;
         const next = prevWidgets.map(w => {
-          const item = currentLayout.find((l: any) => l.i === w.id);
+          const item = targetLayout.find((l: any) => l.i === w.id);
           if (item) {
             let newW = item.w;
             let newX = item.x;
-            
-            // Standardize mobile stacked view boundaries
-            if (currentBreakpoint === 'xs' || currentBreakpoint === 'xxs') {
-              newW = 24;
-              newX = 0;
-            }
             
             if (w.x !== newX || w.y !== item.y || w.w !== newW || w.h !== item.h) {
               changed = true;
@@ -366,7 +371,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
               hosts: [],
               x: 0,
               y: 0,
-              w: isMobile ? 1 : 12,
+              w: 12, // Always default to 12 internally; mobile layouts will override to 1 for display
               h: 10,
               chartType: 'line',
               aggregation: 'none',
@@ -456,7 +461,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
         return (
           <div
             key={w.id}
-            data-grid={{ i: w.id, x: w.x ?? 0, y: w.y ?? Infinity, w: w.w ?? (isMobile ? 1 : 12), h: w.h ?? 10 }}
+            data-grid={{ i: w.id, x: w.x ?? 0, y: w.y ?? Infinity, w: w.w ?? 12, h: w.h ?? 10 }}
             className={cn(
               "relative group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 flex flex-col rounded",
               editingWidgetId === w.id ? "z-[100]" : "z-10 hover:z-[60]",
