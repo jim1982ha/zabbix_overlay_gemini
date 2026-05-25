@@ -289,7 +289,26 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   }, [widgets, globalSearch]);
 
   const [currentBreakpoint, setCurrentBreakpoint] = useState<string>('lg');
-  const [layouts, setLayouts] = useState<Partial<Record<string, Layout>>>({});
+
+  // Synchronous initial layout generation to completely prevent layout shifts on mount!
+  const [layouts, setLayouts] = useState<Partial<Record<string, Layout>>>(() => {
+    const lg: Layout = widgets.map(w => ({
+      i: w.id,
+      x: typeof w.x === 'number' ? w.x : 0,
+      y: typeof w.y === 'number' ? w.y : Infinity,
+      w: typeof w.w === 'number' ? w.w : (isMobile ? 1 : 12),
+      h: typeof w.h === 'number' ? w.h : 10
+    }));
+    const mobileLayout: Layout = widgets.map(w => ({
+      i: w.id,
+      x: 0,
+      y: typeof w.y === 'number' ? w.y : Infinity,
+      w: 1,
+      h: typeof w.h === 'number' ? w.h : 10
+    }));
+    return { lg, md: lg, sm: lg, xs: mobileLayout, xxs: mobileLayout };
+  });
+
   const prevWidgetIds = React.useRef<string>('');
 
   React.useEffect(() => {
@@ -299,15 +318,21 @@ export const DashboardGrid = React.memo(function DashboardGrid({
       prevWidgetIds.current = layoutFingerprint;
       setLayouts(() => {
         // Reconstruct lg layout to match new widgets list. Reset other layouts to avoid stale coordinates from other dashboards.
-        const lg: Layout = widgets.map(w => ({ i: w.id, x: w.x ?? 0, y: w.y ?? Infinity, w: w.w ?? (isMobile ? 1 : 12), h: w.h ?? 10 }));
+        const lg: Layout = widgets.map(w => ({ 
+          i: w.id, 
+          x: typeof w.x === 'number' ? w.x : 0, 
+          y: typeof w.y === 'number' ? w.y : Infinity, 
+          w: typeof w.w === 'number' ? w.w : (isMobile ? 1 : 12), 
+          h: typeof w.h === 'number' ? w.h : 10 
+        }));
         
         // Generate explicit stacked layout for mobile breakpoints (1 column wide)
-        const mobileLayout: Layout = widgets.map((w, index) => ({ 
+        const mobileLayout: Layout = widgets.map(w => ({ 
           i: w.id, 
           x: 0, 
-          y: Infinity, 
+          y: typeof w.y === 'number' ? w.y : Infinity, 
           w: 1, 
-          h: w.h ?? 10 
+          h: typeof w.h === 'number' ? w.h : 10 
         }));
         
         // Since lg, md, and sm all have 24 columns, they share the identical layout perfectly and scale smoothly
@@ -316,11 +341,30 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     }
   }, [widgets, isMobile]);
 
+  // Robust boundary-detection, user-interaction tracking, and debouncing setup for layout persistence
+  const isUserInteracting = React.useRef(false);
+  const interactionTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined);
   const layoutChangeTimer = React.useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const startInteraction = useCallback(() => {
+    isUserInteracting.current = true;
+    if (interactionTimeoutRef.current) {
+      clearTimeout(interactionTimeoutRef.current);
+      interactionTimeoutRef.current = undefined;
+    }
+  }, []);
+
+  const stopInteraction = useCallback(() => {
+    if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
+    interactionTimeoutRef.current = setTimeout(() => {
+      isUserInteracting.current = false;
+    }, 500);
+  }, []);
 
   React.useEffect(() => {
     return () => {
       if (layoutChangeTimer.current) clearTimeout(layoutChangeTimer.current);
+      if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
     };
   }, []);
 
@@ -329,6 +373,17 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     
     // De-bounce and persist changes back to the canonical widgets store (use the 'lg' layout so mobile breakpoints don't corrupt the grid coordinates)
     if (layoutChangeTimer.current) clearTimeout(layoutChangeTimer.current);
+
+    // CRITICAL: Prevent saving layout if we are in mobile/stacked breakpoint, container not fully mounted, or width is not measured.
+    if (currentBreakpoint === 'xs' || currentBreakpoint === 'xxs' || width <= 100 || !mounted) {
+      return;
+    }
+
+    // Only update canonical state if the update was triggered by an actual user drag/resize operation
+    if (!isUserInteracting.current) {
+      return;
+    }
+
     layoutChangeTimer.current = setTimeout(() => {
       setWidgets(prevWidgets => {
         let changed = false;
@@ -348,7 +403,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
         });
         return changed ? next : prevWidgets;
       });
-    }, 300);
+    }, 150); // Faster reaction, clean debounced writing back
   };
 
   if (widgets.length === 0) {
@@ -388,15 +443,34 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     );
   }
 
+  if (filteredWidgets.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[300px] w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center animate-in fade-in duration-300">
+        <div className="w-12 h-12 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center shadow-sm mb-3">
+          <Settings2 className="w-6 h-6 text-slate-400" />
+        </div>
+        <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">No Matching Widgets</h3>
+        <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          No widgets match your current search query <strong>"{globalSearch}"</strong>. Try checking your spelling or search terms.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className="w-full h-full relative min-w-0 overflow-x-hidden">
-      {!mounted ? (
-        <div className="w-full h-full min-h-[600px]" />
+      {!mounted || width <= 100 ? (
+        <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-slate-50/10 dark:bg-slate-900/10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-xs text-slate-400 font-medium">Initializing Dashboard Grid...</span>
+          </div>
+        </div>
       ) : (
         <ResponsiveGridLayout
           className="layout"
           width={width}
-          layouts={layouts}
+          layouts={layouts as any}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 24, md: 24, sm: 24, xs: 1, xxs: 1 }}
           rowHeight={isMobile ? 30 : 25}
@@ -404,6 +478,10 @@ export const DashboardGrid = React.memo(function DashboardGrid({
           onBreakpointChange={(bp) => {
             setCurrentBreakpoint(bp);
           }}
+          onDragStart={startInteraction}
+          onDragStop={stopInteraction}
+          onResizeStart={startInteraction}
+          onResizeStop={stopInteraction}
           dragConfig={{
             enabled: !isMobile,
             handle: ".drag-handle",

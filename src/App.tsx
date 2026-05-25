@@ -370,7 +370,17 @@ function DashboardApp() {
     }
   }, [zabbixConfig, initialDiscoveryTriggered, discoverZabbixAssets, isConfigLoaded, isAuthorized]);
 
+  const resetDashboardUiStates = useCallback(() => {
+    setEditingWidgetId(null);
+    setWidgetZoomDomains({});
+    setHiddenSeries(new Set());
+    setGlobalSearch("");
+    setIsRenaming(false);
+    setTempDashboardName("");
+  }, [setEditingWidgetId]);
+
   const loadDashboards = useCallback(async (mode: 'demo' | 'live', specificUrl?: string) => {
+    resetDashboardUiStates();
     setWidgets([]);
     setActiveDashboardId(undefined);
     setDashboardName('Loading...');
@@ -448,7 +458,7 @@ function DashboardApp() {
         localStorage.setItem(targetKey, JSON.stringify(initialDashboards));
       }
     }
-  }, [setWidgets, setActiveDashboardId, setDashboardName, setSavedDashboards]);
+  }, [setWidgets, setActiveDashboardId, setDashboardName, setSavedDashboards, resetDashboardUiStates]);
 
   const [draftZabbixConfig, setDraftZabbixConfig] = useState(zabbixConfig);
   useEffect(() => {
@@ -595,6 +605,7 @@ function DashboardApp() {
   };
 
   const handleSelectDashboard = (id: string) => {
+    resetDashboardUiStates();
     if (!id) {
       setActiveDashboardId(undefined);
       setWidgets(defaultWidgets);
@@ -612,12 +623,13 @@ function DashboardApp() {
   };
 
   const handleCreateDashboard = () => {
+    resetDashboardUiStates();
     let currentSaved = savedDashboards;
     if (savedDashboards.length === 0 && widgets.length > 0) {
       const defaultDb = { 
-        id: `db-default-${Date.now()}`, 
-        name: dashboardName, 
-        widgets: widgets.map(w => cleanWidgetForSaveAndExport(w)) 
+         id: `db-default-${Date.now()}`, 
+         name: dashboardName, 
+         widgets: widgets.map(w => cleanWidgetForSaveAndExport(w)) 
       };
       currentSaved = [defaultDb];
     }
@@ -646,6 +658,7 @@ function DashboardApp() {
     syncDashboards(updated);
     
     if (activeDashboardId === id) {
+      resetDashboardUiStates();
       if (updated.length > 0) {
         setActiveDashboardId(updated[0].id);
         setWidgets(updated[0].widgets);
@@ -657,7 +670,7 @@ function DashboardApp() {
       }
       setView('dashboard');
     }
-  }, [savedDashboards, activeDashboardId, dashboardStorageKey, setWidgets, setDashboardName, setView]);
+  }, [savedDashboards, activeDashboardId, dashboardStorageKey, setWidgets, setDashboardName, setView, resetDashboardUiStates]);
 
   const handleExportDashboard = () => {
     const exportData = {
