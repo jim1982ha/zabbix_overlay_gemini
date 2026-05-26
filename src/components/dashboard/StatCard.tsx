@@ -14,14 +14,19 @@ interface StatCardProps {
   color?: string;
   tooltip?: string;
   timestamp?: string;
+  onClick?: () => void;
 }
 
-export function StatCard({ title, value, unit, change, trend, color = "blue", tooltip, timestamp }: StatCardProps) {
+export function StatCard({ title, value, unit, change, trend, color = "blue", tooltip, timestamp, onClick }: StatCardProps) {
   const isPositive = trend === 'up';
   
   return (
     <Card 
-      className="p-4 @[300px]:p-5 flex flex-col justify-between relative overflow-hidden group h-full transition-all duration-300 @container flex-1 cancel-drag"
+      onClick={onClick}
+      className={cn(
+        "p-4 @[300px]:p-5 flex flex-col justify-between relative overflow-hidden group h-full transition-all duration-300 @container flex-1 cancel-drag",
+        onClick && "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
+      )}
     >
       {/* Header with Title Indicator */}
       <div className="relative z-10 flex flex-col gap-1.5 shrink-0 pr-6 lg:group-hover:pr-10 transition-all duration-300">

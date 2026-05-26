@@ -18,6 +18,7 @@ import { Widget } from "../../types/zabbix";
 import { StatCard } from "./StatCard";
 import { TrendChart } from "./TrendChart";
 import { WidgetEditor } from "./WidgetEditor";
+import { KpiTrendModal } from "./KpiTrendModal";
 import { cn, getDeterministicColor, formatValue } from "../../lib/utils";
 
 interface DashboardGridProps {
@@ -187,6 +188,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
         trend={trendDir}
         color={w.aggregation !== 'none' ? getDeterministicColor('agg_val', w.metrics?.[0]) : (w.metrics?.[0] && w.hosts?.[0] ? getDeterministicColor(`${w.metrics[0]}_${w.hosts[0]}`, w.metrics[0]) : '#0EA5E9')}
         timestamp={timestampStr}
+        onClick={() => setKpiModalWidget(w)}
       />
     );
   };
@@ -289,6 +291,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   }, [widgets, globalSearch]);
 
   const [currentBreakpoint, setCurrentBreakpoint] = useState<string>('lg');
+  const [kpiModalWidget, setKpiModalWidget] = useState<Widget | null>(null);
 
   // Synchronous initial layout generation to completely prevent layout shifts on mount!
   const [layouts, setLayouts] = useState<Partial<Record<string, Layout>>>(() => {
@@ -627,6 +630,88 @@ export const DashboardGrid = React.memo(function DashboardGrid({
         );
       })}
         </ResponsiveGridLayout>
+      )}
+
+      {kpiModalWidget && (
+        <KpiTrendModal
+          widget={kpiModalWidget}
+          onClose={() => setKpiModalWidget(null)}
+          chartData={(widgetDataMapping[kpiModalWidget.id]?.chartData || data).map((point: any) => {
+            // we will need to aggregate the data because kpi uses aggregations or we can just show the raw series
+            let newPoint = { ...point };
+            if (kpiModalWidget.aggregation !== 'none') {
+               let vals: number[] = [];
+               (kpiModalWidget.metrics || []).forEach(m => {
+                 const hostsToUse = (kpiModalWidget.hosts || []).includes('all') ? availableHosts : (kpiModalWidget.hosts || []);
+                 hostsToUse.forEach(h => {
+                   const key = `${m}_${h}`;
+                   if (!hiddenSeries.has(key) && point[key] != null) vals.push(Number(point[key]));
+                 });
+               });
+               const sum = vals.reduce((a,b)=>a+b, 0);
+               newPoint['agg_val'] = (kpiModalWidget.aggregation === 'avg' && vals.length > 0) ? sum / vals.length : sum;
+            }
+            return newPoint;
+          })}
+          chartSeries={
+            kpiModalWidget.aggregation !== 'none' 
+            ? [{ 
+                key: 'agg_val', 
+                name: kpiModalWidget.aggregation === 'sum' ? 'Aggregate Sum' : 'Aggregate Mean', 
+                color: getDeterministicColor('agg_val', kpiModalWidget.metrics?.[0] || 'kpi'),
+                metric: kpiModalWidget.metrics?.[0]
+              }]
+            : (kpiModalWidget.metrics || []).flatMap(m => {
+                const hostsToUse = (kpiModalWidget.hosts || []).includes('all') ? availableHosts : (kpiModalWidget.hosts || []);
+                return hostsToUse.map(h => ({
+                  key: `${m}_${h}`,
+                  name: `${m.toUpperCase()} [${h}]`,
+                  color: getDeterministicColor(`${m}_${h}`, m),
+                  metric: m
+                }));
+            })
+          }
+          timestampStr={(() => {
+            // Using same Logic as KPI widget timestamp
+            if (data && data.length > 0) {
+               const firstPoint = data[0];
+               const lastPointData = data[data.length - 1];
+               if (firstPoint?.time && lastPointData?.time) {
+                  const d1 = new Date(firstPoint.time);
+                  const d2 = new Date(lastPointData.time);
+                  
+                  let d2End = new Date(d2.getTime());
+                  if (filters.granularity === '1h') d2End = new Date(d2.getTime() + 60 * 60 * 1000);
+                  else if (filters.granularity === '1m') d2End = new Date(d2.getTime() + 60 * 1000);
+                  else if (filters.granularity === '5m') d2End = new Date(d2.getTime() + 5 * 60 * 1000);
+                  else if (filters.granularity === '15m') d2End = new Date(d2.getTime() + 15 * 60 * 1000);
+                  else if (filters.granularity === '30m') d2End = new Date(d2.getTime() + 30 * 60 * 1000);
+                  else if (filters.granularity === '1d') d2End = new Date(d2.getTime() + 24 * 60 * 60 * 1000);
+
+                  if (filters.granularity === '1d') {
+                      return d1.toLocaleDateString() === d2End.toLocaleDateString() 
+                         ? d1.toLocaleDateString() 
+                         : `${d1.toLocaleDateString()} - ${d2End.toLocaleDateString()}`;
+                  } else {
+                      if (d1.toLocaleDateString() === d2End.toLocaleDateString()) {
+                          return `${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                      } else {
+                          return `${d1.toLocaleDateString()} ${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleDateString()} ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                      }
+                  }
+               }
+            }
+            return undefined;
+          })()}
+          unit={(() => {
+             const m = kpiModalWidget.metrics?.[0];
+             return m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';
+          })()}
+          hiddenSeries={hiddenSeries}
+          onLegendClick={handleLegendClick}
+          onColorChangeRequest={handleColorChangeRequest}
+          onHostClick={handleHostClick}
+        />
       )}
     </div>
   );
