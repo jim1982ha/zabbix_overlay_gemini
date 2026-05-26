@@ -19,7 +19,7 @@ interface Notification {
   host?: string;
 }
 
-export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbixConfig, showToast, isDemo }: { globalSearch?: string, zabbixBaseUrl?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void, isDemo: boolean }) {
+export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbixConfig, showToast, isDemo, refreshIntervalMs = 0 }: { globalSearch?: string, zabbixBaseUrl?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void, isDemo: boolean, refreshIntervalMs?: number }) {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info' | 'success'>('all');
   
@@ -103,7 +103,14 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
 
   useEffect(() => {
     fetchZabbixTriggers();
-  }, [fetchZabbixTriggers]);
+    
+    if (refreshIntervalMs > 0 && !isDemo) {
+      const interval = setInterval(() => {
+        fetchZabbixTriggers();
+      }, refreshIntervalMs);
+      return () => clearInterval(interval);
+    }
+  }, [fetchZabbixTriggers, refreshIntervalMs, isDemo]);
 
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
 

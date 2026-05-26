@@ -5,6 +5,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import net from "net";
 import rateLimit from "express-rate-limit";
+import fs from "fs";
 import { zabbixRouter } from "./server/routes/zabbix";
 import { timeseriesRouter } from "./server/routes/timeseries";
 
@@ -53,7 +54,6 @@ async function startServer() {
   app.get("/api/demo-dashboard", (req, res) => {
     try {
       const demoPath = path.join(process.cwd(), "src", "data", "demoDashboard.json");
-      const fs = require("fs");
       if (fs.existsSync(demoPath)) {
         res.json(JSON.parse(fs.readFileSync(demoPath, "utf-8")));
       } else {
@@ -67,7 +67,10 @@ async function startServer() {
   app.post("/api/demo-dashboard", express.json(), (req, res) => {
     try {
       const demoPath = path.join(process.cwd(), "src", "data", "demoDashboard.json");
-      const fs = require("fs");
+      const dirOfDemo = path.dirname(demoPath);
+      if (!fs.existsSync(dirOfDemo)) {
+        fs.mkdirSync(dirOfDemo, { recursive: true });
+      }
       fs.writeFileSync(demoPath, JSON.stringify(req.body, null, 2), "utf-8");
       res.json({ success: true });
     } catch (e) {

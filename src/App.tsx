@@ -27,7 +27,7 @@ import {
   BarChart3
 } from "lucide-react";
 import axios from "axios";
-import { cn, getDeterministicColor, updateMetricColor } from "./lib/utils";
+import { cn, getDeterministicColor, updateMetricColor, getPollingIntervalMs } from "./lib/utils";
 
 type View = "dashboard" | "network" | "infra" | "config" | "notifications";
 
@@ -134,9 +134,6 @@ function DashboardApp() {
   const [secureTokenInput, setSecureTokenInput] = useState("");
   const [requiresSecureToken, setRequiresSecureToken] = useState(false);
   const [isConfigLoaded, setIsConfigLoaded] = useState(false);
-  const isAuthorized = useMemo(() => {
-    return !requiresSecureToken || !!sessionStorage.getItem("hareporting_app_secure_token");
-  }, [requiresSecureToken, secureTokenPrompt]);
   const [refreshProgress, setRefreshProgress] = useState(0);
   const [colorPickerTarget, setColorPickerTarget] = useState<{ metric: string, current: string } | null>(null);
   const [colorMapToggle, setColorMapToggle] = useState(0);
@@ -161,6 +158,10 @@ function DashboardApp() {
   const [savedZabbixUrl, setSavedZabbixUrl] = useState<string>(
     sessionStorage.getItem('hareporting_zabbix_url') || ''
   );
+
+  const isAuthorized = useMemo(() => {
+    return appMode === 'demo' || !requiresSecureToken || !!sessionStorage.getItem("hareporting_app_secure_token");
+  }, [requiresSecureToken, secureTokenPrompt, appMode]);
 
   const showToast = useCallback((message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
     setToast({ message, type });
@@ -246,7 +247,7 @@ function DashboardApp() {
     isDemoRequest: isDemo
   }), [filters, zabbixConfig, activeMetricsStr, activeHostsStr, availableMetrics, availableHosts, isDemo]);
 
-  const { data, isLoading: loading, error: timeseriesError, refetch: fetchStats } = useTimeseries(timeseriesParams, metricDict, !isConfigLoaded || !isAuthorized);
+  const { data, isLoading: loading, error: timeseriesError, refetch: fetchStats } = useTimeseries(timeseriesParams, metricDict, !isConfigLoaded || !isAuthorized, getPollingIntervalMs(filters.granularity));
 
   // Sync last sync dates upon data change
   useEffect(() => {
@@ -742,16 +743,7 @@ function DashboardApp() {
   // Setup active Live polling progress calculations
   useEffect(() => {
     if (filters.mode === 'live') {
-      let stepMs = 60000;
-      switch (filters.granularity) {
-        case '1m': stepMs = 60000; break;
-        case '5m': stepMs = 300000; break;
-        case '15m': stepMs = 900000; break;
-        case '30m': stepMs = 1800000; break;
-        case '1h': stepMs = 3600000; break;
-        case '1d': stepMs = 86400000; break;
-        default: stepMs = 60000;
-      }
+      const stepMs = getPollingIntervalMs(filters.granularity, 60000);
       
       const updateProgress = () => {
          const t = Date.now();
@@ -916,7 +908,14 @@ function DashboardApp() {
     }
     if (view === "notifications") {
       const zabbixBaseUrl = zabbixConfig.url.replace('/api_jsonrpc.php', '');
-      return <NotificationFeed globalSearch={globalSearch} zabbixBaseUrl={zabbixBaseUrl} zabbixConfig={zabbixConfig} showToast={showToast} isDemo={isDemo} />;
+      return <NotificationFeed 
+        globalSearch={globalSearch} 
+        zabbixBaseUrl={zabbixBaseUrl} 
+        zabbixConfig={zabbixConfig} 
+        showToast={showToast} 
+        isDemo={isDemo} 
+        refreshIntervalMs={filters.mode === 'live' ? getPollingIntervalMs(filters.granularity) : 0} 
+      />;
     }
     if (view === "config") {
       return (

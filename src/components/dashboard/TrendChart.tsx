@@ -22,7 +22,7 @@ import {
 } from 'recharts';
 import { motion } from 'motion/react';
 import { Download, ZoomIn, Clock, ArrowDown, ArrowUp } from 'lucide-react';
-import { cn, formatValue } from '../../lib/utils';
+import { cn, formatValue, getPollingIntervalMs } from '../../lib/utils';
 
 interface DataPoint {
   time: string;
@@ -251,15 +251,8 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
                  try {
                    const d = new Date(label);
                    if (isNaN(d.getTime())) return formatXAxis(label);
-                   let stepMs = 60000;
                    const granLower = (granularity || '').toLowerCase();
-                   if (granLower === '1m') stepMs = 60000;
-                   else if (granLower === '5m') stepMs = 300000;
-                   else if (granLower === '15m') stepMs = 900000;
-                   else if (granLower === '30m') stepMs = 1800000;
-                   else if (granLower === '1h') stepMs = 3600000;
-                   else if (granLower === '1d') stepMs = 86400000;
-                   else stepMs = 60000;
+                   const stepMs = getPollingIntervalMs(granLower, 60000);
 
                    const spanMs = data && data.length > 0 ? (new Date(data[data.length-1].time).getTime() - new Date(data[0].time).getTime()) : 0;
                    const d2 = new Date(d.getTime() + stepMs);

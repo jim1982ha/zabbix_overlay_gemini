@@ -411,15 +411,27 @@ function NavItem({ icon, label, active = false, isCollapsed = false, onClick, cl
     <div 
       onClick={onClick}
       className={cn(
-        "flex items-center px-4 py-3 border-l-[3px] transition-all group cursor-pointer",
+        "relative flex items-center h-[52px] w-full pl-6 pr-6 transition-colors group cursor-pointer",
         active ? 
-          'bg-[#f0f4f9] dark:bg-blue-500/10 text-[#0055d4] dark:text-blue-400 border-[#0055d4] dark:border-blue-500' : 
-          'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 border-transparent',
+          "bg-transparent hover:bg-slate-100/40 dark:hover:bg-slate-800/30" : 
+          "hover:bg-slate-100/40 dark:hover:bg-slate-800/30",
         className
+      )}
+    >
+      {/* Active border bar */}
+      {active && (
+        <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-[#0055d4] dark:bg-blue-500" />
+      )}
+
+      {/* Text Label */}
+      <div className={cn(
+        "flex-1 truncate text-[14px] flex items-center transition-colors font-medium",
+        active ? "text-[#0055d4] dark:text-blue-400" : "text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200"
       )}>
-      <div className={cn("flex-1 truncate text-[14px] flex items-center", active ? "font-semibold text-slate-900 dark:text-blue-400" : "")}>
         {label}
       </div>
+
+      {/* Icon */}
       <div className={cn(
         "transition-colors shrink-0 flex items-center justify-center ml-auto",
         active ? "text-[#0055d4] dark:text-blue-400" : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 stroke-[1.5]"

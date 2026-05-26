@@ -410,29 +410,29 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     // De-bounce and persist changes back to the canonical widgets store (use the 'lg' layout so mobile breakpoints don't corrupt the grid coordinates)
     if (layoutChangeTimer.current) clearTimeout(layoutChangeTimer.current);
 
-    // CRITICAL: Prevent saving layout if we are in mobile/stacked breakpoint.
-    if (currentBreakpoint === 'xs' || currentBreakpoint === 'xxs') {
-      return;
-    }
-
-    // Only update canonical state if the update was triggered by an actual user drag/resize operation
-    if (!isUserInteracting.current) {
-      return;
-    }
-
     layoutChangeTimer.current = setTimeout(() => {
       setWidgets(prevWidgets => {
         let changed = false;
         const targetLayout = allLayouts.lg || currentLayout;
+        const isMobileBreakpoint = currentBreakpoint === 'xs' || currentBreakpoint === 'xxs';
+
         const next = prevWidgets.map(w => {
-          const item = targetLayout.find((l: any) => l.i === w.id);
+          const item = (isMobileBreakpoint ? currentLayout : targetLayout).find((l: any) => l.i === w.id);
           if (item) {
-            let newW = item.w;
-            let newX = item.x;
-            
-            if (w.x !== newX || w.y !== item.y || w.w !== newW || w.h !== item.h) {
-              changed = true;
-              return { ...w, x: newX, y: item.y, w: newW, h: item.h };
+            if (isMobileBreakpoint) {
+              // In mobile mode, copy only y and h to prevent resetting desktop width (which is 1 on mobile) and x (which is 0 on mobile)
+              if (w.y !== item.y || w.h !== item.h) {
+                changed = true;
+                return { ...w, y: item.y, h: item.h };
+              }
+            } else {
+              let newW = item.w;
+              let newX = item.x;
+              
+              if (w.x !== newX || w.y !== item.y || w.w !== newW || w.h !== item.h) {
+                changed = true;
+                return { ...w, x: newX, y: item.y, w: newW, h: item.h };
+              }
             }
           }
           return w;

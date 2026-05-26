@@ -5,6 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function getPollingIntervalMs(granularity: string, defaultMs = 300000): number {
+  switch (granularity) {
+    case '1m': return 60000;
+    case '5m': return 300000;
+    case '15m': return 900000;
+    case '30m': return 1800000;
+    case '1h': return 3600000;
+    case '1d': return 86400000;
+    case 'auto': return defaultMs;
+    default: return defaultMs;
+  }
+}
+
 const hashString = (str: string) => {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
