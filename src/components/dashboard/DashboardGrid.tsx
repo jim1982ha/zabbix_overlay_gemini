@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useState, useRef, useEffect } from "react";
 // @ts-ignore
-import { ResponsiveGridLayout, useContainerWidth, Layout } from "react-grid-layout";
+import { ResponsiveGridLayout, Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
@@ -73,7 +73,31 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     filters
   } = useDashboard();
 
-  const { width, containerRef, mounted } = useContainerWidth();
+  const [containerWidth, setContainerWidth] = useState(1200);
+  const [isGridMounted, setIsGridMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsGridMounted(true);
+    if (!containerRef.current) return;
+    
+    // Initial measurement
+    const setWidth = () => {
+      if (containerRef.current && containerRef.current.offsetWidth > 0) {
+        setContainerWidth(containerRef.current.offsetWidth);
+      }
+    };
+    setWidth();
+
+    const observer = new ResizeObserver((entries) => {
+      if (entries[0] && entries[0].contentRect.width > 0) {
+        setContainerWidth(entries[0].contentRect.width);
+      }
+    });
+    
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // Cancel edit mode helper
   const handleCancelEdit = () => {
@@ -453,8 +477,8 @@ export const DashboardGrid = React.memo(function DashboardGrid({
 
   return (
     <div ref={containerRef} className="w-full h-full relative min-w-0 overflow-x-hidden">
-      {!mounted || width <= 100 ? (
-        <div className="w-full h-full min-h-[600px] flex items-center justify-center bg-slate-50/10 dark:bg-slate-900/10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+      {(!isGridMounted) ? (
+        <div style={{ minHeight: '600px' }} className="w-full h-full flex items-center justify-center bg-slate-50/10 dark:bg-slate-900/10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
           <div className="flex flex-col items-center gap-2">
             <div className="w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-xs text-slate-400 font-medium">Initializing Dashboard Grid...</span>
@@ -463,7 +487,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
       ) : (
         <ResponsiveGridLayout
           className="layout"
-          width={width}
+          width={containerWidth}
           layouts={layouts as any}
           breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
           cols={{ lg: 24, md: 24, sm: 24, xs: 1, xxs: 1 }}
