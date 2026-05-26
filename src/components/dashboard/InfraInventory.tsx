@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Server, Cpu, HardDrive, Database, Zap, Activity, ChevronRight, ChevronLeft, Search } from 'lucide-react';
+import { Server, Cpu, HardDrive, Database, Zap, Activity, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { FilterBar, FilterButton } from '../ui/FilterBar';
+import { ScrollableBar } from '../layout/ScrollableBar';
 import { STDL_LIST_CARD_CLASS } from '../ui/Card';
 import axios from 'axios';
 
@@ -10,18 +11,6 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
   const [activeHostGroup, setActiveHostGroup] = React.useState<string>('all');
   
   const [zabbixAssets, setZabbixAssets] = useState<any[]>([]);
-
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-
-  const checkScroll = useCallback(() => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
-    }
-  }, []);
 
   const fetchZabbixAssets = useCallback(async () => {
     if (isDemo) return;
@@ -143,12 +132,6 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
       .sort((a, b) => b.count - a.count);
   }, [allAssets]);
 
-  useEffect(() => {
-    checkScroll();
-    window.addEventListener('resize', checkScroll);
-    return () => window.removeEventListener('resize', checkScroll);
-  }, [checkScroll, hostGroupsWithCounts]);
-
   const filteredAssets = allAssets.filter(asset => {
     const combinedSearch = (globalSearch || "").toLowerCase().trim();
     const matchesSearch = asset.id.toLowerCase().includes(combinedSearch) || 
@@ -168,63 +151,27 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
               </span>
           </div>
         )}
-        <div className="relative flex-1 min-w-0 flex items-center group/nav">
-          {canScrollLeft && (
-            <button 
-              onClick={() => {
-                if (scrollContainerRef.current) {
-                  scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
-                }
-              }}
-              className="absolute left-0 z-10 w-8 h-full flex items-center justify-start bg-gradient-to-r from-white dark:from-slate-900 from-50% to-transparent pointer-events-auto border-none outline-none"
-            >
-              <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-200 hover:shadow transition-all">
-                 <ChevronLeft className="w-4 h-4" />
-              </div>
-            </button>
-          )}
-
-          <div 
-            ref={scrollContainerRef}
-            onScroll={checkScroll}
-            className="flex gap-2 flex-1 overflow-x-auto scrollbar-hide scroll-smooth pb-1 sm:pb-0"
+        <ScrollableBar>
+          <FilterButton 
+            onClick={() => setActiveHostGroup('all')}
+            active={activeHostGroup === 'all'}
+            activeVariant="slate"
+            badge={allAssets.length}
           >
+            All
+          </FilterButton>
+          {hostGroupsWithCounts.map(group => (
             <FilterButton 
-              onClick={() => setActiveHostGroup('all')}
-              active={activeHostGroup === 'all'}
-              activeVariant="slate"
-              badge={allAssets.length}
+              key={group.name}
+              onClick={() => setActiveHostGroup(group.name)}
+              active={activeHostGroup === group.name}
+              activeVariant="blue"
+              badge={group.count}
             >
-              All
+              {group.name}
             </FilterButton>
-            {hostGroupsWithCounts.map(group => (
-              <FilterButton 
-                key={group.name}
-                onClick={() => setActiveHostGroup(group.name)}
-                active={activeHostGroup === group.name}
-                activeVariant="blue"
-                badge={group.count}
-              >
-                {group.name}
-              </FilterButton>
-            ))}
-          </div>
-
-          {canScrollRight && (
-            <button 
-              onClick={() => {
-                if (scrollContainerRef.current) {
-                  scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
-                }
-              }}
-              className="absolute right-0 z-10 w-8 h-full flex items-center justify-end bg-gradient-to-l from-white dark:from-slate-900 from-50% to-transparent pointer-events-auto border-none outline-none"
-            >
-              <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-200 hover:shadow transition-all">
-                <ChevronRight className="w-4 h-4" />
-              </div>
-            </button>
-          )}
-        </div>
+          ))}
+        </ScrollableBar>
       </FilterBar>
 
       {filteredAssets.length > 0 ? (

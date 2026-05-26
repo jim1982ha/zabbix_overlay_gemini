@@ -3,6 +3,7 @@ import { Activity, Globe, Zap, Shield, ArrowUpRight, ArrowDownRight, Search } fr
 import { cn } from '../../lib/utils';
 import { Card } from "../ui/Card";
 import { FilterBar, FilterButton } from "../ui/FilterBar";
+import { ScrollableBar } from "../layout/ScrollableBar";
 import axios from 'axios';
 
 export function NetworkTopology({ filters, globalSearch = "", zabbixConfig, isDemo }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string }, isDemo: boolean }) {
@@ -204,7 +205,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig, isDe
   return (
     <div className="space-y-6">
       <FilterBar>
-        <div className="flex gap-2 flex-1 overflow-x-auto scrollbar-hide scroll-smooth pb-1 sm:pb-0">
+        <ScrollableBar>
           <FilterButton 
             onClick={() => setGroupingMode('none')}
             active={groupingMode === 'none'}
@@ -226,7 +227,7 @@ export function NetworkTopology({ filters, globalSearch = "", zabbixConfig, isDe
           >
             Status
           </FilterButton>
-        </div>
+        </ScrollableBar>
       </FilterBar>
       <div className="flex flex-col gap-6">
         <div ref={containerRef} className="relative min-h-[450px] overflow-x-auto w-full">

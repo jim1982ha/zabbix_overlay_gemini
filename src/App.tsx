@@ -992,7 +992,10 @@ function DashboardApp() {
     >
       <div className="w-full min-w-0 space-y-4">
         {/* Dashboard Title & Actions header */}
-        <div className="flex flex-row items-center justify-between mb-4 flex-wrap gap-4 select-none">
+        <div className={cn(
+          "flex flex-row items-center justify-between mb-4 gap-2 select-none",
+          view === 'dashboard' ? "flex-wrap md:flex-nowrap" : "flex-nowrap"
+        )}>
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center gap-4 group/header min-w-0">
               {isRenaming ? (

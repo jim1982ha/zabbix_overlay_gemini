@@ -3,6 +3,7 @@ import { Bell, Activity, Shield, AlertTriangle, CheckCircle, Clock, X, ExternalL
 import { cn } from '../../lib/utils';
 import axios from 'axios';
 import { FilterBar, FilterButton } from "../ui/FilterBar";
+import { ScrollableBar } from "../layout/ScrollableBar";
 import { STDL_LIST_CARD_CLASS } from "../ui/Card";
 
 interface Notification {
@@ -178,49 +179,20 @@ export function NotificationFeed({
   useEffect(() => {
     if (setHeaderExtra) {
       setHeaderExtra(
-        <div className="flex items-center gap-2 p-1 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-sm text-xs font-semibold text-slate-600 dark:text-slate-400 max-w-full sm:max-w-md">
-          <div className="flex items-center gap-1.5 px-1">
-            <div className="relative flex h-2 w-2 shrink-0">
-              <span className={cn(
-                "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
-                isRefreshing ? "bg-amber-400" : "bg-emerald-400"
-              )}></span>
-              <span className={cn(
-                 "relative inline-flex rounded-full h-2 w-2",
-                 isRefreshing ? "bg-amber-500" : "bg-emerald-500"
-              )}></span>
-            </div>
-            <div className="truncate flex items-center pr-1.5 border-r border-slate-200 dark:border-slate-800 mr-0.5">
-              <span className="text-slate-950 dark:text-slate-100 uppercase tracking-wider text-[8px] bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded-sm mr-1 font-extrabold shrink-0">
-                {isDemo ? "DEMO" : "LIVE"}
-              </span>
-              <span className="text-[10px] sm:text-xs">
-                {isRefreshing 
-                  ? "Refreshing..." 
-                  : `Poll: ${
-                      refreshIntervalMs >= 3600000 
-                        ? `${refreshIntervalMs / 3600000}h` 
-                        : `${refreshIntervalMs / 60000}m`
-                    }`
-                }
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-slate-500 font-medium shrink-0">
-            <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="text-[10px] sm:text-[11px] mr-1">Last: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{lastRefreshedAt.toLocaleTimeString()}</strong></span>
-            <button 
-               onClick={triggerRefresh}
-               disabled={isRefreshing}
-               title="Force Refresh"
-               className={cn(
-                 "p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-sky-400 hover:border-slate-300 dark:hover:border-slate-600 rounded-sm transition-all flex items-center justify-center shrink-0",
-                 isRefreshing && "opacity-50 cursor-not-allowed"
-               )}
-            >
-               <RefreshCw className={cn("w-3.5 h-3.5 text-slate-500", isRefreshing && "animate-spin")} />
-            </button>
-          </div>
+        <div className="flex items-center gap-1.5 p-1 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-sm text-xs font-medium text-slate-500 dark:text-slate-400 shrink-0 select-none">
+          <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+          <span className="text-[10px] sm:text-[11px] whitespace-nowrap leading-none pt-0.5">Last: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{lastRefreshedAt.toLocaleTimeString()}</strong></span>
+          <button 
+             onClick={triggerRefresh}
+             disabled={isRefreshing}
+             title="Force Refresh"
+             className={cn(
+               "p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-sky-400 hover:border-slate-300 dark:hover:border-slate-600 rounded-sm transition-all flex items-center justify-center shrink-0 cursor-pointer",
+               isRefreshing && "opacity-50 cursor-not-allowed"
+             )}
+          >
+             <RefreshCw className={cn("w-3.5 h-3.5 text-slate-500 dark:text-slate-400", isRefreshing && "animate-spin")} />
+          </button>
         </div>
       );
     }
@@ -229,7 +201,7 @@ export function NotificationFeed({
         setHeaderExtra(null);
       }
     };
-  }, [isRefreshing, lastRefreshedAt, refreshIntervalMs, setHeaderExtra, isDemo, triggerRefresh]);
+  }, [isRefreshing, lastRefreshedAt, setHeaderExtra, triggerRefresh]);
 
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
 
@@ -280,7 +252,7 @@ export function NotificationFeed({
   return (
     <div className="space-y-6">
       <FilterBar>
-        <div className="flex gap-2 flex-1 overflow-x-auto scrollbar-hide scroll-smooth pb-1 sm:pb-0">
+        <ScrollableBar>
           <FilterButton 
             onClick={() => setSeverityFilter('all')}
             active={severityFilter === 'all'}
@@ -321,14 +293,14 @@ export function NotificationFeed({
           >
             Success
           </FilterButton>
-        </div>
-        <div className="flex items-center gap-3 shrink-0 ml-auto">
-            {globalSearch && (
-                <span className="text-xs text-slate-500 font-semibold px-3 py-1.5 flex items-center">
-                    Filtering for: "{globalSearch}"
-                </span>
-            )}
-        </div>
+        </ScrollableBar>
+        {globalSearch && (
+          <div className="flex items-center gap-3 shrink-0 ml-auto select-none">
+            <span className="text-xs text-slate-500 font-semibold px-3 py-1.5 flex items-center">
+                Filtering for: "{globalSearch}"
+            </span>
+          </div>
+        )}
       </FilterBar>
 
       <div className="space-y-4">
@@ -341,41 +313,41 @@ export function NotificationFeed({
           <div 
             key={n.id}
             onClick={() => setSelectedNotification(n)}
-            className={cn(STDL_LIST_CARD_CLASS, "p-5 flex gap-5 hover:border-blue-300 dark:hover:border-blue-800/40 cursor-pointer")}
+            className={cn(STDL_LIST_CARD_CLASS, "p-4 sm:p-5 flex flex-row items-start sm:items-center gap-3 sm:gap-5 hover:border-blue-300 dark:hover:border-blue-800/40 cursor-pointer select-none group")}
           >
             <div className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
-              n.severity === 'critical' ? "bg-rose-50 text-rose-600 border border-rose-100" :
-              n.severity === 'warning' ? "bg-amber-50 text-amber-600 border border-amber-100" :
-              n.severity === 'success' ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
-              "bg-blue-50 text-blue-600 border border-blue-100"
+              "w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0",
+              n.severity === 'critical' ? "bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40" :
+              n.severity === 'warning' ? "bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40" :
+              n.severity === 'success' ? "bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40" :
+              "bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/40"
             )}>
               {n.type === 'alert' ? <AlertTriangle className="w-5 h-5" /> :
                n.type === 'security' ? <Shield className="w-5 h-5" /> :
                 n.type === 'system' && n.severity === 'success' ? <CheckCircle className="w-5 h-5" /> :
                 <Activity className="w-5 h-5" />}
             </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-3">
-                  <h4 className="text-base font-semibold text-slate-900">{n.title}</h4>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 mb-1">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                  <h4 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 truncate">{n.title}</h4>
                   {n.host && (
-                    <span className="text-[11px] uppercase tracking-wide font-bold text-blue-600 border border-blue-200 px-2 py-0.5 rounded-md bg-blue-50">
+                    <span className="text-[10px] sm:text-[11px] uppercase tracking-wide font-semibold text-blue-600 dark:text-sky-400 border border-blue-200 dark:border-blue-900/40 px-1.5 py-0.5 rounded-sm bg-blue-50/50 dark:bg-blue-950/30 whitespace-nowrap">
                       {n.host}
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 shrink-0">
-                  <Clock className="w-3 h-3" />
-                  {n.duration || n.time}
+                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded sm:bg-transparent sm:p-0">
+                  <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+                  <span>{n.duration || n.time}</span>
                 </div>
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-1">{n.description}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal line-clamp-2 sm:line-clamp-1">{n.description}</p>
             </div>
             <div className="flex flex-col justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                <button 
                   onClick={(e) => handleDismiss(n.id, e)}
-                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-all"
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-500 hover:text-rose-600 flex items-center justify-center transition-all"
                 >
                   <X className="w-4 h-4" />
                </button>
