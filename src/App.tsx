@@ -567,11 +567,11 @@ function DashboardApp() {
     const cleanedWidgets = widgets.map(w => cleanWidgetForSaveAndExport(w));
     setWidgets(cleanedWidgets);
     if (activeDashboardId) {
-      const next = savedDashboards.map(d => d.id === activeDashboardId ? { ...d, name: dashboardName, widgets: cleanedWidgets } : d);
+      const next = savedDashboards.map(d => d.id === activeDashboardId ? { ...d, name: dashboardName, widgets: cleanedWidgets, v: "1.0" } : d);
       syncDashboards(next);
     } else {
       const newId = `db-${Date.now()}`;
-      const newBoard = { id: newId, name: dashboardName, widgets: cleanedWidgets };
+      const newBoard = { id: newId, name: dashboardName, widgets: cleanedWidgets, v: "1.0" };
       const next = [...savedDashboards, newBoard];
       syncDashboards(next);
       setActiveDashboardId(newId);
@@ -629,7 +629,8 @@ function DashboardApp() {
       const defaultDb = { 
          id: `db-default-${Date.now()}`, 
          name: dashboardName, 
-         widgets: widgets.map(w => cleanWidgetForSaveAndExport(w)) 
+         widgets: widgets.map(w => cleanWidgetForSaveAndExport(w)),
+         v: "1.0"
       };
       currentSaved = [defaultDb];
     }

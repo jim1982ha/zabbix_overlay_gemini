@@ -1,4 +1,5 @@
-import React, { useMemo, useCallback, useState } from "react";
+import React, { useMemo, useCallback, useState, useRef, useEffect } from "react";
+// @ts-ignore
 import { ResponsiveGridLayout, useContainerWidth, Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -293,16 +294,15 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   const [currentBreakpoint, setCurrentBreakpoint] = useState<string>('lg');
   const [kpiModalWidget, setKpiModalWidget] = useState<Widget | null>(null);
 
-  // Synchronous initial layout generation to completely prevent layout shifts on mount!
   const [layouts, setLayouts] = useState<Partial<Record<string, Layout>>>(() => {
-    const lg: Layout = widgets.map(w => ({
+    const lg: any = widgets.map(w => ({
       i: w.id,
       x: typeof w.x === 'number' ? w.x : 0,
       y: typeof w.y === 'number' ? w.y : Infinity,
       w: typeof w.w === 'number' ? w.w : (isMobile ? 1 : 12),
       h: typeof w.h === 'number' ? w.h : 10
     }));
-    const mobileLayout: Layout = widgets.map(w => ({
+    const mobileLayout: any = widgets.map(w => ({
       i: w.id,
       x: 0,
       y: typeof w.y === 'number' ? w.y : Infinity,
@@ -313,36 +313,27 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   });
 
   const prevWidgetIds = React.useRef<string>('');
-
-  React.useEffect(() => {
-    // Generate a robust layout fingerprint including coordinates and dimensions
-    const layoutFingerprint = widgets.map(w => `${w.id}:${w.x}:${w.y}:${w.w}:${w.h}:${w.type}`).join('|');
-    if (layoutFingerprint !== prevWidgetIds.current) {
-      prevWidgetIds.current = layoutFingerprint;
-      setLayouts(() => {
-        // Reconstruct lg layout to match new widgets list. Reset other layouts to avoid stale coordinates from other dashboards.
-        const lg: Layout = widgets.map(w => ({ 
-          i: w.id, 
-          x: typeof w.x === 'number' ? w.x : 0, 
-          y: typeof w.y === 'number' ? w.y : Infinity, 
-          w: typeof w.w === 'number' ? w.w : (isMobile ? 1 : 12), 
-          h: typeof w.h === 'number' ? w.h : 10 
-        }));
-        
-        // Generate explicit stacked layout for mobile breakpoints (1 column wide)
-        const mobileLayout: Layout = widgets.map(w => ({ 
-          i: w.id, 
-          x: 0, 
-          y: typeof w.y === 'number' ? w.y : Infinity, 
-          w: 1, 
-          h: typeof w.h === 'number' ? w.h : 10 
-        }));
-        
-        // Since lg, md, and sm all have 24 columns, they share the identical layout perfectly and scale smoothly
-        return { lg, md: lg, sm: lg, xs: mobileLayout, xxs: mobileLayout };
-      });
-    }
-  }, [widgets, isMobile]);
+  
+  // Derived state to catch widget changes before render phase completes
+  const layoutFingerprint = widgets.map(w => `${w.id}:${w.x}:${w.y}:${w.w}:${w.h}:${w.type}`).join('|');
+  if (layoutFingerprint !== prevWidgetIds.current) {
+    prevWidgetIds.current = layoutFingerprint;
+    const lg: any = widgets.map(w => ({ 
+      i: w.id, 
+      x: typeof w.x === 'number' ? w.x : 0, 
+      y: typeof w.y === 'number' ? w.y : Infinity, 
+      w: typeof w.w === 'number' ? w.w : (isMobile ? 1 : 12), 
+      h: typeof w.h === 'number' ? w.h : 10 
+    }));
+    const mobileLayout: any = widgets.map(w => ({ 
+      i: w.id, 
+      x: 0, 
+      y: typeof w.y === 'number' ? w.y : Infinity, 
+      w: 1, 
+      h: typeof w.h === 'number' ? w.h : 10 
+    }));
+    setLayouts({ lg, md: lg, sm: lg, xs: mobileLayout, xxs: mobileLayout });
+  }
 
   // Robust boundary-detection, user-interaction tracking, and debouncing setup for layout persistence
   const isUserInteracting = React.useRef(false);
@@ -377,8 +368,8 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     // De-bounce and persist changes back to the canonical widgets store (use the 'lg' layout so mobile breakpoints don't corrupt the grid coordinates)
     if (layoutChangeTimer.current) clearTimeout(layoutChangeTimer.current);
 
-    // CRITICAL: Prevent saving layout if we are in mobile/stacked breakpoint, container not fully mounted, or width is not measured.
-    if (currentBreakpoint === 'xs' || currentBreakpoint === 'xxs' || width <= 100 || !mounted) {
+    // CRITICAL: Prevent saving layout if we are in mobile/stacked breakpoint.
+    if (currentBreakpoint === 'xs' || currentBreakpoint === 'xxs') {
       return;
     }
 

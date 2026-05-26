@@ -4,6 +4,31 @@ import { Settings2, X, ChevronDown, ArrowUpDown, Check } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { Widget } from "../../types/zabbix";
 
+const AGGREGATION_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'sum', label: 'Sum' },
+  { value: 'avg', label: 'Average' }
+] as const;
+
+const CHART_TYPE_OPTIONS = [
+  { value: 'area', label: 'Area Chart' },
+  { value: 'line', label: 'Line Chart' },
+  { value: 'bar', label: 'Bar Chart' },
+  { value: 'pie', label: 'Pie Chart' },
+  { value: 'mixed', label: 'Mixed (Dual Axis)' }
+] as const;
+
+const SERIES_CHART_TYPE_OPTIONS = [
+  { value: 'area', label: 'Area Chart' },
+  { value: 'line', label: 'Line Chart' },
+  { value: 'bar', label: 'Bar Chart' }
+] as const;
+
+const STACKING_OPTIONS = [
+  { value: 'false', label: 'Off' },
+  { value: 'true', label: 'On' }
+] as const;
+
 export function MultiSelect({ options, selected = [], onChange, label, metricUnitsMap }: { options: string[], selected?: string[], onChange: (val: string[]) => void, label: string, metricUnitsMap: Record<string, string> }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -236,11 +261,9 @@ export function WidgetEditor({
                       onChange={e => handleUpdateWidget(w.id, { chartType: e.target.value as any })} 
                       className="w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all text-slate-900 dark:text-white"
                     >
-                      <option value="area">Area Map</option>
-                      <option value="line">Line Chart</option>
-                      <option value="bar">Bar Chart</option>
-                      <option value="pie">Pie Chart</option>
-                      <option value="mixed">Mixed (Dual Axis)</option>
+                      {CHART_TYPE_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
                     </select>
                   </div>
                 )}
@@ -253,9 +276,9 @@ export function WidgetEditor({
                       onChange={e => handleUpdateWidget(w.id, { aggregation: e.target.value as any })} 
                       className="w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all text-slate-900 dark:text-white"
                     >
-                      {w.type !== 'kpi' && <option value="none">None</option>}
-                      <option value="sum">Sum</option>
-                      <option value="avg">Average</option>
+                      {AGGREGATION_OPTIONS.filter(opt => w.type !== 'kpi' || opt.value !== 'none').map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
                     </select>
                   </div>
                 )}
@@ -398,9 +421,9 @@ export function WidgetEditor({
                                 onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, chartType: e.target.value as any } } })}
                                 className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
                               >
-                                <option value="line">Line</option>
-                                <option value="area">Area</option>
-                                <option value="bar">Bar</option>
+                                {SERIES_CHART_TYPE_OPTIONS.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
                               </select>
                               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -415,9 +438,9 @@ export function WidgetEditor({
                                 onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, aggregation: e.target.value as any } } })}
                                 className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
                               >
-                                <option value="none">Multi-Series</option>
-                                <option value="sum">Sum</option>
-                                <option value="avg">Avg</option>
+                                {AGGREGATION_OPTIONS.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
                               </select>
                               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -432,8 +455,9 @@ export function WidgetEditor({
                                 onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, stacked: e.target.value === 'true' } } })}
                                 className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
                               >
-                                <option value="false">Off</option>
-                                <option value="true">On</option>
+                                {STACKING_OPTIONS.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
                               </select>
                               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
