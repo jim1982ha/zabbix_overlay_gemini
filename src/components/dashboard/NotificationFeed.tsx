@@ -178,7 +178,7 @@ export function NotificationFeed({
   useEffect(() => {
     if (setHeaderExtra) {
       setHeaderExtra(
-        <div className="flex items-center gap-2 p-1 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-sm text-xs font-semibold text-slate-600 dark:text-slate-400 max-w-full sm:max-w-md shadow-sm">
+        <div className="flex items-center gap-2 p-1 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-sm text-xs font-semibold text-slate-600 dark:text-slate-400 max-w-full sm:max-w-md">
           <div className="flex items-center gap-1.5 px-1">
             <div className="relative flex h-2 w-2 shrink-0">
               <span className={cn(
@@ -214,7 +214,7 @@ export function NotificationFeed({
                disabled={isRefreshing}
                title="Force Refresh"
                className={cn(
-                 "p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-sky-400 hover:border-slate-300 dark:hover:border-slate-600 rounded-sm shadow-sm transition-all flex items-center justify-center shrink-0",
+                 "p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-sky-400 hover:border-slate-300 dark:hover:border-slate-600 rounded-sm transition-all flex items-center justify-center shrink-0",
                  isRefreshing && "opacity-50 cursor-not-allowed"
                )}
             >
