@@ -407,17 +407,16 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   const handleLayoutChange = (currentLayout: Layout, allLayouts: Partial<Record<string, Layout>>) => {
     setLayouts(allLayouts);
     
-    // De-bounce and persist changes back to the canonical widgets store (use the 'lg' layout so mobile breakpoints don't corrupt the grid coordinates)
+    // De-bounce and persist changes back to the canonical widgets store
     if (layoutChangeTimer.current) clearTimeout(layoutChangeTimer.current);
 
     layoutChangeTimer.current = setTimeout(() => {
       setWidgets(prevWidgets => {
         let changed = false;
-        const targetLayout = allLayouts.lg || currentLayout;
         const isMobileBreakpoint = currentBreakpoint === 'xs' || currentBreakpoint === 'xxs';
 
         const next = prevWidgets.map(w => {
-          const item = (isMobileBreakpoint ? currentLayout : targetLayout).find((l: any) => l.i === w.id);
+          const item = currentLayout.find((l: any) => l.i === w.id);
           if (item) {
             if (isMobileBreakpoint) {
               // In mobile mode, copy only y and h to prevent resetting desktop width (which is 1 on mobile) and x (which is 0 on mobile)

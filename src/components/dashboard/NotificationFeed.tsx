@@ -23,15 +23,17 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info' | 'success'>('all');
   
-  const demoNotifications = [
+  const [demoNotificationsState, setDemoNotificationsState] = useState<Notification[]>([
     { id: 1, type: 'alert' as const, title: 'High CPU Latency', description: 'SQL-DB-PRIMARY reporting 92% steal time. Investigating hypervisor load.', time: '2m ago', duration: '2m', severity: 'critical' as const, itemId: '10293', host: 'SQL-DB-PRIMARY' },
     { id: 2, type: 'security' as const, title: 'WAF Signature Update', description: 'Global signatures updated to v4.2.1-stable. 12 new rules applied.', time: '15m ago', duration: '15m', severity: 'info' as const, host: 'EDGE-GW-PROXY' },
     { id: 3, type: 'system' as const, title: 'Backup Completed', description: 'Daily differential backup for NAS-01-BKUP finished successfully.', time: '1h ago', duration: '1h', severity: 'success' as const, host: 'NAS-01-BKUP' },
     { id: 4, type: 'alert' as const, title: 'Port Flap Detected', description: 'GigabitEthernet1/0/12 on SW-01 toggled status 4 times in 60s.', time: '3h ago', duration: '3h 12m', severity: 'warning' as const, itemId: '3392', host: 'SW-CORE-01' },
     { id: 5, type: 'system' as const, title: 'New Dashboard Created', description: 'Executive user "admin" created board "Q3 Hardware Audit".', time: '5h ago', duration: '5h', severity: 'info' as const },
-  ];
+  ]);
 
   const [zabbixNotifications, setZabbixNotifications] = useState<Notification[]>([]);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchZabbixTriggers = useCallback(async () => {
     if (isDemo) return;
@@ -99,24 +101,64 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
     } catch (e) {
       console.error("Failed to fetch triggers from Zabbix", e);
     }
-  }, [zabbixConfig, isDemo]);
+  }, [zabbixConfig, isDemo, showToast]);
+
+  const triggerRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    if (isDemo) {
+      // Simulate real polling network latency delay
+      await new Promise(resolve => setTimeout(resolve, 850));
+      
+      setDemoNotificationsState(prev => {
+        return prev.map(n => {
+          if (n.id === 1) {
+            const nextSteal = Math.floor(88 + Math.random() * 10);
+            return {
+              ...n,
+              description: `SQL-DB-PRIMARY reporting ${nextSteal}% steal time. Investigating hypervisor load.`,
+              time: 'Just now',
+              duration: 'Updated just now'
+            };
+          }
+          if (n.id === 4) {
+            const flaps = Math.floor(2 + Math.round(Math.random() * 6));
+            return {
+              ...n,
+              description: `GigabitEthernet1/0/12 on SW-01 toggled status ${flaps} times in 60s.`,
+              time: 'Updated just now',
+              duration: 'Active'
+            };
+          }
+          return n;
+        });
+      });
+      
+      if (showToast) {
+         showToast("Refreshed active problems (Demo Mode)", "success");
+      }
+    } else {
+      await fetchZabbixTriggers();
+    }
+    setLastRefreshedAt(new Date());
+    setIsRefreshing(false);
+  }, [isDemo, fetchZabbixTriggers, showToast]);
 
   useEffect(() => {
-    fetchZabbixTriggers();
+    triggerRefresh();
     
-    if (refreshIntervalMs > 0 && !isDemo) {
+    if (refreshIntervalMs > 0) {
       const interval = setInterval(() => {
-        fetchZabbixTriggers();
+        triggerRefresh();
       }, refreshIntervalMs);
       return () => clearInterval(interval);
     }
-  }, [fetchZabbixTriggers, refreshIntervalMs, isDemo]);
+  }, [triggerRefresh, refreshIntervalMs]);
 
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
 
   useEffect(() => {
-    setNotificationsList(isDemo ? demoNotifications : zabbixNotifications);
-  }, [isDemo, zabbixNotifications]); // Only recompute on these dependencies
+    setNotificationsList(isDemo ? demoNotificationsState : zabbixNotifications);
+  }, [isDemo, demoNotificationsState, zabbixNotifications]);
 
   const filteredNotifications = useMemo(() => {
     return notificationsList.filter(n => {
@@ -160,6 +202,52 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
 
   return (
     <div className="space-y-6">
+      {/* Polling Status Indicator Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm text-xs font-semibold text-slate-600 dark:text-slate-400">
+        <div className="flex items-center gap-3">
+          <div className="relative flex h-3 w-3">
+            <span className={cn(
+              "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+              isRefreshing ? "bg-amber-400" : "bg-emerald-400"
+            )}></span>
+            <span className={cn(
+               "relative inline-flex rounded-full h-3 w-3",
+               isRefreshing ? "bg-amber-500" : "bg-emerald-500"
+            )}></span>
+          </div>
+          <div>
+            <span className="text-slate-950 dark:text-slate-100 uppercase tracking-wider text-[10px] bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-sm mr-2 font-black">
+              {isDemo ? "DEMO MODE POLL" : "LIVE MONITOR"}
+            </span>
+            <span>
+              {isRefreshing 
+                ? "Refreshing active problems list..." 
+                : `Polling active problems every ${
+                    refreshIntervalMs >= 3600000 
+                      ? `${refreshIntervalMs / 3600000} hour${refreshIntervalMs / 3600000 > 1 ? 's' : ''}` 
+                      : `${refreshIntervalMs / 60000} minute${refreshIntervalMs / 60000 > 1 ? 's' : ''}`
+                  }`
+              }
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-slate-500 font-medium">
+          <Clock className="w-3.5 h-3.5 text-slate-400" />
+          <span>Last polled: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{lastRefreshedAt.toLocaleTimeString()}</strong></span>
+          <button 
+             onClick={triggerRefresh}
+             disabled={isRefreshing}
+             className={cn(
+               "ml-2 px-2.5 py-1 text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-sky-400 hover:border-slate-300 dark:hover:border-slate-600 rounded-sm shadow-sm transition-all flex items-center gap-1.5",
+               isRefreshing && "opacity-50 cursor-not-allowed"
+             )}
+          >
+             <Zap className={cn("w-3 h-3 text-amber-500", isRefreshing && "animate-pulse")} />
+             Force Refresh
+          </button>
+        </div>
+      </div>
+
       <FilterBar>
         <div className="flex gap-2 flex-1 overflow-x-auto scrollbar-hide scroll-smooth pb-1 sm:pb-0">
           <FilterButton 

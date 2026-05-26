@@ -914,7 +914,7 @@ function DashboardApp() {
         zabbixConfig={zabbixConfig} 
         showToast={showToast} 
         isDemo={isDemo} 
-        refreshIntervalMs={filters.mode === 'live' ? getPollingIntervalMs(filters.granularity) : 0} 
+        refreshIntervalMs={getPollingIntervalMs(filters.granularity)} 
       />;
     }
     if (view === "config") {
