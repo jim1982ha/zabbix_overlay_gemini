@@ -21,7 +21,7 @@ import {
   Brush
 } from 'recharts';
 import { motion } from 'motion/react';
-import { Download, ZoomIn, Clock, ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { Download, ZoomIn, Clock, ArrowDown, ArrowUp } from 'lucide-react';
 import { cn, formatValue } from '../../lib/utils';
 
 interface DataPoint {
@@ -786,6 +786,14 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
             <span className="shrink-0 text-slate-500 font-medium hidden @[400px]:inline text-[10px]">
               {data[zoomDomain[0]]?.time?.split(' ')[1] || data[zoomDomain[0]]?.time} - {data[zoomDomain[1]]?.time?.split(' ')[1] || data[zoomDomain[1]]?.time}
             </span>
+            <button 
+              onClick={() => onZoomDomainChange?.(widgetId || '', null)}
+              className="shrink-0 flex items-center gap-1.5 px-2 py-0.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 hover:text-sky-700 hover:border-sky-300 rounded shadow-sm transition-all text-[10px] font-bold uppercase tracking-wider cancel-drag ml-1"
+              title="Reset Zoom"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+              <span className="hidden sm:inline">Reset</span>
+            </button>
           </div>
         )}
       </div>

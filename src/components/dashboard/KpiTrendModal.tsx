@@ -14,6 +14,8 @@ interface KpiTrendModalProps {
   onLegendClick: (key: string) => void;
   onColorChangeRequest: (metric: string, current: string) => void;
   onHostClick: (host: string) => void;
+  zoomDomain?: [number, number] | null;
+  onZoomDomainChange?: (id: string, domain: [number, number] | null) => void;
 }
 
 export function KpiTrendModal({
@@ -26,7 +28,9 @@ export function KpiTrendModal({
   hiddenSeries,
   onLegendClick,
   onColorChangeRequest,
-  onHostClick
+  onHostClick,
+  zoomDomain,
+  onZoomDomainChange
 }: KpiTrendModalProps) {
   // We want to force chartType to 'area' for KPI trend.
   return (
@@ -65,6 +69,8 @@ export function KpiTrendModal({
             onHostClick={onHostClick}
             widgetId={`modal-${widget.id}`}
             timestamp={timestampStr}
+            zoomDomain={zoomDomain}
+            onZoomDomainChange={onZoomDomainChange}
           />
         </div>
       </div>

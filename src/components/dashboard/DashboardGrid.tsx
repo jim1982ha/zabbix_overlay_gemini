@@ -7,10 +7,7 @@ import "react-resizable/css/styles.css";
 import { 
   Settings2, 
   Trash2, 
-  ChevronLeft, 
-  ChevronRight, 
   GripVertical,
-  ZoomOut,
   BarChart3,
   PlusCircle
 } from "lucide-react";
@@ -20,6 +17,7 @@ import { StatCard } from "./StatCard";
 import { TrendChart } from "./TrendChart";
 import { WidgetEditor } from "./WidgetEditor";
 import { KpiTrendModal } from "./KpiTrendModal";
+import { ErrorBoundary } from "../ErrorBoundary";
 import { cn, getDeterministicColor, formatValue } from "../../lib/utils";
 
 interface DashboardGridProps {
@@ -73,30 +71,50 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     filters
   } = useDashboard();
 
-  const [containerWidth, setContainerWidth] = useState(1200);
-  const [isGridMounted, setIsGridMounted] = useState(false);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setIsGridMounted(true);
     if (!containerRef.current) return;
     
-    // Initial measurement
-    const setWidth = () => {
-      if (containerRef.current && containerRef.current.offsetWidth > 0) {
-        setContainerWidth(containerRef.current.offsetWidth);
+    const measure = (source: string) => {
+      if (containerRef.current) {
+        const rectWidth = containerRef.current.getBoundingClientRect().width;
+        const offsetW = containerRef.current.offsetWidth;
+        const measuredWidth = rectWidth || offsetW;
+        
+        // Always ensure we have a valid positive width before rendering to prevent react-grid-layout from breaking
+        if (measuredWidth > 10) {
+          setContainerWidth((prev) => {
+             // Only update if changed by more than 1px to avoid micro-re-renders
+             if (prev === null || Math.abs(prev - measuredWidth) > 1) {
+                 return measuredWidth;
+             }
+             return prev;
+          });
+        }
       }
     };
-    setWidth();
-
+    
+    measure('initial-mount');
+    
     const observer = new ResizeObserver((entries) => {
-      if (entries[0] && entries[0].contentRect.width > 0) {
-        setContainerWidth(entries[0].contentRect.width);
+      if (entries[0]) {
+        // debounce or wrap in requestAnimationFrame to prevent ResizeObserver loop limit exceeded
+        window.requestAnimationFrame(() => measure('resize-observer'));
       }
     });
     
     observer.observe(containerRef.current);
-    return () => observer.disconnect();
+    
+    // Fallback resize listener
+    const handleResize = () => measure('window-resize');
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Cancel edit mode helper
@@ -424,94 +442,87 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     }, 150); // Faster reaction, clean debounced writing back
   };
 
-  if (widgets.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] w-full bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center animate-in fade-in duration-500">
-        <div className="w-16 h-16 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center shadow-sm mb-4">
-          <BarChart3 className="w-8 h-8 text-slate-400" />
-        </div>
-        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">Your Dashboard is Empty</h3>
-        <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
-          This dashboard doesn't have any widgets yet. Click the button below to add your first visualization and start exploring your data.
-        </p>
-        <button 
-          onClick={() => {
-            const newWidget: Widget = {
-              id: `widget_${Date.now()}`,
-              type: 'chart',
-              title: 'New Widget',
-              metrics: [],
-              hosts: [],
-              x: 0,
-              y: 0,
-              w: 12, // Always default to 12 internally; mobile layouts will override to 1 for display
-              h: 10,
-              chartType: 'line',
-              aggregation: 'none',
-              stacked: false
-            };
-            addWidget(newWidget);
-          }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-all shadow-blue-500/20 active:scale-95"
-        >
-          <PlusCircle className="w-5 h-5" />
-          Add First Widget
-        </button>
-      </div>
-    );
-  }
-
-  if (filteredWidgets.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center animate-in fade-in duration-300">
-        <div className="w-12 h-12 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center shadow-sm mb-3">
-          <Settings2 className="w-6 h-6 text-slate-400" />
-        </div>
-        <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">No Matching Widgets</h3>
-        <p className="text-xs text-slate-500 max-w-sm mx-auto">
-          No widgets match your current search query <strong>"{globalSearch}"</strong>. Try checking your spelling or search terms.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div ref={containerRef} className="w-full h-full relative min-w-0 overflow-x-hidden">
-      {(!isGridMounted) ? (
-        <div style={{ minHeight: '600px' }} className="w-full h-full flex items-center justify-center bg-slate-50/10 dark:bg-slate-900/10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+    <div ref={containerRef} className="w-full relative min-w-0 overflow-x-hidden min-h-[600px]">
+      {widgets.length === 0 ? (
+        <div className="flex flex-col items-center justify-center min-h-[400px] w-full bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center animate-in fade-in duration-500">
+          <div className="w-16 h-16 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center shadow-sm mb-4">
+            <BarChart3 className="w-8 h-8 text-slate-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2">Your Dashboard is Empty</h3>
+          <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
+            This dashboard doesn't have any widgets yet. Click the button below to add your first visualization and start exploring your data.
+          </p>
+          <button 
+            onClick={() => {
+              const newWidget: Widget = {
+                id: `widget_${Date.now()}`,
+                type: 'chart',
+                title: 'New Widget',
+                metrics: [],
+                hosts: [],
+                x: 0,
+                y: 0,
+                w: 12,
+                h: 10,
+                chartType: 'line',
+                aggregation: 'none',
+                stacked: false
+              };
+              addWidget(newWidget);
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-all shadow-blue-500/20 active:scale-95"
+          >
+            <PlusCircle className="w-5 h-5" />
+            Add First Widget
+          </button>
+        </div>
+      ) : filteredWidgets.length === 0 ? (
+        <div className="flex flex-col items-center justify-center min-h-[300px] w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center animate-in fade-in duration-300">
+          <div className="w-12 h-12 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full flex items-center justify-center shadow-sm mb-3">
+            <Settings2 className="w-6 h-6 text-slate-400" />
+          </div>
+          <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">No Matching Widgets</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            No widgets match your current search query <strong>"{globalSearch}"</strong>. Try checking your spelling or search terms.
+          </p>
+        </div>
+      ) : containerWidth === null ? (
+        <div style={{ height: '600px' }} className="w-full flex items-center justify-center bg-slate-50/10 dark:bg-slate-900/10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
           <div className="flex flex-col items-center gap-2">
             <div className="w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
             <span className="text-xs text-slate-400 font-medium">Initializing Dashboard Grid...</span>
           </div>
         </div>
       ) : (
+      <ErrorBoundary>
         <ResponsiveGridLayout
-          className="layout"
-          width={containerWidth}
-          layouts={layouts as any}
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 24, md: 24, sm: 24, xs: 1, xxs: 1 }}
-          rowHeight={isMobile ? 30 : 25}
-          onLayoutChange={handleLayoutChange}
-          onBreakpointChange={(bp) => {
-            setCurrentBreakpoint(bp);
-          }}
-          onDragStart={startInteraction}
-          onDragStop={stopInteraction}
-          onResizeStart={startInteraction}
-          onResizeStop={stopInteraction}
-          dragConfig={{
-            enabled: !isMobile,
-            handle: ".drag-handle",
-            cancel: ".cancel-drag"
-          }}
-          resizeConfig={{
-            enabled: true,
-            handles: ['s', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne']
-          }}
-        >
-        {filteredWidgets.map((w, index) => {
-        let hasFilter = false;
+            className="layout"
+            width={containerWidth}
+            layouts={layouts as any}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 24, md: 24, sm: 24, xs: 1, xxs: 1 }}
+            rowHeight={isMobile ? 30 : 25}
+            onLayoutChange={handleLayoutChange}
+            onBreakpointChange={(bp) => {
+              setCurrentBreakpoint(bp);
+            }}
+            onDragStart={startInteraction}
+            onDragStop={stopInteraction}
+            onResizeStart={startInteraction}
+            onResizeStop={stopInteraction}
+            dragConfig={{
+              enabled: !isMobile,
+              handle: ".drag-handle",
+              cancel: ".cancel-drag"
+            }}
+            resizeConfig={{
+              enabled: true,
+              handles: ['s', 'w', 'e', 'n', 'sw', 'nw', 'se', 'ne']
+            }}
+          >
+          {filteredWidgets.map((w, index) => {
+          let hasFilter = false;
         if (w.chartType === 'mixed' && w.seriesConfig) {
           ['series1', 'series2'].forEach(sKey => {
             const sConf = w.seriesConfig?.[sKey];
@@ -566,18 +577,6 @@ export const DashboardGrid = React.memo(function DashboardGrid({
             {/* Widget Controls (Top Right Overlay) */}
             <div className="absolute inset-0 z-30 pointer-events-none opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <div className="absolute top-3 right-3 flex flex-col justify-start gap-1.5 items-end pointer-events-auto z-50">
-                {widgetZoomDomains[w.id] && (
-                  <button 
-                    onClick={() => handleZoomOut(w.id)}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 px-2 py-1.5 bg-sky-50 text-sky-600 border border-sky-200 hover:bg-sky-100 hover:text-sky-700 hover:border-sky-300 rounded shadow-sm transition-all text-[10px] font-bold uppercase tracking-wider h-[26px] cancel-drag"
-                    title="Zoom Out"
-                  >
-                    <ZoomOut className="w-3 h-3" />
-                    <span className="hidden sm:inline">Reset Zoom</span>
-                  </button>
-                )}
                 {/* Edit Button */}
                 <button 
                   onClick={() => setEditingWidgetId(editingWidgetId === w.id ? null : w.id)}
@@ -645,6 +644,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
         );
       })}
         </ResponsiveGridLayout>
+      </ErrorBoundary>
       )}
 
       {kpiModalWidget && (
@@ -726,6 +726,8 @@ export const DashboardGrid = React.memo(function DashboardGrid({
           onLegendClick={handleLegendClick}
           onColorChangeRequest={handleColorChangeRequest}
           onHostClick={handleHostClick}
+          zoomDomain={widgetZoomDomains[`modal-${kpiModalWidget.id}`]}
+          onZoomDomainChange={handleZoomDomainChange}
         />
       )}
     </div>

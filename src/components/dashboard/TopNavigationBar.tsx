@@ -6,7 +6,8 @@ import {
   Shield,
   ShieldAlert,
   Server,
-  Activity
+  Activity,
+  Info
 } from "lucide-react";
 import { ScrollableBar } from "../layout/ScrollableBar";
 import { PortalMenu } from "./PortalMenu";
@@ -53,17 +54,23 @@ export function TopNavigationBar({
   };
 
   return (
-    <div className="flex items-center justify-between w-full h-full text-slate-800 dark:text-slate-200 gap-2 sm:gap-4 lg:gap-8 min-w-0 max-w-full overflow-hidden">
+    <div className="flex items-center justify-between w-full h-full text-slate-800 dark:text-slate-200 gap-2 sm:gap-4 lg:gap-8 min-w-0 max-w-full overflow-visible">
       {/* Search Input Filter */}
-      <div className="hidden md:flex flex-1 items-center h-[40px] bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 rounded-lg px-3 min-w-0">
-        <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 shrink-0 mr-2 stroke-[2.2]" />
+      <div className="hidden md:flex flex-1 items-center h-[40px] px-3 min-w-0 border-none bg-transparent">
+        <Search className="w-5 h-5 text-black dark:text-white shrink-0 mr-2 stroke-[2.2]" />
         <input 
           type="text" 
           value={globalSearch}
           onChange={(e) => setGlobalSearch(e.target.value)}
-          placeholder="Search Board" 
+          placeholder="Search" 
           className="w-full bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 min-w-0" 
         />
+        <div className="relative group flex items-center shrink-0 ml-2 overflow-visible">
+          <Info className="w-4 h-4 text-slate-400 dark:text-slate-500 cursor-help transition-colors hover:text-slate-600 dark:hover:text-slate-300" />
+          <div className="absolute right-0 top-full mt-2 w-56 p-2.5 bg-slate-800 dark:bg-slate-700 text-slate-100 text-sm font-medium rounded shadow-xl opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all pointer-events-none z-[9999] whitespace-normal">
+            Search across widget titles, hosts, metrics, and tags.
+          </div>
+        </div>
       </div>
 
       {/* Main Filter Dropdowns */}

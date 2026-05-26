@@ -147,7 +147,7 @@ export function Shell({
           </button>
         </div>
 
-        <nav className="flex-1 flex flex-col py-4 space-y-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <nav className={cn("flex-1 flex flex-col py-4 space-y-1", isCollapsed ? "overflow-visible" : "overflow-y-auto custom-scrollbar overflow-x-hidden")}>
           {!isCollapsed && (
             <div className="pb-2 px-4 flex items-center justify-between group/title">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Dashboards</span>
@@ -340,6 +340,7 @@ export function Shell({
                 )}
               </div>
             }
+            tooltipLabel={isDemo ? "Active Node: Demo" : "Active Node: Live"}
             active={currentView === 'config'}
             isCollapsed={isCollapsed}
             onClick={() => { onNavigate('config'); closeMobileMenu(); }}
@@ -350,8 +351,8 @@ export function Shell({
       {/* Main Content */}
       <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden pt-14 lg:pt-0 bg-[#f7f8f9] dark:bg-slate-950 h-screen w-full lg:w-auto">
         {topBar && (
-          <div className="flex min-h-[60px] bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 w-full items-center z-50 overflow-hidden shadow-sm lg:shadow-none relative">
-            <div className="flex-1 h-full flex items-center justify-between px-2 lg:px-4 min-w-0 max-w-full overflow-hidden">
+          <div className="flex min-h-[60px] bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 w-full items-center z-50 overflow-visible shadow-sm lg:shadow-none relative">
+            <div className="flex-1 h-full flex items-center justify-between px-2 lg:px-4 min-w-0 max-w-full overflow-visible">
                {topBar}
              </div>
           </div>
@@ -366,28 +367,62 @@ export function Shell({
   );
 }
 
-function NavItem({ icon, label, active = false, isCollapsed = false, onClick, className }: { icon: ReactNode, label: string | ReactNode, active?: boolean, isCollapsed?: boolean, onClick?: () => void, className?: string }) {
+function NavItem({ icon, label, active = false, isCollapsed = false, onClick, className, tooltipLabel }: { icon: ReactNode, label: string | ReactNode, active?: boolean, isCollapsed?: boolean, onClick?: () => void, className?: string, tooltipLabel?: string }) {
+  if (isCollapsed) {
+    const displayTooltip = tooltipLabel || (typeof label === 'string' ? label : null);
+    
+    return (
+      <div 
+        onClick={onClick}
+        className={cn(
+          "relative flex items-center justify-center w-full h-[52px] transition-colors group cursor-pointer",
+          active ? "bg-white dark:bg-slate-900" : "hover:bg-slate-100 dark:hover:bg-slate-800/50",
+          className
+        )}
+      >
+        {/* Active border bar */}
+        {active && (
+          <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-blue-600 dark:bg-blue-500" />
+        )}
+        
+        {/* Icon Container */}
+        <div className={cn(
+          "flex items-center justify-center transition-colors",
+          active 
+            ? "text-blue-600 dark:text-blue-500" 
+            : "text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 lg:group-hover:scale-110"
+        )}>
+           {icon}
+        </div>
+
+        {/* Tooltip */}
+        {displayTooltip && (
+          <div className="absolute left-full ml-3 py-1.5 px-3 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm rounded shadow-[0_2px_8px_rgba(0,0,0,0.15)] opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all pointer-events-none z-[9999] whitespace-nowrap flex items-center border border-slate-100 dark:border-slate-700">
+            {/* Tooltip arrow */}
+            <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-white dark:bg-slate-800 transform rotate-45 border-l border-b border-slate-100 dark:border-slate-700 shadow-[-2px_2px_4px_rgba(0,0,0,0.02)] hidden lg:block"></div>
+            <span className="relative z-10">{displayTooltip}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div 
       onClick={onClick}
-      title={isCollapsed && typeof label === 'string' ? label : undefined}
       className={cn(
-        "flex items-center transition-all group cursor-pointer",
-        isCollapsed ? "justify-center mx-auto w-10 h-10 rounded-md my-0.5" : "px-4 py-3 border-l-[3px]",
+        "flex items-center px-4 py-3 border-l-[3px] transition-all group cursor-pointer",
         active ? 
-          (isCollapsed ? 'bg-[#f0f4f9] dark:bg-blue-500/10 text-[#0055d4] dark:text-blue-400 shadow-sm' : 'bg-[#f0f4f9] dark:bg-blue-500/10 text-[#0055d4] dark:text-blue-400 border-[#0055d4] dark:border-blue-500') : 
-          (isCollapsed ? 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white border-transparent' : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 border-transparent'),
+          'bg-[#f0f4f9] dark:bg-blue-500/10 text-[#0055d4] dark:text-blue-400 border-[#0055d4] dark:border-blue-500' : 
+          'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 border-transparent',
         className
       )}>
-      {!isCollapsed && (
-        <div className={cn("flex-1 truncate text-[14px] flex items-center", active ? "font-semibold text-slate-900 dark:text-blue-400" : "")}>
-          {label}
-        </div>
-      )}
+      <div className={cn("flex-1 truncate text-[14px] flex items-center", active ? "font-semibold text-slate-900 dark:text-blue-400" : "")}>
+        {label}
+      </div>
       <div className={cn(
-        "transition-colors shrink-0 flex items-center justify-center",
-        active ? "text-[#0055d4] dark:text-blue-400" : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 stroke-[1.5]",
-        !isCollapsed && "ml-auto"
+        "transition-colors shrink-0 flex items-center justify-center ml-auto",
+        active ? "text-[#0055d4] dark:text-blue-400" : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 stroke-[1.5]"
       )}>
         {icon}
       </div>

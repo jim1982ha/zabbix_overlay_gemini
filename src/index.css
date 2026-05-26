@@ -3,6 +3,9 @@
 
 @theme {
   --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-blue-500: #0050dc;
+  --color-blue-600: #0050dc;
+  --color-blue-700: #003eba;
 }
 @variant dark (&:where(.dark, .dark *));
 
