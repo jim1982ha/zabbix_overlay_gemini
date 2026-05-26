@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Bell, Activity, Shield, AlertTriangle, CheckCircle, Clock, X, ExternalLink, Zap } from 'lucide-react';
+import { Bell, Activity, Shield, AlertTriangle, CheckCircle, Clock, X, ExternalLink, Zap, RefreshCw } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import axios from 'axios';
 import { FilterBar, FilterButton } from "../ui/FilterBar";
@@ -19,7 +19,23 @@ interface Notification {
   host?: string;
 }
 
-export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbixConfig, showToast, isDemo, refreshIntervalMs = 0 }: { globalSearch?: string, zabbixBaseUrl?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void, isDemo: boolean, refreshIntervalMs?: number }) {
+export function NotificationFeed({ 
+  globalSearch = "", 
+  zabbixBaseUrl = "", 
+  zabbixConfig, 
+  showToast, 
+  isDemo, 
+  refreshIntervalMs = 0,
+  setHeaderExtra 
+}: { 
+  globalSearch?: string; 
+  zabbixBaseUrl?: string; 
+  zabbixConfig?: { url: string; token: string }; 
+  showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void; 
+  isDemo: boolean; 
+  refreshIntervalMs?: number;
+  setHeaderExtra?: (node: React.ReactNode) => void;
+}) {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [severityFilter, setSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info' | 'success'>('all');
   
@@ -50,6 +66,9 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
           monitored: true,
           skipDependent: true,
           only_true: true,
+          filter: {
+            value: "1"
+          },
           limit: 100,
           sortfield: "lastchange",
           sortorder: "DESC"
@@ -61,7 +80,9 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
          return;
       }
       if (response.data.result) {
-        const mapped = response.data.result.map((t: any) => {
+        const mapped = response.data.result
+          .filter((t: any) => t.value === "1" || parseInt(t.value, 10) === 1)
+          .map((t: any) => {
           let severity: 'info' | 'warning' | 'critical' | 'success' = 'info';
           if (t.priority > 3) severity = 'critical';
           else if (t.priority > 1) severity = 'warning';
@@ -154,6 +175,62 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
     }
   }, [triggerRefresh, refreshIntervalMs]);
 
+  useEffect(() => {
+    if (setHeaderExtra) {
+      setHeaderExtra(
+        <div className="flex items-center gap-2 p-1 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 rounded-sm text-xs font-semibold text-slate-600 dark:text-slate-400 max-w-full sm:max-w-md shadow-sm">
+          <div className="flex items-center gap-1.5 px-1">
+            <div className="relative flex h-2 w-2 shrink-0">
+              <span className={cn(
+                "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                isRefreshing ? "bg-amber-400" : "bg-emerald-400"
+              )}></span>
+              <span className={cn(
+                 "relative inline-flex rounded-full h-2 w-2",
+                 isRefreshing ? "bg-amber-500" : "bg-emerald-500"
+              )}></span>
+            </div>
+            <div className="truncate flex items-center pr-1.5 border-r border-slate-200 dark:border-slate-800 mr-0.5">
+              <span className="text-slate-950 dark:text-slate-100 uppercase tracking-wider text-[8px] bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded-sm mr-1 font-extrabold shrink-0">
+                {isDemo ? "DEMO" : "LIVE"}
+              </span>
+              <span className="text-[10px] sm:text-xs">
+                {isRefreshing 
+                  ? "Refreshing..." 
+                  : `Poll: ${
+                      refreshIntervalMs >= 3600000 
+                        ? `${refreshIntervalMs / 3600000}h` 
+                        : `${refreshIntervalMs / 60000}m`
+                    }`
+                }
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 text-slate-500 font-medium shrink-0">
+            <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="text-[10px] sm:text-[11px] mr-1">Last: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{lastRefreshedAt.toLocaleTimeString()}</strong></span>
+            <button 
+               onClick={triggerRefresh}
+               disabled={isRefreshing}
+               title="Force Refresh"
+               className={cn(
+                 "p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-sky-400 hover:border-slate-300 dark:hover:border-slate-600 rounded-sm shadow-sm transition-all flex items-center justify-center shrink-0",
+                 isRefreshing && "opacity-50 cursor-not-allowed"
+               )}
+            >
+               <RefreshCw className={cn("w-3.5 h-3.5 text-slate-500", isRefreshing && "animate-spin")} />
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return () => {
+      if (setHeaderExtra) {
+        setHeaderExtra(null);
+      }
+    };
+  }, [isRefreshing, lastRefreshedAt, refreshIntervalMs, setHeaderExtra, isDemo, triggerRefresh]);
+
   const [notificationsList, setNotificationsList] = useState<Notification[]>([]);
 
   useEffect(() => {
@@ -202,52 +279,6 @@ export function NotificationFeed({ globalSearch = "", zabbixBaseUrl = "", zabbix
 
   return (
     <div className="space-y-6">
-      {/* Polling Status Indicator Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-none shadow-sm text-xs font-semibold text-slate-600 dark:text-slate-400">
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-3 w-3">
-            <span className={cn(
-              "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
-              isRefreshing ? "bg-amber-400" : "bg-emerald-400"
-            )}></span>
-            <span className={cn(
-               "relative inline-flex rounded-full h-3 w-3",
-               isRefreshing ? "bg-amber-500" : "bg-emerald-500"
-            )}></span>
-          </div>
-          <div>
-            <span className="text-slate-950 dark:text-slate-100 uppercase tracking-wider text-[10px] bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-sm mr-2 font-black">
-              {isDemo ? "DEMO MODE POLL" : "LIVE MONITOR"}
-            </span>
-            <span>
-              {isRefreshing 
-                ? "Refreshing active problems list..." 
-                : `Polling active problems every ${
-                    refreshIntervalMs >= 3600000 
-                      ? `${refreshIntervalMs / 3600000} hour${refreshIntervalMs / 3600000 > 1 ? 's' : ''}` 
-                      : `${refreshIntervalMs / 60000} minute${refreshIntervalMs / 60000 > 1 ? 's' : ''}`
-                  }`
-              }
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-slate-500 font-medium">
-          <Clock className="w-3.5 h-3.5 text-slate-400" />
-          <span>Last polled: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{lastRefreshedAt.toLocaleTimeString()}</strong></span>
-          <button 
-             onClick={triggerRefresh}
-             disabled={isRefreshing}
-             className={cn(
-               "ml-2 px-2.5 py-1 text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-sky-400 hover:border-slate-300 dark:hover:border-slate-600 rounded-sm shadow-sm transition-all flex items-center gap-1.5",
-               isRefreshing && "opacity-50 cursor-not-allowed"
-             )}
-          >
-             <Zap className={cn("w-3 h-3 text-amber-500", isRefreshing && "animate-pulse")} />
-             Force Refresh
-          </button>
-        </div>
-      </div>
-
       <FilterBar>
         <div className="flex gap-2 flex-1 overflow-x-auto scrollbar-hide scroll-smooth pb-1 sm:pb-0">
           <FilterButton 

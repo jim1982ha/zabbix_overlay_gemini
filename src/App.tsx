@@ -138,6 +138,7 @@ function DashboardApp() {
   const [colorPickerTarget, setColorPickerTarget] = useState<{ metric: string, current: string } | null>(null);
   const [colorMapToggle, setColorMapToggle] = useState(0);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [notificationsHeaderExtra, setNotificationsHeaderExtra] = useState<React.ReactNode | null>(null);
 
   useEffect(() => {
     const handleColorMapChange = () => setColorMapToggle(prev => prev + 1);
@@ -915,6 +916,7 @@ function DashboardApp() {
         showToast={showToast} 
         isDemo={isDemo} 
         refreshIntervalMs={getPollingIntervalMs(filters.granularity)} 
+        setHeaderExtra={setNotificationsHeaderExtra}
       />;
     }
     if (view === "config") {
@@ -1087,6 +1089,11 @@ function DashboardApp() {
                     </button>
                   </div>
                 )}
+            </div>
+          )}
+          {view === 'notifications' && notificationsHeaderExtra && (
+            <div className="ml-auto shrink-0 select-none">
+              {notificationsHeaderExtra}
             </div>
           )}
         </div>
