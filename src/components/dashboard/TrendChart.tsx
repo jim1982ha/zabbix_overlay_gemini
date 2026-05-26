@@ -790,7 +790,7 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
         )}
       </div>
 
-      {chartType === 'pie' && timestamp && (
+      {timestamp && (
         <div className="relative z-10 flex flex-row items-center justify-between pt-1 shrink-0 mt-auto w-full min-w-0 gap-2">
           <div className="flex items-center gap-1 text-[9px] @[200px]:text-[10px] @[260px]:text-[11px] text-slate-400 dark:text-slate-500 font-medium px-1.5 @[200px]:px-2 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-full shrink min-w-0 overflow-hidden">
             <Clock className="w-2.5 h-2.5 @[200px]:w-3 @[200px]:h-3 shrink-0" />

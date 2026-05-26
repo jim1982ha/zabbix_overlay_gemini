@@ -37,14 +37,9 @@ export function KpiTrendModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-              {widget.title} Trend
-            </h3>
-            {timestampStr && (
-              <p className="text-xs text-slate-500 mt-1">{timestampStr}</p>
-            )}
-          </div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+            {widget.title} Trend
+          </h3>
           <button 
             onClick={onClose}
             className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 rounded-full transition-colors outline-none"
@@ -54,12 +49,13 @@ export function KpiTrendModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-4 relative min-h-0 overflow-hidden bg-slate-50/50 dark:bg-slate-950/50">
+        <div className="flex-1 p-4 relative min-h-0 overflow-hidden bg-slate-50/50 dark:bg-slate-950/50 flex flex-col">
           <TrendChart 
             title=""
             data={chartData}
             series={chartSeries}
             hosts={widget.hosts}
+            aggregation={widget.aggregation}
             chartType="area" // Request specifically wants Area chart type
             stacked={widget.stacked}
             unit={unit}
@@ -68,6 +64,7 @@ export function KpiTrendModal({
             onColorChangeRequest={onColorChangeRequest}
             onHostClick={onHostClick}
             widgetId={`modal-${widget.id}`}
+            timestamp={timestampStr}
           />
         </div>
       </div>

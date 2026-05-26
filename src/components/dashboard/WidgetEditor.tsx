@@ -253,7 +253,7 @@ export function WidgetEditor({
                       onChange={e => handleUpdateWidget(w.id, { aggregation: e.target.value as any })} 
                       className="w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all text-slate-900 dark:text-white"
                     >
-                      {w.type !== 'kpi' && <option value="none">Detailed Multi-Series</option>}
+                      {w.type !== 'kpi' && <option value="none">None</option>}
                       <option value="sum">Sum</option>
                       <option value="avg">Average</option>
                     </select>
