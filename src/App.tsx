@@ -11,6 +11,7 @@ import { InfraInventory } from "./components/dashboard/InfraInventory";
 import { NotificationFeed } from "./components/dashboard/NotificationFeed";
 import { ImportModal } from "./components/dashboard/ImportModal";
 import { ConfigView } from "./components/dashboard/ConfigView";
+import { ConfiguredDataSource } from "./core/interfaces/plugins";
 import { useZabbixDiscovery } from "./hooks/useZabbixDiscovery";
 import { useTimeseries } from "./hooks/useTimeseries";
 import { DashboardProvider, useDashboard } from "./contexts/DashboardContext";
@@ -151,6 +152,49 @@ function DashboardApp() {
     token: sessionStorage.getItem('hareporting_zabbix_token') || '',
     isPreconfigured: false
   });
+
+  const [dataSources, setDataSources] = useState<ConfiguredDataSource[]>(() => {
+    const saved = localStorage.getItem('hareporting_datasources');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.length > 0) return parsed;
+    }
+    
+    // In demo mode or clean start, ensure we have at least an empty Zabbix integration skeleton
+    const url = sessionStorage.getItem('hareporting_zabbix_url') || '';
+    const token = sessionStorage.getItem('hareporting_zabbix_token') || '';
+    return [
+      {
+        id: 'ds-default-zabbix',
+        pluginId: 'zabbix-core',
+        name: 'Primary Zabbix Environment',
+        config: { url, token }
+      }
+    ];
+  });
+
+  const handleSaveDataSource = useCallback((ds: ConfiguredDataSource) => {
+    setDataSources(prev => {
+      const idx = prev.findIndex(p => p.id === ds.id);
+      const next = idx >= 0 ? [...prev.slice(0, idx), ds, ...prev.slice(idx + 1)] : [...prev, ds];
+      localStorage.setItem('hareporting_datasources', JSON.stringify(next));
+      // For backwards compatibility and ensuring the rest of the app doesn't break
+      if (ds.pluginId === 'zabbix-core') {
+         setZabbixConfig({ url: ds.config.url || '', token: ds.config.token || '', isPreconfigured: false });
+         sessionStorage.setItem('hareporting_zabbix_url', ds.config.url || '');
+         sessionStorage.setItem('hareporting_zabbix_token', ds.config.token || '');
+      }
+      return next;
+    });
+  }, []);
+
+  const handleDeleteDataSource = useCallback((id: string) => {
+    setDataSources(prev => {
+      const next = prev.filter(p => p.id !== id);
+      localStorage.setItem('hareporting_datasources', JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const [appMode, setAppMode] = useState<'demo' | 'live'>(() => {
     return (sessionStorage.getItem('hareporting_zabbix_url') || sessionStorage.getItem('hareporting_zabbix_token')) ? 'live' : 'demo';
@@ -922,16 +966,11 @@ function DashboardApp() {
     if (view === "config") {
       return (
         <ConfigView
-          zabbixConfig={zabbixConfig}
+          dataSources={dataSources}
+          onSaveDataSource={handleSaveDataSource}
+          onDeleteDataSource={handleDeleteDataSource}
           requiresSecureToken={requiresSecureToken}
           isDemo={isDemo}
-          isDiscovering={isDiscovering}
-          draftZabbixConfig={draftZabbixConfig}
-          setDraftZabbixConfig={setDraftZabbixConfig}
-          handleSaveZabbixConfig={handleSaveZabbixConfig}
-          discoverZabbixAssets={discoverZabbixAssets}
-          handleDemoMode={handleDemoMode}
-          discoveryStatus={discoveryStatus}
         />
       );
     }
@@ -1026,7 +1065,7 @@ function DashboardApp() {
                     {view === 'dashboard' ? dashboardName : 
                      view === 'network' ? 'Network Topology' : 
                      view === 'infra' ? 'Asset Inventory' : 
-                     view === 'notifications' ? 'Current Problems' : 'Zabbix API Settings'}
+                     view === 'notifications' ? 'Current Problems' : 'Data Sources'}
                   </h1>
                   {view === 'dashboard' && hasUnsavedChanges && (
                     <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-100 rounded-full animate-pulse shrink-0 transition-all hidden sm:flex">
