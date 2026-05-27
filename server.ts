@@ -6,8 +6,9 @@ import dotenv from "dotenv";
 import net from "net";
 import rateLimit from "express-rate-limit";
 import fs from "fs";
-import { zabbixRouter } from "./server/routes/zabbix";
-import { timeseriesRouter } from "./server/routes/timeseries";
+import { zabbixRouter } from "./server/plugins/zabbix/zabbix";
+import { timeseriesRouter } from "./server/plugins/zabbix/timeseries";
+import { requireSecureToken } from "./server/utils/security";
 
 dotenv.config();
 
@@ -17,7 +18,7 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  app.set("trust proxy", true);
+  app.set("trust proxy", 1);
   const PORT = process.env.APP_PORT ? parseInt(process.env.APP_PORT, 10) : 3000;
 
   // Set rigorous body parser limits to prevent Denial-of-Service via payload exhaustion
@@ -64,15 +65,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/demo-dashboard", express.json(), (req, res) => {
-    const expectedToken = process.env.APP_SECURE_TOKEN;
-    if (expectedToken) {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
-        return res.status(401).json({ error: "Unauthorized access detected." });
-      }
-    }
-    
+  app.post("/api/demo-dashboard", express.json(), requireSecureToken, (req, res) => {
     try {
       const demoPath = path.join(process.cwd(), "src", "data", "demoDashboard.json");
       const dirOfDemo = path.dirname(demoPath);

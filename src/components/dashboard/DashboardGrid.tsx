@@ -12,7 +12,7 @@ import {
   PlusCircle
 } from "lucide-react";
 import { useDashboard } from "../../contexts/DashboardContext";
-import { Widget } from "../../types/zabbix";
+import { Widget } from "../../core/interfaces/dashboard";
 import { StatCard } from "./StatCard";
 import { TrendChart } from "./TrendChart";
 import { WidgetEditor } from "./WidgetEditor";

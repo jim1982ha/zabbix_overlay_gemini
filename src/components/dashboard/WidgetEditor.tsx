@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Settings2, X, ChevronDown, ArrowUpDown, Check } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { PortalMenu } from "./PortalMenu";
-import type { Widget } from "../../types/zabbix";
+import type { Widget } from "../../core/interfaces/dashboard";
 
 const AGGREGATION_OPTIONS = [
   { value: 'none', label: 'None' },

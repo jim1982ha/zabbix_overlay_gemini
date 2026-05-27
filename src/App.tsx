@@ -12,10 +12,10 @@ import { NotificationFeed } from "./components/dashboard/NotificationFeed";
 import { ImportModal } from "./components/dashboard/ImportModal";
 import { ConfigView } from "./components/dashboard/ConfigView";
 import { ConfiguredDataSource } from "./core/interfaces/plugins";
-import { useZabbixDiscovery } from "./hooks/useZabbixDiscovery";
-import { useTimeseries } from "./hooks/useTimeseries";
+import { useZabbixDiscovery } from "./plugins/zabbix/useZabbixDiscovery";
+import { useTimeseries } from "./plugins/zabbix/useTimeseries";
 import { DashboardProvider, useDashboard } from "./contexts/DashboardContext";
-import type { Widget, Dashboard } from "./types/zabbix";
+import type { Widget, Dashboard } from "./core/interfaces/dashboard";
 import { TopNavigationBar } from "./components/dashboard/TopNavigationBar";
 import { DashboardGrid } from "./components/dashboard/DashboardGrid";
 import { 

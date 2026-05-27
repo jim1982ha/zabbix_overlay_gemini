@@ -1,7 +1,7 @@
 import React from "react";
 import { X } from "lucide-react";
 import { TrendChart } from "./TrendChart";
-import { Widget } from "../../types/zabbix";
+import { Widget } from "../../core/interfaces/dashboard";
 
 interface KpiTrendModalProps {
   widget: Widget;

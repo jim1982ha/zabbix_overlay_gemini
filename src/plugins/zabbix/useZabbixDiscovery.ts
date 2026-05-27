@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import axios from "axios";
-import { ZabbixHost, ZabbixItem } from "../types/zabbix";
+import { ZabbixHost, ZabbixItem } from "./types";
 
 export function useZabbixDiscovery(zabbixConfig: { url: string; token: string }) {
   const [isDiscovering, setIsDiscovering] = useState(false);

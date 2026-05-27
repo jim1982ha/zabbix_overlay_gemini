@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import type { Widget } from '../types/zabbix';
+import type { Widget } from '../core/interfaces/dashboard';
 
 export interface DashboardFilters {
   mode: 'live' | 'historical';

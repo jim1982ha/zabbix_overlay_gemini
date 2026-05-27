@@ -1,21 +1,11 @@
 import express from 'express';
-import axios from 'axios';
-import { isSafeTargetUrl } from '../utils/security';
-import { ZabbixService } from '../services/ZabbixService';
+import { isSafeTargetUrl, requireSecureToken, resolveEnvironmentToken } from '../../utils/security';
+import { ZabbixService } from './ZabbixService';
 
 export const zabbixRouter = express.Router();
 
-zabbixRouter.post("/", async (req, res) => {
+zabbixRouter.post("/", requireSecureToken, async (req, res) => {
     try {
-      // Optional: Internal Authorization Gate if APP_SECURE_TOKEN is injected via environment (CWE-306 fix)
-      const expectedToken = process.env.APP_SECURE_TOKEN;
-      if (expectedToken) {
-        const authHeader = req.headers.authorization;
-        if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
-          return res.status(401).json({ error: "Unauthorized access detected." });
-        }
-      }
-
       if (!req.body || typeof req.body !== "object") {
         return res.status(400).json({ error: "Invalid request payload." });
       }
@@ -28,21 +18,17 @@ zabbixRouter.post("/", async (req, res) => {
       } = req.body;
 
       // Basic SSRF protection (CWE-918): Reject loopback and AWS Metadata IPs
-      if (reqUrl && !isSafeTargetUrl(reqUrl)) {
+      if (reqUrl && !(await isSafeTargetUrl(reqUrl))) {
         return res.status(403).json({ error: "Forbidden: Unsafe target URL provided." });
       }
 
       // Prefer user-provided values from the frontend configuration, fallback to environment variables
       const url = reqUrl || process.env.VITE_ZABBIX_URL || "";
-      if (!isSafeTargetUrl(url)) {
-        return res.status(403).json({ error: "Forbidden: Configured URL is unsafe." });
+      if (!url || !(await isSafeTargetUrl(url))) {
+        return res.status(403).json({ error: "Forbidden: Configured URL is unsafe or missing." });
       }
       
-      // If client sends the obfuscated token placeholder, fall back to the actual environment variable token
-      let token = reqToken;
-      if (!token || token === '********************************') {
-        token = process.env.VITE_ZABBIX_TOKEN;
-      }
+      const token = resolveEnvironmentToken(reqToken);
 
       if (!token) {
         return res.status(400).json({ error: "Zabbix Token not configured in environment" });
@@ -52,11 +38,8 @@ zabbixRouter.post("/", async (req, res) => {
       
       const allowedMethods = ['host.get', 'item.get', 'history.get', 'trend.get', 'hostgroup.get', 'apiinfo.version', 'trigger.get', 'problem.get'];
       if (typeof method !== 'string' || !allowedMethods.includes(method)) {
-
         return res.status(403).json({ error: "Forbidden: Method not in strict explicit allowlist." });
       }
-
-      console.log(`Proxying Zabbix Request: ${method} to ${url}`);
 
       const requestPayload: any = {
         jsonrpc: "2.0",

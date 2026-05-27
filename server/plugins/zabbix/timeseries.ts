@@ -1,32 +1,19 @@
 import express from 'express';
-import { isSafeTargetUrl } from '../utils/security';
-import { ZabbixService } from '../services/ZabbixService';
+import { isSafeTargetUrl, requireSecureToken, resolveEnvironmentToken } from '../../utils/security';
+import { ZabbixService } from './ZabbixService';
 import axios from 'axios';
 
 export const timeseriesRouter = express.Router();
 
-timeseriesRouter.post("/", async (req, res) => {
+timeseriesRouter.post("/", requireSecureToken, async (req, res) => {
     let { start, end, granularity = '5m', range = '24h', mode = 'live', url: reqUrl, token: reqToken, metrics = [], hosts = [], itemDict = {}, isDemoRequest } = req.body;
     
     // Prefer user-provided values from the frontend configuration, fallback to environment variables
     const url = reqUrl || process.env.VITE_ZABBIX_URL || "";
     
-    // If client sends the obfuscated token placeholder, fall back to the actual environment variable token
-    let token = reqToken;
-    if (!token || token === '********************************') {
-      token = process.env.VITE_ZABBIX_TOKEN;
-    }
+    const token = resolveEnvironmentToken(reqToken);
     
     const isDemo = isDemoRequest || (!url || !token);
-
-    // Optional: Internal Authorization Gate if APP_SECURE_TOKEN is injected via environment (CWE-306 fix)
-    const expectedToken = process.env.APP_SECURE_TOKEN;
-    if (expectedToken && !isDemo) {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
-        return res.status(401).json({ error: "Unauthorized access detected." });
-      }
-    }
 
     // Type checking for arrays to prevent DoS via TypeError Exceptions
     if (!Array.isArray(metrics)) metrics = [];
@@ -36,7 +23,7 @@ timeseriesRouter.post("/", async (req, res) => {
     hosts = hosts.filter((h: any) => typeof h === 'string');
 
     // Basic SSRF protection (CWE-918): Reject loopback and AWS Metadata IPs
-    if (url && !isSafeTargetUrl(url)) {
+    if (url && !(await isSafeTargetUrl(url))) {
       return res.status(403).json({ error: "Forbidden: Unsafe target URL provided." });
     }
 
@@ -149,7 +136,6 @@ timeseriesRouter.post("/", async (req, res) => {
            });
 
            if (missingMetrics.size > 0) {
-               console.log(`[timeseries] Fetching missing metrics:`, Array.from(missingMetrics));
                try {
                   const missingRes = await zReq("item.get", {
                       output: ["itemid", "name", "value_type", "lastvalue"],
@@ -185,7 +171,6 @@ timeseriesRouter.post("/", async (req, res) => {
                }
            }
         } else {
-           console.log(`[timeseries] No itemDict provided, falling back to item.get`);
            const itemRes = await zReq("item.get", {
                output: ["itemid", "name", "value_type", "lastvalue"],
                selectHosts: ["name", "host"],
