@@ -28,6 +28,20 @@ interface TopNavigationBarProps {
   refreshProgress: number;
 }
 
+function MenuOption({ active, onClick, children, activeClass = "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" }: { active: boolean, onClick: () => void, children: React.ReactNode, activeClass?: string }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={cn(
+        "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors block",
+        active ? activeClass : "text-slate-600 dark:text-slate-400"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function TopNavigationBar({
   globalSearch,
   setGlobalSearch,
@@ -170,61 +184,36 @@ export function TopNavigationBar({
         {/* Portal Menus */}
         <PortalMenu isOpen={showRangeMenu} onClose={() => setShowRangeMenu(false)} anchorRef={rangeMenuBtnRef}>
           {['1h', '6h', '24h', '7d'].map((r) => (
-            <button 
+            <MenuOption 
               key={r}
-              onClick={() => {
-                setFilters({...filters, range: r});
-                setShowRangeMenu(false);
-              }}
-              className={cn(
-                "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors block",
-                filters.range === r ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
-              )}
+              active={filters.range === r}
+              onClick={() => { setFilters({...filters, range: r}); setShowRangeMenu(false); }}
             >
-              {r === '1h' ? 'Last Hour' : 
-               r === '6h' ? '6 Hours' : 
-               r === '24h' ? '24 Hours' : '7 Days'}
-            </button>
+              {r === '1h' ? 'Last Hour' : r === '6h' ? '6 Hours' : r === '24h' ? '24 Hours' : '7 Days'}
+            </MenuOption>
           ))}
         </PortalMenu>
 
         <PortalMenu isOpen={showGranMenu} onClose={() => setShowGranMenu(false)} anchorRef={granMenuBtnRef}>
           {(filters.mode === 'live' ? ['1m', '5m', '15m', '1h'] : ['5m', '30m', '1h', '1d']).map((g) => (
-            <button 
+            <MenuOption 
               key={g}
-              onClick={() => {
-                setFilters({...filters, granularity: g as any});
-                setShowGranMenu(false);
-              }}
-              className={cn(
-                "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors block",
-                filters.granularity === g ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-500/10" : "text-slate-600 dark:text-slate-400"
-              )}
+              active={filters.granularity === g}
+              onClick={() => { setFilters({...filters, granularity: g as any}); setShowGranMenu(false); }}
+              activeClass="text-emerald-700 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-500/10"
             >
               {g === '1m' ? '1 Minute' : g === '5m' ? '5 Minutes' : g === '15m' ? '15 Minutes' : g === '30m' ? '30 Minutes' : g === '1d' ? '1 Day' : '1 Hour'}
-            </button>
+            </MenuOption>
           ))}
         </PortalMenu>
 
         <PortalMenu isOpen={showModeMenu} onClose={() => setShowModeMenu(false)} anchorRef={modeMenuBtnRef} align="right">
-          <button
-            onClick={() => { setFilters({...filters, mode: 'live'}); setShowModeMenu(false); }}
-            className={cn(
-              "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors block",
-              filters.mode === 'live' ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
-            )}
-          >
+          <MenuOption active={filters.mode === 'live'} onClick={() => { setFilters({...filters, mode: 'live'}); setShowModeMenu(false); }}>
             Live
-          </button>
-          <button
-            onClick={() => { setFilters({...filters, mode: 'historical'}); setShowModeMenu(false); }}
-            className={cn(
-              "w-full px-4 py-2.5 text-sm font-medium text-left hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors block",
-              filters.mode === 'historical' ? "text-blue-700 dark:text-sky-400 bg-blue-50/80 dark:bg-sky-500/10" : "text-slate-600 dark:text-slate-400"
-            )}
-          >
+          </MenuOption>
+          <MenuOption active={filters.mode === 'historical'} onClick={() => { setFilters({...filters, mode: 'historical'}); setShowModeMenu(false); }}>
             Historical
-          </button>
+          </MenuOption>
         </PortalMenu>
       </div>
     </div>

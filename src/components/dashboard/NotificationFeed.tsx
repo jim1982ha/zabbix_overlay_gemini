@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Bell, Activity, Shield, AlertTriangle, CheckCircle, Clock, X, ExternalLink, Zap, RefreshCw } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, getSeverityClasses } from '../../lib/utils';
 import axios from 'axios';
 import { FilterBar, FilterButton } from "../ui/FilterBar";
 import { ScrollableBar } from "../layout/ScrollableBar";
-import { STDL_LIST_CARD_CLASS } from "../ui/Card";
+import { Card } from "../ui/Card";
 
 interface Notification {
   id: number;
@@ -310,17 +310,14 @@ export function NotificationFeed({
                 <p className="text-sm font-semibold text-slate-500">No notifications matching criteria</p>
             </div>
         ) : filteredNotifications.map((n, i) => (
-          <div 
+          <Card 
             key={n.id}
             onClick={() => setSelectedNotification(n)}
-            className={cn(STDL_LIST_CARD_CLASS, "p-4 sm:p-5 flex flex-row items-start sm:items-center gap-3 sm:gap-5 hover:border-blue-300 dark:hover:border-blue-800/40 cursor-pointer select-none group")}
+            className="p-4 sm:p-5 flex flex-row items-start sm:items-center gap-3 sm:gap-5 hover:border-blue-300 dark:hover:border-blue-800/40 cursor-pointer select-none group"
           >
             <div className={cn(
               "w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0",
-              n.severity === 'critical' ? "bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40" :
-              n.severity === 'warning' ? "bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40" :
-              n.severity === 'success' ? "bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40" :
-              "bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/40"
+              getSeverityClasses(n.severity)
             )}>
               {n.type === 'alert' ? <AlertTriangle className="w-5 h-5" /> :
                n.type === 'security' ? <Shield className="w-5 h-5" /> :
@@ -352,7 +349,7 @@ export function NotificationFeed({
                   <X className="w-4 h-4" />
                </button>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
@@ -377,10 +374,8 @@ export function NotificationFeed({
                     <div className="p-8">
                         <div className="flex justify-between items-start mb-8">
                             <div className={cn(
-                                "w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm border",
-                                selectedNotification.severity === 'critical' ? "bg-rose-50 text-rose-600 border-rose-100" :
-                                selectedNotification.severity === 'warning' ? "bg-amber-50 text-amber-600 border-amber-100" :
-                                "bg-blue-50 text-blue-600 border-blue-100"
+                                "w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm",
+                                getSeverityClasses(selectedNotification.severity)
                             )}>
                                 {selectedNotification.type === 'alert' ? <AlertTriangle className="w-7 h-7" /> : <Shield className="w-7 h-7" />}
                             </div>
@@ -396,8 +391,8 @@ export function NotificationFeed({
                             <div>
                                 <div className="flex items-center gap-2 mb-2">
                                     <span className={cn(
-                                        "px-2.5 py-1 rounded-md text-xs font-semibold capitalize border",
-                                        selectedNotification.severity === 'critical' ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-slate-100 text-slate-600 border-slate-200"
+                                        "px-2.5 py-1 rounded-md text-xs font-semibold capitalize",
+                                        getSeverityClasses(selectedNotification.severity)
                                     )}>
                                         {selectedNotification.severity}
                                     </span>

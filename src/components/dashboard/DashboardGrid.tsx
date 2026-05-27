@@ -18,7 +18,8 @@ import { TrendChart } from "./TrendChart";
 import { WidgetEditor } from "./WidgetEditor";
 import { KpiTrendModal } from "./KpiTrendModal";
 import { ErrorBoundary } from "../ErrorBoundary";
-import { cn, getDeterministicColor, formatValue } from "../../lib/utils";
+import { cn, getDeterministicColor, formatValue, formatTimestampRange, resolveHosts } from "../../lib/utils";
+import { LoadingDots } from "../ui/LoadingDots";
 
 interface DashboardGridProps {
   data: any[];
@@ -130,7 +131,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     if (data.length > 0) {
       lastPoint = [...data].reverse().find((d: any) => 
         (w.metrics || []).some((m: string) => {
-          const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
+          const hostsToUse = resolveHosts(w.hosts, availableHosts);
           return hostsToUse.some((h: string) => !hiddenSeries.has(`${m}_${h}`) && d[`${m}_${h}`] != null);
         })
       ) || data[data.length - 1];
@@ -138,7 +139,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
       let values: number[] = [];
       
       (w.metrics || []).forEach(m => {
-        const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
+        const hostsToUse = resolveHosts(w.hosts, availableHosts);
         hostsToUse.forEach(h => {
           const key = `${m}_${h}`;
           if (!hiddenSeries.has(key) && lastPoint[key] != null) {
@@ -166,7 +167,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
       const getVal = (point: any) => {
         let values: number[] = [];
         (w.metrics || []).forEach(m => {
-          const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
+          const hostsToUse = resolveHosts(w.hosts, availableHosts);
           hostsToUse.forEach(h => {
             const key = `${m}_${h}`;
             if (!hiddenSeries.has(key) && point[key] != null) {
@@ -191,35 +192,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
       trendDir = lastVal >= prevVal ? 'up' : 'down';
     }
 
-    let timestampStr: string | undefined = undefined;
-    if (data && data.length > 0) {
-       const firstPoint = data[0];
-       const lastPointData = data[data.length - 1];
-       if (firstPoint?.time && lastPointData?.time) {
-          const d1 = new Date(firstPoint.time);
-          const d2 = new Date(lastPointData.time);
-          
-          let d2End = new Date(d2.getTime());
-          if (filters.granularity === '1h') d2End = new Date(d2.getTime() + 60 * 60 * 1000);
-          else if (filters.granularity === '1m') d2End = new Date(d2.getTime() + 60 * 1000);
-          else if (filters.granularity === '5m') d2End = new Date(d2.getTime() + 5 * 60 * 1000);
-          else if (filters.granularity === '15m') d2End = new Date(d2.getTime() + 15 * 60 * 1000);
-          else if (filters.granularity === '30m') d2End = new Date(d2.getTime() + 30 * 60 * 1000);
-          else if (filters.granularity === '1d') d2End = new Date(d2.getTime() + 24 * 60 * 60 * 1000);
-
-          if (filters.granularity === '1d') {
-              timestampStr = d1.toLocaleDateString() === d2End.toLocaleDateString() 
-                 ? d1.toLocaleDateString() 
-                 : `${d1.toLocaleDateString()} - ${d2End.toLocaleDateString()}`;
-          } else {
-              if (d1.toLocaleDateString() === d2End.toLocaleDateString()) {
-                  timestampStr = `${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-              } else {
-                  timestampStr = `${d1.toLocaleDateString()} ${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleDateString()} ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-              }
-          }
-       }
-    }
+    let timestampStr = formatTimestampRange(data, filters.granularity);
 
     return (
       <StatCard 
@@ -256,35 +229,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
   const renderTrendChart = (w: Widget) => {
     const { chartData = data, chartSeries = [] } = widgetDataMapping[w.id] || {};
     
-    let timestampStr: string | undefined = undefined;
-    if (w.chartType === 'pie' && chartData && chartData.length > 0) {
-      const firstPoint = chartData[0];
-      const lastPointData = chartData[chartData.length - 1];
-      if (firstPoint?.time && lastPointData?.time) {
-         const d1 = new Date(firstPoint.time);
-         const d2 = new Date(lastPointData.time);
-         
-         let d2End = new Date(d2.getTime());
-         if (filters.granularity === '1h') d2End = new Date(d2.getTime() + 60 * 60 * 1000);
-         else if (filters.granularity === '1m') d2End = new Date(d2.getTime() + 60 * 1000);
-         else if (filters.granularity === '5m') d2End = new Date(d2.getTime() + 5 * 60 * 1000);
-         else if (filters.granularity === '15m') d2End = new Date(d2.getTime() + 15 * 60 * 1000);
-         else if (filters.granularity === '30m') d2End = new Date(d2.getTime() + 30 * 60 * 1000);
-         else if (filters.granularity === '1d') d2End = new Date(d2.getTime() + 24 * 60 * 60 * 1000);
-
-         if (filters.granularity === '1d') {
-             timestampStr = d1.toLocaleDateString() === d2End.toLocaleDateString() 
-                ? d1.toLocaleDateString() 
-                : `${d1.toLocaleDateString()} - ${d2End.toLocaleDateString()}`;
-         } else {
-             if (d1.toLocaleDateString() === d2End.toLocaleDateString()) {
-                 timestampStr = `${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-             } else {
-                 timestampStr = `${d1.toLocaleDateString()} ${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleDateString()} ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-             }
-         }
-      }
-    }
+    let timestampStr = w.chartType === 'pie' ? formatTimestampRange(chartData, filters.granularity) : undefined;
 
     return (
       <TrendChart 
@@ -533,7 +478,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
               if (hiddenSeries.has(`${sKey}_agg`)) hasFilter = true;
             }
             smetrics.forEach((m: string) => {
-              const hostsToUse = shosts.includes('all') ? availableHosts : shosts;
+              const hostsToUse = resolveHosts(shosts, availableHosts);
               hostsToUse.forEach((h: string) => {
                 const key = `${m}_${h}`;
                 const hasDataForSeries = data.some((point: any) => point[key] != null);
@@ -542,7 +487,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
             });
           });
         } else if (w.type === 'kpi') {
-          const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
+          const hostsToUse = resolveHosts(w.hosts, availableHosts);
           (w.metrics || []).forEach((m: string) => {
             hostsToUse.forEach((h: string) => {
               const key = `${m}_${h}`;
@@ -554,7 +499,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
             if (hiddenSeries.has('agg_val')) hasFilter = true;
           }
           (w.metrics || []).forEach((m: string) => {
-            const hostsToUse = (w.hosts || []).includes('all') ? availableHosts : (w.hosts || []);
+            const hostsToUse = resolveHosts(w.hosts, availableHosts);
             hostsToUse.forEach((h: string) => {
               const key = `${m}_${h}`;
               const hasDataForSeries = data.some((point: any) => point[key] != null);
@@ -628,11 +573,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
               ) : isLoading ? (
                 <div className="flex-1 flex flex-col items-center justify-center min-h-[100px] h-full w-full bg-slate-50/10 dark:bg-slate-900/10">
                   <div className="flex flex-col items-center gap-[10px]">
-                    <div className="flex gap-[7.5px]">
-                      <div className="w-[7.5px] h-[7.5px] rounded-full dot-loading" style={{ animationDelay: '-0.32s' }}></div>
-                      <div className="w-[7.5px] h-[7.5px] rounded-full dot-loading" style={{ animationDelay: '-0.16s' }}></div>
-                      <div className="w-[7.5px] h-[7.5px] rounded-full dot-loading" style={{ animationDelay: '0s' }}></div>
-                    </div>
+                    <LoadingDots size={3} />
                     <span className="text-[13.8px] font-medium text-slate-500 w-full text-center">Loading data</span>
                   </div>
                 </div>
@@ -656,7 +597,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
             if (kpiModalWidget.aggregation !== 'none') {
                let vals: number[] = [];
                (kpiModalWidget.metrics || []).forEach(m => {
-                 const hostsToUse = (kpiModalWidget.hosts || []).includes('all') ? availableHosts : (kpiModalWidget.hosts || []);
+                 const hostsToUse = resolveHosts(kpiModalWidget.hosts, availableHosts);
                  hostsToUse.forEach(h => {
                    const key = `${m}_${h}`;
                    if (!hiddenSeries.has(key) && point[key] != null) vals.push(Number(point[key]));
@@ -676,7 +617,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
                 metric: kpiModalWidget.metrics?.[0]
               }]
             : (kpiModalWidget.metrics || []).flatMap(m => {
-                const hostsToUse = (kpiModalWidget.hosts || []).includes('all') ? availableHosts : (kpiModalWidget.hosts || []);
+                const hostsToUse = resolveHosts(kpiModalWidget.hosts, availableHosts);
                 return hostsToUse.map(h => ({
                   key: `${m}_${h}`,
                   name: `${m.toUpperCase()} [${h}]`,
@@ -685,38 +626,7 @@ export const DashboardGrid = React.memo(function DashboardGrid({
                 }));
             })
           }
-          timestampStr={(() => {
-            // Using same Logic as KPI widget timestamp
-            if (data && data.length > 0) {
-               const firstPoint = data[0];
-               const lastPointData = data[data.length - 1];
-               if (firstPoint?.time && lastPointData?.time) {
-                  const d1 = new Date(firstPoint.time);
-                  const d2 = new Date(lastPointData.time);
-                  
-                  let d2End = new Date(d2.getTime());
-                  if (filters.granularity === '1h') d2End = new Date(d2.getTime() + 60 * 60 * 1000);
-                  else if (filters.granularity === '1m') d2End = new Date(d2.getTime() + 60 * 1000);
-                  else if (filters.granularity === '5m') d2End = new Date(d2.getTime() + 5 * 60 * 1000);
-                  else if (filters.granularity === '15m') d2End = new Date(d2.getTime() + 15 * 60 * 1000);
-                  else if (filters.granularity === '30m') d2End = new Date(d2.getTime() + 30 * 60 * 1000);
-                  else if (filters.granularity === '1d') d2End = new Date(d2.getTime() + 24 * 60 * 60 * 1000);
-
-                  if (filters.granularity === '1d') {
-                      return d1.toLocaleDateString() === d2End.toLocaleDateString() 
-                         ? d1.toLocaleDateString() 
-                         : `${d1.toLocaleDateString()} - ${d2End.toLocaleDateString()}`;
-                  } else {
-                      if (d1.toLocaleDateString() === d2End.toLocaleDateString()) {
-                          return `${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-                      } else {
-                          return `${d1.toLocaleDateString()} ${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleDateString()} ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-                      }
-                  }
-               }
-            }
-            return undefined;
-          })()}
+          timestampStr={formatTimestampRange(data, filters.granularity)}
           unit={(() => {
              const m = kpiModalWidget.metrics?.[0];
              return m && metricUnitsMap[m] ? (metricUnitsMap[m] === '%' ? '%' : ` ${metricUnitsMap[m]}`) : '';

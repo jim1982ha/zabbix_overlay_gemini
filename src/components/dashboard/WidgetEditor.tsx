@@ -2,6 +2,7 @@ import React, { useState, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { Settings2, X, ChevronDown, ArrowUpDown, Check } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { PortalMenu } from "./PortalMenu";
 import type { Widget } from "../../types/zabbix";
 
 const AGGREGATION_OPTIONS = [
@@ -29,10 +30,31 @@ const STACKING_OPTIONS = [
   { value: 'true', label: 'On' }
 ] as const;
 
+function SelectInput({ value, onChange, options, className }: { value: string, onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void, options: readonly { value: string, label: string }[], className?: string }) {
+  return (
+    <div className="relative">
+      <select 
+        value={value} 
+        onChange={onChange}
+        className={cn(
+          "w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors",
+          className
+        )}
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+      <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+      </div>
+    </div>
+  );
+}
+
 export function MultiSelect({ options, selected = [], onChange, label, metricUnitsMap }: { options: string[], selected?: string[], onChange: (val: string[]) => void, label: string, metricUnitsMap: Record<string, string> }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dropdownPos, setDropdownPos] = useState<{ top: number, left: number, width: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const sortedOptions = [...options].sort((a, b) => a.localeCompare(b));
@@ -40,33 +62,7 @@ export function MultiSelect({ options, selected = [], onChange, label, metricUni
 
   const toggleOpen = () => {
     setIsOpen(!isOpen);
-    if (isOpen) {
-      setDropdownPos(null);
-    }
   };
-
-  useLayoutEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const updatePosition = () => {
-        if (!buttonRef.current) return;
-        const rect = buttonRef.current.getBoundingClientRect();
-        const fitsBelow = window.innerHeight - rect.bottom > 250;
-        setDropdownPos({
-          top: fitsBelow ? rect.bottom + 8 : Math.max(8, rect.top - 232), 
-          left: rect.left,
-          width: rect.width
-        });
-      };
-      
-      updatePosition();
-      
-      // Update position on scroll for nested containers
-      window.addEventListener('scroll', updatePosition, true);
-      return () => window.removeEventListener('scroll', updatePosition, true);
-    } else {
-      setDropdownPos(null);
-    }
-  }, [isOpen]);
 
   return (
     <div className="relative">
@@ -87,21 +83,8 @@ export function MultiSelect({ options, selected = [], onChange, label, metricUni
         </span>
         <ChevronDown className={cn("w-4 h-4 transition-all duration-300 ml-2 shrink-0", isOpen ? "rotate-180 text-blue-500 dark:text-sky-500" : "opacity-30 group-hover:opacity-60 text-slate-400")} />
       </button>
-      {isOpen && dropdownPos && typeof window !== 'undefined' && createPortal(
-        <>
-          <div className="fixed inset-0 z-[120]" onClick={() => setIsOpen(false)} />
-          <div 
-            className={cn(
-              "fixed z-[130] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-2 max-h-56 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 scrollbar-hide flex flex-col",
-              dropdownPos?.top < (buttonRef.current?.getBoundingClientRect().top || 0) ? "origin-bottom" : "origin-top"
-            )}
-            style={{
-              top: dropdownPos.top,
-              left: dropdownPos.left,
-              width: dropdownPos.width,
-            }}
-          >
-            <div className="sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10 p-1 flex flex-col gap-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+      <PortalMenu isOpen={isOpen} onClose={() => setIsOpen(false)} anchorRef={buttonRef} className="p-2 max-h-56 overflow-y-auto scrollbar-hide">
+            <div className="sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10 flex flex-col gap-2 border-b border-slate-100 dark:border-slate-800 mb-1">
               <input 
                 type="text" 
                 placeholder="Search..." 
@@ -169,10 +152,7 @@ export function MultiSelect({ options, selected = [], onChange, label, metricUni
                 Showing 100 of {filteredOptions.length} results. Use search to refine.
               </div>
             )}
-          </div>
-        </>,
-        document.body
-      )}
+      </PortalMenu>
     </div>
   );
 }
@@ -256,30 +236,24 @@ export function WidgetEditor({
                 {w.type === 'chart' && (
                   <div>
                     <label className="text-sm font-semibold text-slate-400 block mb-2">Visualization</label>
-                    <select 
-                      value={w.chartType} 
-                      onChange={e => handleUpdateWidget(w.id, { chartType: e.target.value as any })} 
-                      className="w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all text-slate-900 dark:text-white"
-                    >
-                      {CHART_TYPE_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
+                        <SelectInput 
+                          value={w.chartType} 
+                          onChange={e => handleUpdateWidget(w.id, { chartType: e.target.value as any })} 
+                          options={CHART_TYPE_OPTIONS}
+                          className="bg-slate-50 dark:bg-slate-900/50 p-3 sm:p-4 text-sm"
+                        />
                   </div>
                 )}
 
                 {w.chartType !== 'mixed' && w.chartType !== 'pie' && (
                   <div>
                     <label className="text-sm font-semibold text-slate-400 block mb-2">Aggregation</label>
-                    <select 
+                    <SelectInput 
                       value={w.type === 'kpi' && w.aggregation === 'none' ? 'avg' : w.aggregation} 
                       onChange={e => handleUpdateWidget(w.id, { aggregation: e.target.value as any })} 
-                      className="w-full bg-slate-50 dark:bg-slate-900/50 text-sm font-medium p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:border-blue-500 dark:focus:border-sky-500 outline-none transition-all text-slate-900 dark:text-white"
-                    >
-                      {AGGREGATION_OPTIONS.filter(opt => w.type !== 'kpi' || opt.value !== 'none').map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
+                      options={AGGREGATION_OPTIONS.filter(opt => w.type !== 'kpi' || opt.value !== 'none')}
+                      className="bg-slate-50 dark:bg-slate-900/50 p-3 sm:p-4 text-sm"
+                    />
                   </div>
                 )}
               </div>
@@ -415,54 +389,27 @@ export function WidgetEditor({
                         <div className="col-span-2 md:col-span-6 flex flex-col sm:flex-row gap-4 mt-2">
                           <div className="flex-1">
                             <label className="text-xs font-semibold text-slate-500 mb-1 block">Visual</label>
-                            <div className="relative">
-                              <select 
-                                value={sConf.chartType} 
-                                onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, chartType: e.target.value as any } } })}
-                                className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
-                              >
-                                {SERIES_CHART_TYPE_OPTIONS.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                              </div>
-                            </div>
+                            <SelectInput 
+                              value={sConf.chartType} 
+                              onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, chartType: e.target.value as any } } })}
+                              options={SERIES_CHART_TYPE_OPTIONS}
+                            />
                           </div>
                           <div className="flex-1">
                             <label className="text-xs font-semibold text-slate-500 mb-1 block">Aggregation</label>
-                            <div className="relative">
-                              <select 
-                                value={sConf.aggregation} 
-                                onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, aggregation: e.target.value as any } } })}
-                                className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
-                              >
-                                {AGGREGATION_OPTIONS.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                              </div>
-                            </div>
+                            <SelectInput 
+                              value={sConf.aggregation} 
+                              onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, aggregation: e.target.value as any } } })}
+                              options={AGGREGATION_OPTIONS}
+                            />
                           </div>
                           <div className="flex-1">
                             <label className="text-xs font-semibold text-slate-500 mb-1 block">Stacking</label>
-                            <div className="relative">
-                              <select 
-                                value={sConf.stacked ? 'true' : 'false'} 
-                                onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, stacked: e.target.value === 'true' } } })}
-                                className="w-full bg-slate-100 dark:bg-slate-900/80 text-xs py-2 pl-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none appearance-none cursor-pointer focus:border-blue-500 dark:focus:border-sky-500 transition-colors"
-                              >
-                                {STACKING_OPTIONS.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                              </div>
-                            </div>
+                            <SelectInput 
+                              value={sConf.stacked ? 'true' : 'false'} 
+                              onChange={(e) => handleUpdateWidget(w.id, { seriesConfig: { ...w.seriesConfig, [seriesKey]: { ...sConf, stacked: e.target.value === 'true' } } })}
+                              options={STACKING_OPTIONS}
+                            />
                           </div>
                         </div>
                       </div>

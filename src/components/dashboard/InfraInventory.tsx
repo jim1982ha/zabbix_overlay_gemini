@@ -3,7 +3,7 @@ import { Server, Cpu, HardDrive, Database, Zap, Activity, Search } from 'lucide-
 import { cn } from '../../lib/utils';
 import { FilterBar, FilterButton } from '../ui/FilterBar';
 import { ScrollableBar } from '../layout/ScrollableBar';
-import { STDL_LIST_CARD_CLASS } from '../ui/Card';
+import { Card } from '../ui/Card';
 import axios from 'axios';
 
 export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showToast, isDemo }: { filters: any, globalSearch?: string, zabbixConfig?: { url: string, token: string }, showToast?: (msg: string, type?: 'info' | 'success' | 'warning' | 'error') => void, isDemo: boolean }) {
@@ -177,7 +177,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
       {filteredAssets.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAssets.map((asset, i) => (
-            <div 
+            <Card 
               key={asset.id}
               onClick={() => {
                 if (isDemo || !asset.hostid || !zabbixConfig?.url) {
@@ -199,7 +199,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                 qs += `&filter_set=1`;
                 window.open(`${zBase}/zabbix.php?${qs}`, '_blank', 'noopener,noreferrer');
               }}
-              className={cn(STDL_LIST_CARD_CLASS, "p-6 group hover:border-blue-300 cursor-pointer")}
+              className="p-6 group hover:border-blue-300 cursor-pointer"
             >
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
@@ -251,7 +251,7 @@ export function InfraInventory({ filters, globalSearch = "", zabbixConfig, showT
                   asset.type.includes('Gateway') ? <Activity className="w-32 h-32" /> : 
                   <Server className="w-32 h-32" />}
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       ) : (

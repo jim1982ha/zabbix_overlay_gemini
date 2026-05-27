@@ -1,8 +1,6 @@
 import express from 'express';
 import { isSafeTargetUrl } from '../utils/security';
 import { ZabbixService } from '../services/ZabbixService';
-import fs from 'fs';
-import path from 'path';
 import axios from 'axios';
 
 export const timeseriesRouter = express.Router();
@@ -295,14 +293,7 @@ timeseriesRouter.post("/", async (req, res) => {
                 results = histRes.data?.result || [];
                 queryUsed = "history.get";
                 
-                if (!global.zabbixHistDebugLog) global.zabbixHistDebugLog = [];
-                global.zabbixHistDebugLog.push({
-                   vtype,
-                   query: queryUsed,
-                   reqSize: itemids.length,
-                   resLen: results.length,
-                   err: histRes.data?.error
-                });
+
               } catch (e) { console.error("[timeseries] history.get failed", e); }
            }
 
@@ -322,17 +313,7 @@ timeseriesRouter.post("/", async (req, res) => {
            historyValues[key].sort((a,b) => a[0] - b[0]);
         }
         
-        try {
-           const dbgInfo = {
-             itemsToFetchHistory,
-             itemIdToKey,
-             zabbixHistDebugLog: global.zabbixHistDebugLog,
-             historyKeys: Object.keys(historyValues),
-             historyCounts: Object.fromEntries(Object.entries(historyValues).map(([k,v]) => [k, (v as any[]).length]))
-           };
-           require('fs').writeFileSync(require('path').join(process.cwd(), 'zabbix-debug.json'), JSON.stringify(dbgInfo, null, 2));
-           console.log(`[timeseries] Debug log written. historyCounts:`, dbgInfo.historyCounts);
-        } catch(e) {}
+        // No debug logging in production
       } catch (e) {
         console.error("Failed to fetch real data for timeseries", e);
       }

@@ -1,6 +1,19 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+export function getSeverityClasses(severity: string) {
+  switch (severity?.toLowerCase()) {
+    case 'critical':
+      return "bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40";
+    case 'warning':
+      return "bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40";
+    case 'success':
+      return "bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40";
+    default:
+      return "bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/40";
+  }
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -64,6 +77,42 @@ export function updateMetricColor(key: string, color: string) {
   } catch {
     //
   }
+}
+
+export function formatTimestampRange(data: any[], granularity: string): string | undefined {
+  if (!data || data.length === 0) return undefined;
+  
+  const firstPoint = data[0];
+  const lastPointData = data[data.length - 1];
+  
+  if (!firstPoint?.time || !lastPointData?.time) return undefined;
+  
+  const d1 = new Date(firstPoint.time);
+  const d2 = new Date(lastPointData.time);
+  
+  let d2End = new Date(d2.getTime());
+  if (granularity === '1h') d2End = new Date(d2.getTime() + 60 * 60 * 1000);
+  else if (granularity === '1m') d2End = new Date(d2.getTime() + 60 * 1000);
+  else if (granularity === '5m') d2End = new Date(d2.getTime() + 5 * 60 * 1000);
+  else if (granularity === '15m') d2End = new Date(d2.getTime() + 15 * 60 * 1000);
+  else if (granularity === '30m') d2End = new Date(d2.getTime() + 30 * 60 * 1000);
+  else if (granularity === '1d') d2End = new Date(d2.getTime() + 24 * 60 * 60 * 1000);
+
+  if (granularity === '1d') {
+      return d1.toLocaleDateString() === d2End.toLocaleDateString() 
+          ? d1.toLocaleDateString() 
+          : `${d1.toLocaleDateString()} - ${d2End.toLocaleDateString()}`;
+  } else {
+      if (d1.toLocaleDateString() === d2End.toLocaleDateString()) {
+          return `${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      } else {
+          return `${d1.toLocaleDateString()} ${d1.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${d2End.toLocaleDateString()} ${d2End.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      }
+  }
+}
+
+export function resolveHosts(hostsParams: string[] | undefined, availableHosts: string[]): string[] {
+  return (hostsParams || []).includes('all') ? availableHosts : (hostsParams || []);
 }
 
 export function formatValue(value: number, unit?: string, noUnitString = false): { value: string, unit: string } {

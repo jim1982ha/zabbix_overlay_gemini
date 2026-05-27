@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { LoadingDots } from '../ui/LoadingDots';
 import { ReactNode } from "react";
 import { TrendingUp, TrendingDown, Clock } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -40,11 +40,7 @@ export function StatCard({ title, value, unit, change, trend, color = "blue", to
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col items-center justify-center min-h-0 py-4 w-full overflow-hidden">
         {value === '-' ? (
-          <div className="flex gap-2 items-center justify-center h-full">
-            <motion.div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600" animate={{ backgroundColor: ['#2563eb', '#cbd5e1', '#cbd5e1'], y: [-3, 0, 0] }} transition={{ duration: 1.5, repeat: Infinity, times: [0, 0.2, 1] }} />
-            <motion.div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600" animate={{ backgroundColor: ['#cbd5e1', '#2563eb', '#cbd5e1'], y: [0, -3, 0] }} transition={{ duration: 1.5, repeat: Infinity, times: [0, 0.2, 1] }} />
-            <motion.div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600" animate={{ backgroundColor: ['#cbd5e1', '#cbd5e1', '#2563eb'], y: [0, 0, -3] }} transition={{ duration: 1.5, repeat: Infinity, times: [0, 0.2, 1] }} />
-          </div>
+          <LoadingDots size={3} />
         ) : (
           <div className="flex items-center justify-center w-full max-w-full px-2 gap-4">
             <div className="flex items-baseline min-w-0 justify-center">

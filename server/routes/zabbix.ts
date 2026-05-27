@@ -104,13 +104,6 @@ zabbixRouter.post("/", async (req, res) => {
     }
   });
 
-  zabbixRouter.get("/zabbix-debug", (req, res) => {
-    try {
-        const dbgInfo = require('node:fs').readFileSync(require('node:path').join(process.cwd(), 'zabbix-debug.json'), 'utf8');
-        res.json(JSON.parse(dbgInfo));
-    } catch(e) {
-        res.status(500).json({ error: "Debug file not found or could not be read", globalLogs: (global as any).zabbixHistDebugLog || [] });
-    }
-  });
+
 
   

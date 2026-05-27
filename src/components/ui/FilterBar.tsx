@@ -1,10 +1,10 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
-import { Card } from '../ui/Card';
+import { Card } from './Card';
 
 export function FilterBar({ children, className }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <Card className={cn("flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-2 relative overflow-hidden shadow-none border-slate-200 dark:border-slate-800", className)}>
+    <Card className={cn("flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-1.5 sm:px-3 sm:py-2 relative overflow-hidden shadow-none border-slate-200 dark:border-slate-800", className)}>
       {children}
     </Card>
   );

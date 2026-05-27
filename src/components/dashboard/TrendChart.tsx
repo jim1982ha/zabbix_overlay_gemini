@@ -20,7 +20,7 @@ import {
   ReferenceArea,
   Brush
 } from 'recharts';
-import { motion } from 'motion/react';
+import { LoadingDots } from '../ui/LoadingDots';
 import { Download, ZoomIn, Clock, ArrowDown, ArrowUp } from 'lucide-react';
 import { cn, formatValue, getPollingIntervalMs } from '../../lib/utils';
 
@@ -579,11 +579,7 @@ export const TrendChart = React.memo(function TrendChart({ widgetId, title, data
       <div 
         className={`bg-white dark:bg-slate-900 h-full flex flex-col items-center justify-center @container transition-colors duration-300 border border-slate-200 dark:border-slate-800 p-4 @[400px]:p-6 cancel-drag`}
       >
-        <div className="flex gap-3 items-center">
-          <motion.div className="w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600" animate={{ backgroundColor: ['#2563eb', '#cbd5e1', '#cbd5e1'], y: [-3, 0, 0] }} transition={{ duration: 1.5, repeat: Infinity, times: [0, 0.2, 1] }} />
-          <motion.div className="w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600" animate={{ backgroundColor: ['#cbd5e1', '#2563eb', '#cbd5e1'], y: [0, -3, 0] }} transition={{ duration: 1.5, repeat: Infinity, times: [0, 0.2, 1] }} />
-          <motion.div className="w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600" animate={{ backgroundColor: ['#cbd5e1', '#cbd5e1', '#2563eb'], y: [0, 0, -3] }} transition={{ duration: 1.5, repeat: Infinity, times: [0, 0.2, 1] }} />
-        </div>
+        <LoadingDots size={4} />
       </div>
     );
   }
