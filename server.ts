@@ -21,7 +21,7 @@ async function startServer() {
   const PORT = process.env.APP_PORT ? parseInt(process.env.APP_PORT, 10) : 3000;
 
   // Set rigorous body parser limits to prevent Denial-of-Service via payload exhaustion
-  app.use(express.json({ limit: "50mb" }));
+  app.use(express.json({ limit: "2mb" }));
 
   // Rate limiting to prevent DoS (CWE-770)
   const apiLimiter = rateLimit({
@@ -65,6 +65,14 @@ async function startServer() {
   });
 
   app.post("/api/demo-dashboard", express.json(), (req, res) => {
+    const expectedToken = process.env.APP_SECURE_TOKEN;
+    if (expectedToken) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+        return res.status(401).json({ error: "Unauthorized access detected." });
+      }
+    }
+    
     try {
       const demoPath = path.join(process.cwd(), "src", "data", "demoDashboard.json");
       const dirOfDemo = path.dirname(demoPath);

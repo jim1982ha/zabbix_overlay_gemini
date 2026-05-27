@@ -31,7 +31,7 @@ export function FilterButton({
 }: FilterButtonProps) {
   
   // Base classes following Asset Inventory style
-  const baseClass = "px-4 py-2 text-sm font-semibold transition-all rounded-lg whitespace-nowrap flex items-center gap-2 cursor-pointer outline-none select-none";
+  const baseClass = "px-3 py-1.5 text-sm font-semibold transition-all rounded-lg whitespace-nowrap flex items-center gap-2 cursor-pointer outline-none select-none";
   
   // Variant colors on active state (without shadow effect!)
   const variantClasses = {

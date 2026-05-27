@@ -98,9 +98,6 @@ timeseriesRouter.post("/", async (req, res) => {
     let historyValues: Record<string, [number, number][]> = {};
 
     if (url && token && metrics.length > 0 && hosts.length > 0) {
-      console.log(`[timeseries] fetch start. metrics: ${metrics.length}, hosts: ${hosts.length}`);
-      console.log(`metrics array:`, metrics);
-      console.log(`hosts array:`, hosts);
       try {
         const itemsToFetchHistory: Record<number, string[]> = {};
         const itemIdToKey: Record<string, string> = {};
@@ -108,7 +105,6 @@ timeseriesRouter.post("/", async (req, res) => {
         const zReq = async (method: string, params: any, timeout = 30000) => ZabbixService.makeRequest(url, token, method, params, timeout);
 
         if (Object.keys(itemDict).length > 0) {
-           console.log(`[timeseries] Using provided itemDict`);
            // Create a case-insensitive map of the provided itemDict for robust matching
            const lowerItemDict: Record<string, any> = {};
            for (const [k, v] of Object.entries(itemDict)) {

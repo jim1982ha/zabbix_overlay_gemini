@@ -337,7 +337,7 @@ export function NotificationFeed({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded sm:bg-transparent sm:p-0">
+                <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0 bg-slate-100 dark:bg-slate-800/50 px-2 py-1 rounded-md">
                   <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
                   <span>{n.duration || n.time}</span>
                 </div>
