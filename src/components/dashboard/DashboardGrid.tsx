@@ -358,18 +358,15 @@ export const DashboardGrid = React.memo(function DashboardGrid({
     layoutChangeTimer.current = setTimeout(() => {
       setWidgets(prevWidgets => {
         let changed = false;
-        const isMobileBreakpoint = currentBreakpoint === 'xs' || currentBreakpoint === 'xxs';
+        
+        // Only trigger layout changes back to widgets if the user is actively interacting (drag/resize)
+        // This prevents automatic compaction on load/resize from marking the dashboard as dirty.
+        if (!isUserInteracting.current) return prevWidgets;
 
         const next = prevWidgets.map(w => {
           const item = currentLayout.find((l: any) => l.i === w.id);
           if (item) {
-            if (isMobileBreakpoint) {
-              // In mobile mode, copy only y and h to prevent resetting desktop width (which is 1 on mobile) and x (which is 0 on mobile)
-              if (w.y !== item.y || w.h !== item.h) {
-                changed = true;
-                return { ...w, y: item.y, h: item.h };
-              }
-            } else {
+            if (!isMobile) {
               let newW = item.w;
               let newX = item.x;
               

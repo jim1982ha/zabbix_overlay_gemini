@@ -2,5 +2,7 @@
   "name": "HA Reporting",
   "description": "A modern, user-friendly monitoring interface for Zabbix, focused on clear KPI visualization and trend analysis.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
