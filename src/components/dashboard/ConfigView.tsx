@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Card } from "../ui/Card";
-import { Plus, Settings2, Trash2, X } from "lucide-react";
+import { Plus, Settings2, Trash2, X, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../../lib/utils";
 import { getAllPlugins } from "../../plugins/registry";
@@ -12,6 +12,11 @@ interface ConfigViewProps {
   onDeleteDataSource: (id: string) => void;
   requiresSecureToken: boolean;
   isDemo: boolean;
+  appMode: 'demo' | 'live';
+  onSetAppMode: (mode: 'demo' | 'live') => void;
+  onDiscover: (ds: ConfiguredDataSource) => Promise<void>;
+  isDiscovering: boolean;
+  discoveryStatus: { type: 'success' | 'error'; message: string } | null;
 }
 
 export const ConfigView: React.FC<ConfigViewProps> = ({
@@ -20,6 +25,11 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
   onDeleteDataSource,
   requiresSecureToken,
   isDemo,
+  appMode,
+  onSetAppMode,
+  onDiscover,
+  isDiscovering,
+  discoveryStatus,
 }) => {
   const plugins = getAllPlugins();
   const [selectedPlugin, setSelectedPlugin] = useState<string>(plugins[0]?.id || "");
@@ -48,7 +58,25 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
     <div className="w-full flex-1 flex flex-col items-center py-1 sm:py-2 px-4 sm:px-0">
       <div className="w-full max-w-4xl space-y-6">
         
-        <div className="flex items-center justify-end mb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            {dataSources.length > 0 && (
+              <div className="flex items-center p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-lg">
+                <button
+                  onClick={() => onSetAppMode('demo')}
+                  className={cn("px-3 py-1.5 text-xs font-semibold rounded-md transition-colors", appMode === 'demo' ? "bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+                >
+                  Offline Demo
+                </button>
+                <button
+                  onClick={() => onSetAppMode('live')}
+                  className={cn("px-3 py-1.5 text-xs font-semibold rounded-md transition-colors", appMode === 'live' ? "bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300")}
+                >
+                  Live Data
+                </button>
+              </div>
+            )}
+          </div>
           <button 
             onClick={handleStartAdd}
             disabled={isAdding}
@@ -203,6 +231,22 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
                       </div>
                     ))}
                   </div>
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60 flex flex-col gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDiscover(ds);
+                      }}
+                      disabled={isDiscovering || appMode === 'demo'}
+                      className="w-full py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-md text-xs font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <RefreshCw className={cn("w-3.5 h-3.5", isDiscovering && "animate-spin")} />
+                      {isDiscovering ? "Discovering..." : "Discover Assets"}
+                    </button>
+                    {appMode === 'demo' && (
+                      <p className="text-[10px] text-center text-slate-400">Switch to Live Data to discover</p>
+                    )}
+                  </div>
                 </div>
               </Card>
             );
@@ -229,6 +273,15 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
               />
             </div>
           </Card>
+        )}
+
+        {discoveryStatus && (
+          <div className={cn(
+            "p-4 rounded-xl border text-sm font-medium mt-4",
+            discoveryStatus.type === 'success' ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"
+          )}>
+            {discoveryStatus.message}
+          </div>
         )}
 
       </div>

@@ -547,6 +547,28 @@ function DashboardApp() {
     loadDashboards('demo');
   };
 
+  const handleSetAppMode = (mode: 'demo' | 'live') => {
+    if (mode === 'live') {
+      const zabbixDs = dataSources.find(ds => ds.pluginId === 'zabbix-core');
+      if (zabbixDs) {
+        setAppMode('live');
+        setZabbixConfig({url: zabbixDs.config.url || '', token: zabbixDs.config.token || '', isPreconfigured: false });
+        sessionStorage.setItem('hareporting_zabbix_url', zabbixDs.config.url || '');
+        sessionStorage.setItem('hareporting_zabbix_token', zabbixDs.config.token || '');
+        setSavedZabbixUrl(zabbixDs.config.url || '');
+        showToast("Switched to Live Data", "success");
+        setTimeout(() => {
+           setInitialDiscoveryTriggered(false);
+           loadDashboards('live', zabbixDs.config.url);
+        }, 100);
+      } else {
+        showToast("Configure a Zabbix Data Source first to switch to Live mode.", "error");
+      }
+    } else {
+      handleDemoMode();
+    }
+  };
+
   // Consolidated Unsaved edits tracker
   const hasUnsavedChanges = useMemo(() => {
     if (!activeDashboardId) return widgets.length > 0;
@@ -971,6 +993,17 @@ function DashboardApp() {
           onDeleteDataSource={handleDeleteDataSource}
           requiresSecureToken={requiresSecureToken}
           isDemo={isDemo}
+          appMode={appMode}
+          onSetAppMode={handleSetAppMode}
+          onDiscover={async (ds) => {
+            if (ds.pluginId === 'zabbix-core') {
+              await discoverZabbixAssets(true, ds.config as any);
+            } else {
+              showToast("Discovery not supported for this plugin yet", "warning");
+            }
+          }}
+          isDiscovering={isDiscovering}
+          discoveryStatus={discoveryStatus}
         />
       );
     }
